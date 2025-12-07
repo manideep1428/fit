@@ -45,6 +45,13 @@ export default function BookingsScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
+      {/* Header */}
+      <View className="px-6 pt-16 pb-4 border-b" style={{ borderBottomColor: colors.border }}>
+        <Text className="text-2xl font-bold" style={{ color: colors.text }}>
+          Bookings
+        </Text>
+      </View>
+
       {/* Tab Header */}
       <View className="flex-row border-b" style={{ borderBottomColor: colors.border }}>
         <TouchableOpacity

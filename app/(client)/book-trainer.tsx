@@ -210,10 +210,10 @@ export default function BookTrainerScreen() {
                     setSelectedDuration(duration.value);
                     setSelectedSlot(null);
                   }}
-                  className="flex-1 rounded-2xl py-4 items-center"
+                  className="flex-1 rounded-xl py-4 items-center"
                   style={{
                     backgroundColor: selectedDuration === duration.value ? colors.primary : colors.surface,
-                    ...shadows.small,
+                    ...shadows.medium,
                   }}
                 >
                   <Text
@@ -342,10 +342,10 @@ export default function BookTrainerScreen() {
           <TouchableOpacity
             onPress={handleConfirmBooking}
             disabled={!selectedSlot || booking}
-            className="rounded-2xl py-4 items-center"
+            className="rounded-xl py-4 items-center"
             style={{
               backgroundColor: selectedSlot ? colors.primary : colors.border,
-              ...shadows.large,
+              ...shadows.medium,
             }}
           >
             {booking ? (

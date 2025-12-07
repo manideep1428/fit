@@ -98,8 +98,8 @@ export default function CalendarView({ bookings, userRole }: CalendarViewProps) 
   return (
     <View className="flex-1">
       {/* Header with Month/Year */}
-      <View className="px-6 pt-16 pb-3">
-        <Text className="text-2xl font-bold text-center mb-4" style={{ color: colors.text }}>
+      <View className="px-6 pt-4 pb-3">
+        <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
           Schedule
         </Text>
         <View className="flex-row items-center justify-between mb-4">
@@ -207,16 +207,16 @@ export default function CalendarView({ bookings, userRole }: CalendarViewProps) 
                           className="rounded-xl p-4 mb-2"
                           style={{
                             backgroundColor: booking.status === 'confirmed' 
-                              ? 'rgba(205, 164, 133, 0.2)' 
+                              ? `${colors.primary}20` 
                               : colors.surface,
                             borderLeftWidth: 3,
                             borderLeftColor: booking.status === 'confirmed' 
-                              ? '#CDA485' 
+                              ? colors.primary 
                               : colors.border,
                             ...shadows.small,
                           }}
                         >
-                          <Text className="font-bold text-base mb-1" style={{ color: '#CDA485' }}>
+                          <Text className="font-bold text-base mb-1" style={{ color: colors.primary }}>
                             {booking.scheduleName || 'Training Session'}
                           </Text>
                           <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>

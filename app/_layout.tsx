@@ -8,6 +8,8 @@ import { tokenCache } from '@clerk/clerk-expo/token-cache';
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { useNotifications } from '@/hooks/useNotifications';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import Toast from 'react-native-toast-message';
+import { toastConfig } from '@/components/ToastConfig';
 
 import "../global.css"
 
@@ -41,7 +43,8 @@ function ThemedApp() {
   return (
     <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <AppContent />
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <StatusBar style="auto" />
+      <Toast config={toastConfig} />
     </NavigationThemeProvider>
   );
 }

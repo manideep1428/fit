@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
+import { useColorScheme } from '@/hooks/use-color-scheme'
+import { getColors, Shadows } from '@/constants/colors'
 
 // Preloads the browser for Android devices to reduce authentication load time
 // See: https://docs.expo.dev/guides/authentication/#improving-user-experience
@@ -32,6 +34,9 @@ interface GoogleOAuthButtonProps {
 export default function GoogleOAuthButton({ mode, onError }: GoogleOAuthButtonProps) {
     useWarmUpBrowser()
     const router = useRouter()
+    const scheme = useColorScheme()
+    const colors = getColors(scheme === 'dark')
+    const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light
     const [loading, setLoading] = React.useState(false)
     const { getToken, userId } = useAuth()
     const saveGoogleTokens = useMutation(api.users.saveGoogleTokens)
@@ -48,39 +53,41 @@ export default function GoogleOAuthButton({ mode, onError }: GoogleOAuthButtonPr
             })
 
             if (createdSessionId) {
-                setActive!({
-                    session: createdSessionId,
-                    navigate: async ({ session }) => {
-                        if (session?.currentTask) {
-                            console.log(session?.currentTask)
-                            router.push('/(auth)/role-selection')
-                            return
-                        }
-                        try {
-                            const token = await getToken({ template: 'integration_google' })
+                await setActive!({ session: createdSessionId })
+                
+                // Wait a moment for session to be fully active
+                await new Promise(resolve => setTimeout(resolve, 500))
+                
+                // Try to get and save Google Calendar token
+                try {
+                    const token = await getToken({ template: 'integration_google' })
+                    
+                    if (token && userId) {
+                        await saveGoogleTokens({
+                            clerkId: userId,
+                            accessToken: token,
+                        })
+                        console.log('Google Calendar tokens saved successfully')
+                    }
+                } catch (tokenError) {
+                    console.error('Error saving Google tokens:', tokenError)
+                }
+                
+                // Navigate based on user role and phone number
+                const currentUser = (signIn as any)?.userData || (signUp as any)?.userData
+                const userRole = currentUser?.unsafeMetadata?.role as string | undefined
+                const hasPhoneNumber = currentUser?.unsafeMetadata?.phoneNumber
 
-                            if (token && userId) {
-                                // Save tokens to Convex
-                                await saveGoogleTokens({
-                                    clerkId: userId,
-                                    accessToken: token,
-                                })
-                                console.log('Google Calendar tokens saved successfully')
-                            }
-                        } catch (tokenError) {
-                            console.error('Error saving Google tokens:', tokenError)
-                        }
-                        const userRole = session?.user?.unsafeMetadata?.role as string | undefined
-
-                        if (userRole === 'trainer') {
-                            router.replace('/(trainer)')
-                        } else if (userRole === 'client') {
-                            router.replace('/(client)')
-                        } else {
-                            router.push('/(auth)/role-selection')
-                        }
-                    },
-                })
+                if (userRole === 'trainer') {
+                    router.replace('/(trainer)')
+                } else if (userRole === 'client') {
+                    router.replace('/(client)')
+                } else if (!hasPhoneNumber) {
+                    // New Google OAuth user without phone number
+                    router.replace('/(auth)/phone-number')
+                } else {
+                    router.replace('/(auth)/role-selection')
+                }
             } else {
                 console.log('Missing requirements detected')
                 if (signIn) {
@@ -107,19 +114,25 @@ export default function GoogleOAuthButton({ mode, onError }: GoogleOAuthButtonPr
         <TouchableOpacity
             onPress={onPress}
             disabled={loading}
-            className="bg-white py-4 rounded-xl border border-gray-300 flex-row items-center justify-center"
+            className="py-4 rounded-xl flex-row items-center justify-center"
+            style={{
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                ...shadows.small,
+            }}
         >
             {loading ? (
                 <View className="flex-row items-center">
                     <ActivityIndicator size="small" color="#DB4437" />
-                    <Text className="text-gray-700 text-lg font-medium ml-3">
+                    <Text className="text-lg font-medium ml-3" style={{ color: colors.text }}>
                         Connecting...
                     </Text>
                 </View>
             ) : (
                 <>
                     <Ionicons name="logo-google" size={24} color="#DB4437" />
-                    <Text className="text-gray-700 text-lg font-medium ml-3">
+                    <Text className="text-lg font-medium ml-3" style={{ color: colors.text }}>
                         Sign with Google
                     </Text>
                 </>

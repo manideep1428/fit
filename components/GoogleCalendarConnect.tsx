@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors } from '@/constants/colors';
+import { showToast } from '@/utils/toast';
 
 interface GoogleCalendarConnectProps {
   onConnected?: () => void;
@@ -32,11 +33,7 @@ export default function GoogleCalendarConnect({
       const token = await getToken({ template: 'integration_google' });
 
       if (!token) {
-        Alert.alert(
-          'Authentication Required',
-          'Please sign in with Google to connect your calendar.',
-          [{ text: 'OK' }]
-        );
+        showToast.error('Please sign in with Google to connect your calendar', 'Authentication Required');
         return;
       }
 
@@ -46,18 +43,11 @@ export default function GoogleCalendarConnect({
         accessToken: token,
       });
 
-      Alert.alert(
-        'Success',
-        'Google Calendar connected successfully! Your bookings will now sync to your calendar.',
-        [{ text: 'OK', onPress: onConnected }]
-      );
+      showToast.success('Your bookings will now sync to your calendar', 'Calendar Connected');
+      if (onConnected) onConnected();
     } catch (error: any) {
       console.error('Error connecting Google Calendar:', error);
-      Alert.alert(
-        'Connection Failed',
-        error.message || 'Failed to connect Google Calendar. Please try again.',
-        [{ text: 'OK' }]
-      );
+      showToast.error(error.message || 'Failed to connect Google Calendar. Please try again.', 'Connection Failed');
     } finally {
       setLoading(false);
     }

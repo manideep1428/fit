@@ -56,7 +56,7 @@ export default function TrainerHomeScreen() {
 
     return (
         <ScrollView className="flex-1" style={{ backgroundColor: colors.background }}>
-            <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+            <StatusBar style="auto" />
 
             {/* Header */}
             <View className="px-6 pb-6 pt-16">
@@ -96,8 +96,8 @@ export default function TrainerHomeScreen() {
                 {/* Stats Card */}
                 {bookings && bookings.length > 0 && (
                   <View
-                      className="rounded-3xl p-6 mb-6"
-                      style={{ backgroundColor: colors.primary, ...shadows.large }}
+                      className="rounded-2xl p-6 mb-6"
+                      style={{ backgroundColor: colors.primary, ...shadows.medium }}
                   >
                       <Text className="text-sm font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.9)' }}>
                           Your Sessions

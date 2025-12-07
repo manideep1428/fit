@@ -65,7 +65,25 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="find-trainers"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
         name="add-trainer"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="progress-tracking"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="payment-request"
         options={{
           href: null, // Hide from tab bar
         }}

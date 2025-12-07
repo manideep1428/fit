@@ -174,7 +174,7 @@ export default function ProgressScreen() {
                         `/(client)/progress-tracking?goalId=${goal._id}` as any
                       )
                     }
-                    className="rounded-2xl p-5"
+                    className="rounded-xl p-5"
                     style={{ backgroundColor: colors.surface, ...shadows.medium }}
                   >
                     <View className="flex-row items-start justify-between mb-3">

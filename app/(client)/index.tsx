@@ -56,7 +56,7 @@ export default function ClientHomeScreen() {
 
   return (
     <ScrollView className="flex-1" style={{ backgroundColor: colors.background }}>
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style="auto" />
 
       {/* Body container */}
       <View className="px-6 pt-16 pb-6">
@@ -95,8 +95,8 @@ export default function ClientHomeScreen() {
         {/* Fitness Card */}
         {bookings && bookings.length > 0 && (
           <View
-            className="rounded-3xl p-6 mb-6"
-            style={{ backgroundColor: colors.surface, ...shadows.large }}
+            className="rounded-2xl p-6 mb-6"
+            style={{ backgroundColor: colors.surface, ...shadows.medium }}
           >
             <View className="flex-row justify-between items-start mb-5">
               <View className="flex-1">
@@ -217,7 +217,7 @@ export default function ClientHomeScreen() {
               <TouchableOpacity
                 className="mt-4 px-6 py-3 rounded-full"
                 style={{ backgroundColor: colors.primary }}
-                onPress={() => router.push('/(client)/book-trainer' as any)}
+                onPress={() => router.push('/(client)/find-trainers' as any)}
               >
                 <Text className="text-white font-semibold">Find Trainers</Text>
               </TouchableOpacity>
@@ -266,7 +266,7 @@ export default function ClientHomeScreen() {
                 <TouchableOpacity
                   className="w-36 rounded-xl p-5 items-center justify-center"
                   style={{ backgroundColor: colors.surface, ...shadows.medium, borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed' }}
-                  onPress={() => router.push('/(client)/book-trainer' as any)}
+                  onPress={() => router.push('/(client)/find-trainers' as any)}
                 >
                   <View
                     className="w-20 h-20 rounded-full mb-3 items-center justify-center"
