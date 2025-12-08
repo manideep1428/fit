@@ -14,6 +14,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { useRouter } from 'expo-router';
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
   const { isDark, toggleDarkMode } = useDarkMode();
 
   const userData = useQuery(
@@ -105,7 +107,7 @@ export default function ProfileScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <ScrollView className="flex-1">
-        <View className="px-6 pt-16 pb-6">
+        <View className="px-6 pb-6" style={{ paddingTop: insets.top + 12 }}>
           {/* Header */}
           <View className="mb-6">
             <Text className="text-2xl font-bold" style={{ color: colors.text }}>
@@ -158,6 +160,26 @@ export default function ProfileScreen() {
             <Text className="text-xs font-semibold mb-3 uppercase" style={{ color: colors.textTertiary }}>
               Profile
             </Text>
+
+            {/* Availability */}
+            <TouchableOpacity
+              onPress={() => router.push('/(trainer)/availability' as any)}
+              className="rounded-2xl p-5 mb-3 flex-row items-center justify-between"
+              style={{ backgroundColor: colors.surface, ...shadows.small }}
+            >
+              <View className="flex-row items-center flex-1">
+                <View
+                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                  style={{ backgroundColor: colors.background }}
+                >
+                  <Ionicons name="time-outline" size={20} color={colors.text} />
+                </View>
+                <Text className="font-semibold" style={{ color: colors.text }}>
+                  Availability
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
 
             {/* Edit Profile */}
             <TouchableOpacity

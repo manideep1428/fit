@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -23,11 +23,26 @@ export default function AddClientScreen() {
   const addClientToTrainer = useMutation(api.users.addClientToTrainer);
   const createNotification = useMutation(api.notifications.createNotification);
 
-  // Search clients by email or name
-  const searchResults = useQuery(
-    api.users.searchClients,
-    searchQuery.length >= 2 ? { query: searchQuery } : 'skip'
-  );
+  // Fetch all clients upfront (limited to first 20)
+  const allClients = useQuery(api.users.getAllClients);
+
+  // Filter clients based on search query (client-side filtering)
+  const displayedClients = useMemo(() => {
+    if (!allClients) return [];
+
+    // Limit to 20 clients
+    const limitedClients = allClients.slice(0, 20);
+
+    if (searchQuery.length < 2) {
+      return limitedClients;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return limitedClients.filter((client: any) =>
+      client.fullName?.toLowerCase().includes(query) ||
+      client.email?.toLowerCase().includes(query)
+    );
+  }, [allClients, searchQuery]);
 
   const handleAddClient = async () => {
     if (!selectedClient || !user?.id) return;
@@ -61,7 +76,7 @@ export default function AddClientScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-      
+
       {/* Header */}
       <View className="px-4 pt-16 pb-4 flex-row items-center justify-between">
         <TouchableOpacity
@@ -78,19 +93,16 @@ export default function AddClientScreen() {
 
       <View className="flex-1 px-4">
         {/* Search Input */}
-        <View className="mb-6">
-          <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>
-            Search for a client
-          </Text>
+        <View className="mb-4">
           <View className="relative">
             <Ionicons
               name="search"
               size={20}
               color={colors.textSecondary}
-              style={{ position: 'absolute', left: 16, top: 16, zIndex: 1 }}
+              style={{ position: 'absolute', left: 16, top: 14, zIndex: 1 }}
             />
             <TextInput
-              className="rounded-xl py-4 pl-12 pr-4 text-base"
+              className="rounded-xl py-3.5 pl-12 pr-4 text-base"
               style={{
                 backgroundColor: colors.surface,
                 borderWidth: 1,
@@ -106,31 +118,21 @@ export default function AddClientScreen() {
           </View>
         </View>
 
-        {/* Search Results */}
-        <ScrollView className="flex-1">
-          {searchQuery.length < 2 ? (
-            <View className="items-center py-12">
-              <Ionicons name="search-outline" size={64} color={colors.textTertiary} />
-              <Text className="mt-4 text-base" style={{ color: colors.textSecondary }}>
-                Start typing to search for clients
-              </Text>
-            </View>
-          ) : !searchResults ? (
+        {/* Client List */}
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          {!allClients ? (
             <View className="items-center py-12">
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
-          ) : searchResults.length === 0 ? (
+          ) : displayedClients.length === 0 ? (
             <View className="items-center py-12">
-              <Ionicons name="person-outline" size={64} color={colors.textTertiary} />
+              <Ionicons name="person-outline" size={48} color={colors.textTertiary} />
               <Text className="mt-4 text-base" style={{ color: colors.textSecondary }}>
                 No clients found
               </Text>
-              <Text className="mt-2 text-sm text-center px-8" style={{ color: colors.textTertiary }}>
-                Try searching with a different name or email
-              </Text>
             </View>
           ) : (
-            searchResults.map((client: any) => (
+            displayedClients.map((client: any) => (
               <TouchableOpacity
                 key={client._id}
                 className="rounded-xl p-4 mb-3"
@@ -144,24 +146,17 @@ export default function AddClientScreen() {
               >
                 <View className="flex-row items-center">
                   <View
-                    className="w-14 h-14 rounded-full items-center justify-center mr-3"
+                    className="w-12 h-12 rounded-full items-center justify-center mr-3"
                     style={{ backgroundColor: colors.primary }}
                   >
-                    {client.profileImageId ? (
-                      <Image
-                        source={{ uri: client.profileImageId }}
-                        className="w-full h-full rounded-full"
-                      />
-                    ) : (
-                      <Text className="text-white text-xl font-bold">
-                        {client.fullName?.[0] || 'C'}
-                      </Text>
-                    )}
+                    <Text className="text-white text-lg font-bold">
+                      {client.fullName?.[0] || 'C'}
+                    </Text>
                   </View>
 
                   <View className="flex-1">
-                    <Text className="font-bold text-base mb-1" style={{ color: colors.text }}>
-                      {client.fullName}
+                    <Text className="font-semibold text-base" style={{ color: colors.text }}>
+                      {client.fullName || 'Client'}
                     </Text>
                     <Text className="text-sm" style={{ color: colors.textSecondary }}>
                       {client.email}
@@ -170,10 +165,10 @@ export default function AddClientScreen() {
 
                   {selectedClient?._id === client._id && (
                     <View
-                      className="w-8 h-8 rounded-full items-center justify-center"
+                      className="w-7 h-7 rounded-full items-center justify-center"
                       style={{ backgroundColor: colors.primary }}
                     >
-                      <Ionicons name="checkmark" size={20} color="#FFF" />
+                      <Ionicons name="checkmark" size={18} color="#FFF" />
                     </View>
                   )}
                 </View>
@@ -195,7 +190,7 @@ export default function AddClientScreen() {
         >
           <TouchableOpacity
             className="rounded-xl py-4 items-center"
-            style={{ backgroundColor: colors.primary, ...shadows.medium }}
+            style={{ backgroundColor: colors.primary }}
             onPress={handleAddClient}
             disabled={isAdding}
           >

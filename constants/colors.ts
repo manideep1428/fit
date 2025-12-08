@@ -1,97 +1,108 @@
 /**
  * Global Color Schema for the Fitness App
- * Supports both light and dark modes
- * Use these colors throughout the app for consistent theming
+ * Supports both light and dark modes with premium aesthetics
  */
 
 export const AppColors = {
   light: {
-    // Primary Colors
-    primary: '#C17A4A',
-    primaryLight: '#D89B73',
-    primaryDark: '#A05F35',
-    
-    // Background Colors
-    background: '#FFF5E6',
+    // Primary Colors - Warm copper/bronze for premium feel
+    primary: '#B8621B',
+    primaryLight: '#D4844A',
+    primaryDark: '#8B4513',
+
+    // Background Colors - Warm creamy tones
+    background: '#FDFBF7',
     surface: '#FFFFFF',
-    surfaceSecondary: '#F9F9F9',
-    
+    surfaceSecondary: '#F8F6F2',
+    surfaceElevated: '#FFFFFF',
+
     // Text Colors
-    text: '#1F2937',
-    textSecondary: '#6B7280',
-    textTertiary: '#9CA3AF',
-    
+    text: '#1A1A2E',
+    textSecondary: '#4A4A5C',
+    textTertiary: '#8E8E9A',
+
     // Status Colors
-    success: '#10B981',
+    success: '#059669',
     successLight: '#D1FAE5',
-    warning: '#F59E0B',
+    warning: '#D97706',
     warningLight: '#FEF3C7',
-    error: '#EF4444',
+    error: '#DC2626',
     errorLight: '#FEE2E2',
-    info: '#3B82F6',
+    info: '#2563EB',
     infoLight: '#DBEAFE',
-    
+
     // UI Elements
-    border: '#E5E7EB',
-    borderLight: '#F3F4F6',
-    divider: '#E5E7EB',
-    
+    border: '#E8E5DF',
+    borderLight: '#F0EDE8',
+    divider: '#E8E5DF',
+
     // Card Colors
     cardBackground: '#FFFFFF',
-    cardShadow: 'rgba(0, 0, 0, 0.05)',
-    
+    cardBorder: '#E8E5DF',
+    cardShadow: 'rgba(0, 0, 0, 0.06)',
+
     // Tab Bar
-    tabBarBackground: '#FFFFFF',
-    tabBarBorder: '#E5E7EB',
-    tabBarActive: '#C17A4A',
-    tabBarInactive: '#9CA3AF',
-    
+    tabBarBackground: 'rgba(255, 255, 255, 0.95)',
+    tabBarBorder: '#E8E5DF',
+    tabBarActive: '#B8621B',
+    tabBarInactive: '#8E8E9A',
+
+    // Glass Effect
+    glass: 'rgba(255, 255, 255, 0.8)',
+    glassBorder: 'rgba(255, 255, 255, 0.3)',
+
     // Overlay
     overlay: 'rgba(0, 0, 0, 0.5)',
     overlayLight: 'rgba(0, 0, 0, 0.3)',
   },
-  
+
   dark: {
-    // Primary Colors
-    primary: '#D89B73',
-    primaryLight: '#E5B899',
-    primaryDark: '#C17A4A',
-    
-    // Background Colors
-    background: '#0F172A',
-    surface: '#1E293B',
-    surfaceSecondary: '#334155',
-    
+    // Primary Colors - Lighter copper for dark mode contrast
+    primary: '#E69F5C',
+    primaryLight: '#F0B87A',
+    primaryDark: '#C7843D',
+
+    // Background Colors - Deep blue-gray for premium dark
+    background: '#0D0D12',
+    surface: '#18181F',
+    surfaceSecondary: '#1F1F28',
+    surfaceElevated: '#252530',
+
     // Text Colors
-    text: '#F1F5F9',
-    textSecondary: '#CBD5E1',
-    textTertiary: '#94A3B8',
-    
+    text: '#F5F5F7',
+    textSecondary: '#B0B0BC',
+    textTertiary: '#6B6B7A',
+
     // Status Colors
-    success: '#34D399',
+    success: '#10B981',
     successLight: '#064E3B',
     warning: '#FBBF24',
     warningLight: '#78350F',
-    error: '#F87171',
+    error: '#EF4444',
     errorLight: '#7F1D1D',
     info: '#60A5FA',
     infoLight: '#1E3A8A',
-    
+
     // UI Elements
-    border: '#334155',
-    borderLight: '#475569',
-    divider: '#334155',
-    
+    border: '#2A2A35',
+    borderLight: '#353540',
+    divider: '#2A2A35',
+
     // Card Colors
-    cardBackground: '#1E293B',
-    cardShadow: 'rgba(0, 0, 0, 0.3)',
-    
+    cardBackground: '#18181F',
+    cardBorder: '#2A2A35',
+    cardShadow: 'rgba(0, 0, 0, 0.4)',
+
     // Tab Bar
-    tabBarBackground: '#1E293B',
-    tabBarBorder: '#334155',
-    tabBarActive: '#D89B73',
-    tabBarInactive: '#64748B',
-    
+    tabBarBackground: 'rgba(24, 24, 31, 0.95)',
+    tabBarBorder: '#2A2A35',
+    tabBarActive: '#E69F5C',
+    tabBarInactive: '#6B6B7A',
+
+    // Glass Effect
+    glass: 'rgba(24, 24, 31, 0.85)',
+    glassBorder: 'rgba(255, 255, 255, 0.08)',
+
     // Overlay
     overlay: 'rgba(0, 0, 0, 0.7)',
     overlayLight: 'rgba(0, 0, 0, 0.5)',
@@ -103,79 +114,110 @@ export const getColors = (isDark: boolean) => {
   return isDark ? AppColors.dark : AppColors.light;
 };
 
-// Gradient definitions
+// Gradient definitions - more vibrant
 export const Gradients = {
   light: {
-    primary: ['#C17A4A', '#D89B73'],
-    card: ['#C17A4A', '#A05F35'],
-    success: ['#10B981', '#059669'],
-    info: ['#3B82F6', '#2563EB'],
+    primary: ['#B8621B', '#D4844A'],
+    card: ['#B8621B', '#8B4513'],
+    success: ['#059669', '#047857'],
+    info: ['#2563EB', '#1D4ED8'],
+    premium: ['#B8621B', '#D97706', '#F59E0B'],
   },
   dark: {
-    primary: ['#D89B73', '#C17A4A'],
-    card: ['#D89B73', '#B8825E'],
-    success: ['#34D399', '#10B981'],
+    primary: ['#E69F5C', '#C7843D'],
+    card: ['#E69F5C', '#B8621B'],
+    success: ['#10B981', '#059669'],
     info: ['#60A5FA', '#3B82F6'],
+    premium: ['#E69F5C', '#F59E0B', '#FBBF24'],
   },
 };
 
-// Shadow definitions
+// Enhanced Shadow definitions - softer, more realistic
 export const Shadows = {
   light: {
+    none: {
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+    },
     small: {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
+      shadowOpacity: 0.04,
+      shadowRadius: 3,
       elevation: 2,
     },
     medium: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
       elevation: 4,
     },
     large: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.08,
+      shadowRadius: 16,
       elevation: 8,
+    },
+    xl: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.12,
+      shadowRadius: 24,
+      elevation: 12,
     },
   },
   dark: {
+    none: {
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+    },
     small: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.3,
-      shadowRadius: 2,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
       elevation: 2,
     },
     medium: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.4,
-      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 8,
       elevation: 4,
     },
     large: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.5,
-      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.45,
+      shadowRadius: 16,
       elevation: 8,
+    },
+    xl: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.55,
+      shadowRadius: 24,
+      elevation: 12,
     },
   },
 };
 
-// Border radius
+// Modern Border radius - larger for softer look
 export const BorderRadius = {
+  none: 0,
   small: 8,
-  medium: 12,
-  large: 16,
-  xlarge: 20,
-  xxlarge: 24,
+  medium: 14,
+  large: 20,
+  xlarge: 28,
+  xxlarge: 36,
   round: 9999,
 };
 
@@ -188,4 +230,11 @@ export const Spacing = {
   xl: 20,
   xxl: 24,
   xxxl: 32,
+};
+
+// Animation durations
+export const AnimationDurations = {
+  fast: 150,
+  normal: 250,
+  slow: 400,
 };

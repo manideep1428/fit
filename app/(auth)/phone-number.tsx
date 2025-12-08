@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,13 +19,27 @@ import { showToast } from '@/utils/toast';
 
 export default function PhoneNumberScreen() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Check if user already has a phone number, auto-redirect if so
+  useEffect(() => {
+    if (isLoaded && user) {
+      const existingPhone =
+        user.unsafeMetadata?.phoneNumber as string | undefined ||
+        user.primaryPhoneNumber?.phoneNumber;
+
+      if (existingPhone) {
+        // User already has phone number, skip to role selection
+        router.replace('/(auth)/role-selection');
+      }
+    }
+  }, [isLoaded, user, router]);
 
   const handleContinue = async () => {
     if (!user) return;

@@ -53,7 +53,7 @@ export default defineSchema({
     date: v.string(), // "2024-10-05"
     startTime: v.string(), // "09:00"
     endTime: v.string(), // "10:00"
-    duration: v.number(), // in minutes
+    duration: v.union(v.literal(45), v.literal(60)), // in minutes
     status: v.union(
       v.literal("pending"),
       v.literal("confirmed"),
@@ -162,4 +162,15 @@ export default defineSchema({
     .index("by_client", ["clientId"])
     .index("by_status", ["status"])
     .index("by_trainer_client", ["trainerId", "clientId"]),
+
+  packages: defineTable({
+    trainerId: v.string(), // Clerk ID
+    name: v.string(),
+    amount: v.number(),
+    currency: v.string(), // "INR", "USD", etc.
+    description: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_trainer", ["trainerId"]),
 });

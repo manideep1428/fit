@@ -26,6 +26,15 @@ export default function ClientDetailScreen() {
     clientId ? { clientId: clientId as string } : 'skip'
   );
 
+  // Fetch client bookings for stats
+  const bookings = useQuery(
+    api.bookings.getClientBookings,
+    clientId ? { clientId: clientId as string } : 'skip'
+  );
+
+  const daysConnected = client ? Math.floor((Date.now() - (client._creationTime || Date.now())) / (1000 * 60 * 60 * 24)) : 0;
+  const sessionsCount = bookings?.filter((b: any) => b.status === 'completed' || b.status === 'confirmed').length || 0;
+
   if (!client) {
     return (
       <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
@@ -89,19 +98,19 @@ export default function ClientDetailScreen() {
               <Text className="text-center font-semibold text-white">
                 Set Goal
               </Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              className="rounded-full py-3 px-6 flex-row items-center justify-center gap-2"
-              style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
-              onPress={() => router.push(`/(trainer)/create-payment-request?clientId=${clientId}` as any)}
-            >
-              <Ionicons name="card-outline" size={20} color={colors.primary} />
-              <Text className="text-center font-semibold" style={{ color: colors.primary }}>
-                Request Payment
-              </Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            className="rounded-full py-3 px-6 flex-row items-center justify-center gap-2"
+            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+            onPress={() => router.push(`/(trainer)/create-payment-request?clientId=${clientId}` as any)}
+          >
+            <Ionicons name="card-outline" size={20} color={colors.primary} />
+            <Text className="text-center font-semibold" style={{ color: colors.primary }}>
+              Request Payment
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Stats Cards */}
         <View className="flex-row gap-3 px-4 py-3">
@@ -110,12 +119,12 @@ export default function ClientDetailScreen() {
             style={{ backgroundColor: colors.surface, ...shadows.small }}
           >
             <Text className="text-2xl font-bold mb-1" style={{ color: colors.text }}>
-              4.8
+              {daysConnected}
             </Text>
             <View className="flex-row items-center gap-1">
-              <Ionicons name="star" size={16} color="#FFB800" />
+              <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
               <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                Rating
+                Days Connected
               </Text>
             </View>
           </View>
@@ -125,22 +134,7 @@ export default function ClientDetailScreen() {
             style={{ backgroundColor: colors.surface, ...shadows.small }}
           >
             <Text className="text-2xl font-bold mb-1" style={{ color: colors.text }}>
-              8+ Years
-            </Text>
-            <View className="flex-row items-center gap-1">
-              <Ionicons name="trophy" size={16} color={colors.textSecondary} />
-              <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                Experience
-              </Text>
-            </View>
-          </View>
-
-          <View
-            className="flex-1 rounded-xl p-3 items-center"
-            style={{ backgroundColor: colors.surface, ...shadows.small }}
-          >
-            <Text className="text-2xl font-bold mb-1" style={{ color: colors.text }}>
-              24
+              {sessionsCount}
             </Text>
             <View className="flex-row items-center gap-1">
               <Ionicons name="fitness" size={16} color={colors.textSecondary} />
@@ -157,7 +151,7 @@ export default function ClientDetailScreen() {
             About
           </Text>
           <Text className="text-base leading-relaxed" style={{ color: colors.textSecondary }}>
-            Client information and fitness journey details will appear here. Track progress, view goals, and monitor achievements.
+            {client.bio || "No bio information provided by the client."}
           </Text>
         </View>
 

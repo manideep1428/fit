@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSignUp, useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/convex/_generated/api';
 import GoogleOAuthButton from '@/components/GoogleOAuthButton';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -28,6 +29,7 @@ export default function SignUpScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -71,7 +73,12 @@ export default function SignUpScreen() {
       setPendingVerification(true);
     } catch (err: any) {
       console.error('Sign up error:', err);
-      showToast.error(err.errors?.[0]?.message || 'Failed to sign up');
+      // Check for duplicate email
+      if (err.errors?.[0]?.code === 'form_identifier_exists') {
+        showToast.error('Email already registered. Please sign in instead.');
+      } else {
+        showToast.error(err.errors?.[0]?.message || 'Failed to sign up');
+      }
     } finally {
       setLoading(false);
     }
@@ -93,7 +100,7 @@ export default function SignUpScreen() {
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        
+
         // Show calendar connect option
         setNeedsCalendarConnect(true);
       }
@@ -110,14 +117,14 @@ export default function SignUpScreen() {
 
     try {
       const token = await getToken({ template: 'integration_google' });
-      
+
       if (token) {
         await saveGoogleTokens({
           clerkId: userId,
           accessToken: token,
         });
       }
-      
+
       // Navigate to role selection
       router.replace('/(auth)/role-selection');
     } catch (error) {
@@ -135,7 +142,7 @@ export default function SignUpScreen() {
     return (
       <View className="flex-1 px-6 justify-center" style={{ backgroundColor: colors.background }}>
         <StatusBar style="auto" />
-        
+
         <View className="p-6 rounded-2xl" style={{ backgroundColor: colors.surface, ...shadows.medium }}>
           <View className="items-center mb-4">
             <View
@@ -179,7 +186,7 @@ export default function SignUpScreen() {
     return (
       <View className="flex-1 px-6 justify-center" style={{ backgroundColor: colors.background }}>
         <StatusBar style="auto" />
-        
+
         <View className="items-center mb-8">
           <View
             className="w-20 h-20 rounded-full items-center justify-center mb-4"
@@ -259,7 +266,7 @@ export default function SignUpScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-1 px-6 pt-16 pb-8">
+        <View className="flex-1 px-6 pb-8" style={{ paddingTop: insets.top + 12 }}>
           {/* Back Button */}
           <TouchableOpacity
             onPress={() => router.back()}

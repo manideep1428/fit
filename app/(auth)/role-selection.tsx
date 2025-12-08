@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
@@ -15,6 +16,7 @@ export default function RoleSelectionScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
   const [selectedRole, setSelectedRole] = useState<'trainer' | 'client' | null>(null);
   const [loading, setLoading] = useState(false);
   const createUser = useMutation(api.users.createUser);
@@ -24,7 +26,7 @@ export default function RoleSelectionScreen() {
     if (!isLoaded || !user) return;
 
     const existingRole = user.unsafeMetadata?.role as string | undefined;
-    
+
     if (existingRole === 'trainer') {
       router.replace('/(trainer)');
     } else if (existingRole === 'client') {
@@ -46,7 +48,7 @@ export default function RoleSelectionScreen() {
 
       // Sync user data to Convex
       const phoneNumber = user.unsafeMetadata?.phoneNumber as string | undefined || user.primaryPhoneNumber?.phoneNumber;
-      
+
       await createUser({
         clerkId: user.id,
         email: user.primaryEmailAddress?.emailAddress || '',
@@ -68,9 +70,9 @@ export default function RoleSelectionScreen() {
   };
 
   return (
-    <View className="flex-1 px-6 justify-center" style={{ backgroundColor: colors.background }}>
+    <View className="flex-1 px-6 justify-center" style={{ backgroundColor: colors.background, paddingTop: insets.top }}>
       <StatusBar style="auto" />
-      
+
       <View className="items-center mb-12">
         <Text className="text-3xl font-bold mb-3" style={{ color: colors.text }}>
           Choose Your Role
@@ -100,10 +102,10 @@ export default function RoleSelectionScreen() {
                   backgroundColor: selectedRole === 'trainer' ? 'rgba(255,255,255,0.2)' : `${colors.primary}15`,
                 }}
               >
-                <Ionicons 
-                  name="barbell-outline" 
-                  size={32} 
-                  color={selectedRole === 'trainer' ? '#FFF' : colors.primary} 
+                <Ionicons
+                  name="barbell-outline"
+                  size={32}
+                  color={selectedRole === 'trainer' ? '#FFF' : colors.primary}
                 />
               </View>
               <View className="flex-1">
@@ -146,10 +148,10 @@ export default function RoleSelectionScreen() {
                   backgroundColor: selectedRole === 'client' ? 'rgba(255,255,255,0.2)' : `${colors.primary}15`,
                 }}
               >
-                <Ionicons 
-                  name="person-outline" 
-                  size={32} 
-                  color={selectedRole === 'client' ? '#FFF' : colors.primary} 
+                <Ionicons
+                  name="person-outline"
+                  size={32}
+                  color={selectedRole === 'client' ? '#FFF' : colors.primary}
                 />
               </View>
               <View className="flex-1">

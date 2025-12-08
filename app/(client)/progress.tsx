@@ -7,11 +7,14 @@ import {
 } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from 'convex/react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows } from '@/constants/colors';
+import { getColors, Shadows, BorderRadius } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { AnimatedCard } from '@/components/AnimatedCard';
 
 export default function ProgressScreen() {
   const { user } = useUser();
@@ -19,6 +22,7 @@ export default function ProgressScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
 
   const goals = useQuery(
     api.goals.getClientGoals,
@@ -60,23 +64,27 @@ export default function ProgressScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <ScrollView className="flex-1">
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View className="px-6 pt-16 pb-6">
-          <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
-            My Progress
-          </Text>
-          <Text className="text-base" style={{ color: colors.textSecondary }}>
-            Track your fitness journey
-          </Text>
+        <View className="px-5 pb-6" style={{ paddingTop: insets.top + 12 }}>
+          <Animated.View entering={FadeInDown.duration(400).delay(100)}>
+            <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
+              My Progress
+            </Text>
+            <Text className="text-base" style={{ color: colors.textSecondary }}>
+              Track your fitness journey
+            </Text>
+          </Animated.View>
         </View>
 
         {/* Stats Overview */}
-        <View className="px-6 mb-6">
+        <View className="px-5 mb-6">
           <View className="flex-row gap-3">
-            <View
-              className="flex-1 rounded-2xl p-4"
-              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+            <AnimatedCard
+              delay={200}
+              style={{ flex: 1, padding: 16 }}
+              elevation="medium"
+              borderRadius="xlarge"
             >
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mb-2"
@@ -90,11 +98,13 @@ export default function ProgressScreen() {
               <Text className="text-xs" style={{ color: colors.textSecondary }}>
                 Active Goals
               </Text>
-            </View>
+            </AnimatedCard>
 
-            <View
-              className="flex-1 rounded-2xl p-4"
-              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+            <AnimatedCard
+              delay={250}
+              style={{ flex: 1, padding: 16 }}
+              elevation="medium"
+              borderRadius="xlarge"
             >
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mb-2"
@@ -108,11 +118,13 @@ export default function ProgressScreen() {
               <Text className="text-xs" style={{ color: colors.textSecondary }}>
                 Completed
               </Text>
-            </View>
+            </AnimatedCard>
 
-            <View
-              className="flex-1 rounded-2xl p-4"
-              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+            <AnimatedCard
+              delay={300}
+              style={{ flex: 1, padding: 16 }}
+              elevation="medium"
+              borderRadius="xlarge"
             >
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mb-2"
@@ -126,22 +138,24 @@ export default function ProgressScreen() {
               <Text className="text-xs" style={{ color: colors.textSecondary }}>
                 Total Logs
               </Text>
-            </View>
+            </AnimatedCard>
           </View>
         </View>
 
         {/* Active Goals */}
-        <View className="px-6 mb-6">
-          <View className="flex-row items-center justify-between mb-4">
+        <View className="px-5 mb-6">
+          <Animated.View entering={FadeIn.delay(350)} className="flex-row items-center justify-between mb-4">
             <Text className="text-xl font-bold" style={{ color: colors.text }}>
               Active Goals
             </Text>
-          </View>
+          </Animated.View>
 
           {activeGoals.length === 0 ? (
-            <View
-              className="rounded-2xl p-8 items-center"
-              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+            <AnimatedCard
+              delay={400}
+              style={{ padding: 32, alignItems: 'center' }}
+              elevation="medium"
+              borderRadius="xlarge"
             >
               <View
                 className="w-16 h-16 rounded-full items-center justify-center mb-4"
@@ -155,7 +169,7 @@ export default function ProgressScreen() {
               <Text className="text-center" style={{ color: colors.textSecondary }}>
                 Your trainer will set goals for you to track your progress
               </Text>
-            </View>
+            </AnimatedCard>
           ) : (
             <View className="gap-3">
               {activeGoals.map((goal: any) => {
@@ -167,15 +181,16 @@ export default function ProgressScreen() {
                     : goal.currentWeight;
 
                 return (
-                  <TouchableOpacity
+                  <AnimatedCard
                     key={goal._id}
+                    delay={450 + activeGoals.indexOf(goal) * 80}
                     onPress={() =>
                       router.push(
                         `/(client)/progress-tracking?goalId=${goal._id}` as any
                       )
                     }
-                    className="rounded-xl p-5"
-                    style={{ backgroundColor: colors.surface, ...shadows.medium }}
+                    elevation="medium"
+                    borderRadius="large"
                   >
                     <View className="flex-row items-start justify-between mb-3">
                       <View className="flex-1">
@@ -251,7 +266,7 @@ export default function ProgressScreen() {
                         <Ionicons name="chevron-forward" size={16} color={colors.primary} />
                       </View>
                     </View>
-                  </TouchableOpacity>
+                  </AnimatedCard>
                 );
               })}
             </View>
@@ -260,18 +275,22 @@ export default function ProgressScreen() {
 
         {/* Recent Progress Updates */}
         {progressLogs.length > 0 && (
-          <View className="px-6 mb-6">
-            <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
-              Recent Updates
-            </Text>
+          <View className="px-5 mb-6">
+            <Animated.View entering={FadeIn.delay(500)}>
+              <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
+                Recent Updates
+              </Text>
+            </Animated.View>
             <View className="gap-3">
               {progressLogs.slice(0, 5).map((log: any) => {
                 const goal = goals.find((g: any) => g._id === log.goalId);
                 return (
-                  <View
+                  <AnimatedCard
                     key={log._id}
-                    className="rounded-xl p-4"
-                    style={{ backgroundColor: colors.surface, ...shadows.small }}
+                    delay={550 + progressLogs.slice(0, 5).indexOf(log) * 60}
+                    style={{ padding: 16 }}
+                    elevation="small"
+                    borderRadius="large"
                   >
                     <View className="flex-row items-start justify-between mb-2">
                       <View className="flex-1">
@@ -305,14 +324,14 @@ export default function ProgressScreen() {
                         </Text>
                       </View>
                     )}
-                  </View>
+                  </AnimatedCard>
                 );
               })}
             </View>
           </View>
         )}
 
-        <View className="h-8" />
+
       </ScrollView>
     </View>
   );

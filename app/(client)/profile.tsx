@@ -14,10 +14,15 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows } from '@/constants/colors';
+import { getColors, Shadows, BorderRadius } from '@/constants/colors';
 import { useRouter } from 'expo-router';
 import { useDarkMode } from '@/hooks/useDarkMode';
+import { AnimatedCard } from '@/components/AnimatedCard';
+import { AnimatedButton } from '@/components/AnimatedButton';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileScreen() {
   const { user } = useUser();
@@ -33,6 +38,7 @@ export default function ProfileScreen() {
     user?.id ? { clerkId: user.id } : 'skip'
   );
   const updateProfile = useMutation(api.users.updateUserProfile);
+  const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   const profileImageUrl = useQuery(
     api.users.getProfileImageUrl,
     userData?.profileImageId ? { storageId: userData.profileImageId } : 'skip'
@@ -40,6 +46,7 @@ export default function ProfileScreen() {
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [bio, setBio] = useState('');
@@ -76,7 +83,7 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     Alert.alert(
       'Logout',
-      'Are you sure you want to logout?',
+      'Are you sure you want to logout',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -91,6 +98,57 @@ export default function ProfileScreen() {
     );
   };
 
+  const handlePickImage = async () => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant camera roll permissions to change your profile picture.');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+
+      setUploadingImage(true);
+
+      // Get upload URL from Convex
+      const uploadUrl = await generateUploadUrl();
+
+      // Fetch the image and upload
+      const response = await fetch(result.assets[0].uri);
+      const blob = await response.blob();
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': blob.type },
+        body: blob,
+      });
+
+      const { storageId } = await uploadResponse.json();
+
+      // Update user profile with new image
+      await updateProfile({
+        clerkId: user!.id,
+        profileImageId: storageId,
+      });
+
+      Alert.alert('Success', 'Profile picture updated!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   if (!user) {
     return (
       <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
@@ -99,23 +157,80 @@ export default function ProfileScreen() {
     );
   }
 
+  // Menu Item Component
+  const MenuItem = ({
+    icon,
+    title,
+    onPress,
+    rightElement,
+    danger = false,
+    delay = 0,
+  }: {
+    icon: string;
+    title: string;
+    onPress?: () => void;
+    rightElement?: React.ReactNode;
+    danger?: boolean;
+    delay?: number;
+  }) => (
+    <AnimatedCard
+      delay={delay}
+      onPress={onPress}
+      style={{ marginBottom: 10 }}
+      elevation="small"
+      borderRadius="xlarge"
+    >
+      <View className="flex-row items-center">
+        <View
+          className="w-11 h-11 rounded-xl items-center justify-center mr-4"
+          style={{ backgroundColor: danger ? 'rgba(239, 68, 68, 0.1)' : `${colors.primary}12` }}
+        >
+          <Ionicons name={icon as any} size={20} color={danger ? '#EF4444' : colors.primary} />
+        </View>
+        <Text className="font-semibold flex-1 text-base" style={{ color: danger ? '#EF4444' : colors.text }}>
+          {title}
+        </Text>
+        {rightElement || (onPress && <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />)}
+      </View>
+    </AnimatedCard>
+  );
+
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <ScrollView className="flex-1">
-        <View className="px-6 pt-16 pb-6">
-          {/* Header */}
-          <View className="mb-6">
-            <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-              Account Settings
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Header with Gradient */}
+        <LinearGradient
+          colors={isDark ? ['#1F1F28', colors.background] : ['#F8F6F2', colors.background]}
+          style={{ paddingTop: 56, paddingBottom: 24 }}
+        >
+          <Animated.View entering={FadeInDown.duration(400).delay(100)} className="px-6 mb-6">
+            <Text className="text-3xl font-bold" style={{ color: colors.text }}>
+              Profile
             </Text>
-          </View>
+          </Animated.View>
 
           {/* Profile Image */}
-          <View className="items-center mb-8">
+          <Animated.View entering={FadeIn.delay(200)} className="items-center">
             <View className="relative">
+              {/* Outer glow ring */}
+              <View
+                className="absolute -inset-1 rounded-full"
+                style={{
+                  backgroundColor: `${colors.primary}20`,
+                }}
+              />
               <View
                 className="w-28 h-28 rounded-full overflow-hidden items-center justify-center"
-                style={{ backgroundColor: colors.primary, ...shadows.large }}
+                style={{
+                  backgroundColor: colors.primary,
+                  borderWidth: 4,
+                  borderColor: colors.surface,
+                  ...shadows.large
+                }}
               >
                 {profileImageUrl ? (
                   <Image source={{ uri: profileImageUrl }} className="w-full h-full" />
@@ -128,10 +243,22 @@ export default function ProfileScreen() {
                 )}
               </View>
               <TouchableOpacity
-                className="absolute bottom-0 right-0 w-10 h-10 rounded-full items-center justify-center"
-                style={{ backgroundColor: colors.primary, ...shadows.medium }}
+                className="absolute bottom-0 right-0 w-10 h-10 rounded-xl items-center justify-center"
+                style={{
+                  backgroundColor: colors.primary,
+                  borderWidth: 3,
+                  borderColor: colors.background,
+                  ...shadows.medium
+                }}
+                activeOpacity={0.8}
+                onPress={handlePickImage}
+                disabled={uploadingImage}
               >
-                <Ionicons name="camera" size={20} color="#FFF" />
+                {uploadingImage ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Ionicons name="camera" size={18} color="#FFF" />
+                )}
               </TouchableOpacity>
             </View>
             <Text className="text-xl font-bold mt-4" style={{ color: colors.text }}>
@@ -140,41 +267,32 @@ export default function ProfileScreen() {
             <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
               {user.emailAddresses[0]?.emailAddress}
             </Text>
-          </View>
+          </Animated.View>
+        </LinearGradient>
 
+        <View className="px-6 pt-2">
           {/* Profile Section */}
           <View className="mb-6">
-            <Text className="text-xs font-semibold mb-3 uppercase" style={{ color: colors.textTertiary }}>
+            <Text className="text-xs font-bold mb-3 uppercase tracking-widest" style={{ color: colors.textTertiary }}>
               Profile
             </Text>
 
-            {/* Edit Profile */}
-            <TouchableOpacity
+            <MenuItem
+              icon="person-outline"
+              title="Edit Profile"
               onPress={() => setEditing(!editing)}
-              className="rounded-2xl p-5 mb-3 flex-row items-center justify-between"
-              style={{ backgroundColor: colors.surface, ...shadows.small }}
-            >
-              <View className="flex-row items-center flex-1">
-                <View
-                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                  style={{ backgroundColor: colors.background }}
-                >
-                  <Ionicons name="person-outline" size={20} color={colors.text} />
-                </View>
-                <Text className="font-semibold" style={{ color: colors.text }}>
-                  Edit Profile
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-            </TouchableOpacity>
+              delay={300}
+            />
 
             {/* Edit Form */}
             {editing && (
-              <View
-                className="rounded-2xl p-5 mb-3"
-                style={{ backgroundColor: colors.surface, ...shadows.medium }}
+              <AnimatedCard
+                delay={0}
+                style={{ marginBottom: 10 }}
+                elevation="medium"
+                borderRadius="xlarge"
               >
-                <View className="mb-4">
+                <View className="mb-5">
                   <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
                     Full Name
                   </Text>
@@ -183,12 +301,19 @@ export default function ProfileScreen() {
                     onChangeText={setFullName}
                     placeholder="Enter your name"
                     placeholderTextColor={colors.textTertiary}
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text }}
+                    className="px-4 py-3.5"
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      borderRadius: BorderRadius.medium,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      fontSize: 15,
+                    }}
                   />
                 </View>
 
-                <View className="mb-4">
+                <View className="mb-5">
                   <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
                     Phone Number
                   </Text>
@@ -198,12 +323,19 @@ export default function ProfileScreen() {
                     placeholder="Enter your phone"
                     placeholderTextColor={colors.textTertiary}
                     keyboardType="phone-pad"
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text }}
+                    className="px-4 py-3.5"
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      borderRadius: BorderRadius.medium,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      fontSize: 15,
+                    }}
                   />
                 </View>
 
-                <View className="mb-4">
+                <View className="mb-5">
                   <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
                     Bio
                   </Text>
@@ -214,125 +346,122 @@ export default function ProfileScreen() {
                     placeholderTextColor={colors.textTertiary}
                     multiline
                     numberOfLines={4}
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text, textAlignVertical: 'top' }}
+                    className="px-4 py-3.5"
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      textAlignVertical: 'top',
+                      borderRadius: BorderRadius.medium,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      fontSize: 15,
+                      minHeight: 100,
+                    }}
                   />
                 </View>
 
-                <TouchableOpacity
+                <AnimatedButton
                   onPress={handleSave}
                   disabled={saving}
-                  className="rounded-xl py-3 items-center"
-                  style={{ backgroundColor: colors.primary }}
+                  loading={saving}
+                  fullWidth
                 >
-                  {saving ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Text className="text-white font-bold">Save Changes</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+                  Save Changes
+                </AnimatedButton>
+              </AnimatedCard>
             )}
           </View>
 
           {/* Preferences Section */}
           <View className="mb-6">
-            <Text className="text-xs font-semibold mb-3 uppercase" style={{ color: colors.textTertiary }}>
+            <Text className="text-xs font-bold mb-3 uppercase tracking-widest" style={{ color: colors.textTertiary }}>
               Preferences
             </Text>
 
-            {/* Dark Mode */}
-            <View
-              className="rounded-2xl p-5 mb-3 flex-row items-center justify-between"
-              style={{ backgroundColor: colors.surface, ...shadows.small }}
+            <AnimatedCard
+              delay={350}
+              style={{ marginBottom: 10 }}
+              elevation="small"
+              borderRadius="xlarge"
             >
-              <View className="flex-row items-center flex-1">
-                <View
-                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                  style={{ backgroundColor: colors.background }}
-                >
-                  <Ionicons name="moon-outline" size={20} color={colors.text} />
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1">
+                  <View
+                    className="w-11 h-11 rounded-xl items-center justify-center mr-4"
+                    style={{ backgroundColor: `${colors.primary}12` }}
+                  >
+                    <Ionicons name="moon-outline" size={20} color={colors.primary} />
+                  </View>
+                  <View>
+                    <Text className="font-semibold text-base" style={{ color: colors.text }}>
+                      Dark Mode
+                    </Text>
+                    <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+                      {isDark ? 'Currently enabled' : 'Currently disabled'}
+                    </Text>
+                  </View>
                 </View>
-                <Text className="font-semibold" style={{ color: colors.text }}>
-                  Dark Mode
-                </Text>
+                <Switch
+                  value={isDark}
+                  onValueChange={toggleDarkMode}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#FFF"
+                />
               </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleDarkMode}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#FFF"
-              />
-            </View>
+            </AnimatedCard>
 
-            {/* Notifications */}
-            <View
-              className="rounded-2xl p-5 mb-3 flex-row items-center justify-between"
-              style={{ backgroundColor: colors.surface, ...shadows.small }}
+            <AnimatedCard
+              delay={400}
+              style={{ marginBottom: 10 }}
+              elevation="small"
+              borderRadius="xlarge"
             >
-              <View className="flex-row items-center flex-1">
-                <View
-                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                  style={{ backgroundColor: colors.background }}
-                >
-                  <Ionicons name="notifications-outline" size={20} color={colors.text} />
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1">
+                  <View
+                    className="w-11 h-11 rounded-xl items-center justify-center mr-4"
+                    style={{ backgroundColor: `${colors.primary}12` }}
+                  >
+                    <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+                  </View>
+                  <View>
+                    <Text className="font-semibold text-base" style={{ color: colors.text }}>
+                      Notifications
+                    </Text>
+                    <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+                      {notifications ? 'Push notifications on' : 'Push notifications off'}
+                    </Text>
+                  </View>
                 </View>
-                <Text className="font-semibold" style={{ color: colors.text }}>
-                  Notifications
-                </Text>
+                <Switch
+                  value={notifications}
+                  onValueChange={setNotifications}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#FFF"
+                />
               </View>
-              <Switch
-                value={notifications}
-                onValueChange={setNotifications}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#FFF"
-              />
-            </View>
+            </AnimatedCard>
           </View>
 
           {/* Account Section */}
           <View className="mb-6">
-            <Text className="text-xs font-semibold mb-3 uppercase" style={{ color: colors.textTertiary }}>
+            <Text className="text-xs font-bold mb-3 uppercase tracking-widest" style={{ color: colors.textTertiary }}>
               Account
             </Text>
 
-            {/* Change Password */}
-            <TouchableOpacity
-              className="rounded-2xl p-5 mb-3 flex-row items-center justify-between"
-              style={{ backgroundColor: colors.surface, ...shadows.small }}
-            >
-              <View className="flex-row items-center flex-1">
-                <View
-                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                  style={{ backgroundColor: colors.background }}
-                >
-                  <Ionicons name="lock-closed-outline" size={20} color={colors.text} />
-                </View>
-                <Text className="font-semibold" style={{ color: colors.text }}>
-                  Change Password
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-            </TouchableOpacity>
+            <MenuItem
+              icon="lock-closed-outline"
+              title="Change Password"
+              delay={450}
+            />
 
-            {/* Logout */}
-            <TouchableOpacity
+            <MenuItem
+              icon="log-out-outline"
+              title="Logout"
               onPress={handleLogout}
-              className="rounded-2xl p-5 flex-row items-center justify-between"
-              style={{ backgroundColor: colors.surface, ...shadows.small }}
-            >
-              <View className="flex-row items-center flex-1">
-                <View
-                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                  style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
-                >
-                  <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-                </View>
-                <Text className="font-semibold" style={{ color: '#EF4444' }}>
-                  Logout
-                </Text>
-              </View>
-            </TouchableOpacity>
+              danger={true}
+              delay={500}
+            />
           </View>
         </View>
       </ScrollView>

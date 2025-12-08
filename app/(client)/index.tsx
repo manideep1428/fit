@@ -5,9 +5,13 @@ import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery } from 'convex/react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows } from '@/constants/colors';
+import { getColors, Shadows, BorderRadius } from '@/constants/colors';
+import { AnimatedCard } from '@/components/AnimatedCard';
+import { AnimatedButton } from '@/components/AnimatedButton';
 
 export default function ClientHomeScreen() {
   const { user, isLoaded } = useUser();
@@ -17,6 +21,7 @@ export default function ClientHomeScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
 
   // Fetch client's trainers
   const clientTrainers = useQuery(
@@ -55,17 +60,25 @@ export default function ClientHomeScreen() {
   }
 
   return (
-    <ScrollView className="flex-1" style={{ backgroundColor: colors.background }}>
-      <StatusBar style="auto" />
+    <ScrollView
+      className="flex-1"
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
 
       {/* Body container */}
-      <View className="px-6 pt-16 pb-6">
+      <View className="px-5 pb-6" style={{ paddingTop: insets.top + 12 }}>
 
         {/* Header */}
-        <View className="flex-row justify-between items-center mb-6">
+        <Animated.View
+          entering={FadeInDown.duration(400).delay(100)}
+          className="flex-row justify-between items-center mb-6"
+        >
           <View>
-            <Text className="text-xs" style={{ color: colors.textSecondary }}>Welcome back,</Text>
-            <Text className="text-xl mt-1 font-bold" style={{ color: colors.text }}>
+            <Text className="text-xs font-medium" style={{ color: colors.textSecondary }}>Welcome back,</Text>
+            <Text className="text-2xl mt-1 font-bold tracking-tight" style={{ color: colors.text }}>
               {user?.firstName || 'Jessica'}
             </Text>
           </View>
@@ -73,14 +86,16 @@ export default function ClientHomeScreen() {
           <View className="flex-row gap-3">
             <TouchableOpacity
               className="w-12 h-12 rounded-full items-center justify-center"
-              style={{ backgroundColor: colors.surface, ...shadows.small }}
+              style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...shadows.small }}
+              onPress={() => router.push('/(client)/notification-settings' as any)}
             >
-              <Ionicons name="notifications-outline" size={24} color={colors.text} />
+              <Ionicons name="notifications-outline" size={22} color={colors.text} />
             </TouchableOpacity>
 
-            <View
+            <TouchableOpacity
+              onPress={() => router.push('/(client)/profile' as any)}
               className="w-12 h-12 rounded-full overflow-hidden items-center justify-center"
-              style={{ backgroundColor: colors.primary, ...shadows.small }}
+              style={{ backgroundColor: colors.primary, ...shadows.medium }}
             >
               {user?.imageUrl ? (
                 <Image source={{ uri: user.imageUrl }} className="w-full h-full" />
@@ -89,38 +104,41 @@ export default function ClientHomeScreen() {
                   {user?.firstName?.[0] || 'J'}
                 </Text>
               )}
-            </View>
+            </TouchableOpacity>
           </View>
-        </View>
-        {/* Fitness Card */}
+        </Animated.View>
+
+        {/* Fitness Stats Card */}
         {bookings && bookings.length > 0 && (
-          <View
-            className="rounded-2xl p-6 mb-6"
-            style={{ backgroundColor: colors.surface, ...shadows.medium }}
+          <AnimatedCard
+            delay={150}
+            style={{ marginBottom: 24 }}
+            elevation="large"
+            borderRadius="xlarge"
           >
-            <View className="flex-row justify-between items-start mb-5">
+            <View className="flex-row justify-between items-start">
               <View className="flex-1">
-                <Text className="text-base font-semibold mb-2" style={{ color: colors.text }}>
+                <Text className="text-sm font-semibold mb-1" style={{ color: colors.textSecondary }}>
                   Your Progress
                 </Text>
-                <Text className="text-sm mb-3" style={{ color: colors.textSecondary }}>
+                <Text className="text-xs mb-4" style={{ color: colors.textTertiary }}>
                   Completed Sessions
                 </Text>
-                <Text className="font-bold" style={{ fontSize: 28, color: colors.text }}>
+                <Text className="font-bold" style={{ fontSize: 36, color: colors.text, letterSpacing: -1 }}>
                   {bookings.filter((b: any) => b.status === 'confirmed' && new Date(b.date) < new Date()).length}
                 </Text>
               </View>
 
-              <View className="items-center justify-center">
-                <TouchableOpacity
-                  className="rounded-md p-3"
-                  style={{ backgroundColor: colors.primary }}
+              <View className="items-center">
+                <View
+                  className="rounded-2xl p-3 mb-4"
+                  style={{ backgroundColor: `${colors.primary}15` }}
                 >
-                  <Ionicons name="trending-up" size={24} color="#FFF" />
-                </TouchableOpacity>
+                  <Ionicons name="trending-up" size={28} color={colors.primary} />
+                </View>
 
                 <View
-                  className="px-5 py-2 rounded-full mt-5"
+                  className="px-5 py-2.5 rounded-full"
                   style={{ backgroundColor: colors.primary }}
                 >
                   <Text className="text-white text-lg font-bold">
@@ -128,31 +146,36 @@ export default function ClientHomeScreen() {
                   </Text>
                 </View>
 
-                <Text className="mt-1 text-[11px]" style={{ color: colors.textSecondary }}>Total</Text>
+                <Text className="mt-2 text-xs font-medium" style={{ color: colors.textTertiary }}>Total</Text>
               </View>
             </View>
-          </View>
+          </AnimatedCard>
         )}
 
         {/* My Goals */}
         {goals && goals.length > 0 && (
           <View className="mb-6">
-            <View className="flex-row justify-between items-center mb-3">
+            <Animated.View
+              entering={FadeIn.delay(250)}
+              className="flex-row justify-between items-center mb-4"
+            >
               <Text className="text-lg font-bold" style={{ color: colors.text }}>My Goals</Text>
-            </View>
+            </Animated.View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View className="flex-row gap-4">
-                {goals.map((goal: any) => (
-                  <TouchableOpacity
+                {goals.map((goal: any, index: number) => (
+                  <AnimatedCard
                     key={goal._id}
-                    className="w-64 rounded-xl p-5"
-                    style={{ backgroundColor: colors.surface, ...shadows.medium }}
+                    delay={300 + index * 80}
+                    style={{ width: 240 }}
+                    elevation="medium"
+                    borderRadius="xlarge"
                     onPress={() => router.push(`/(client)/progress-tracking?goalId=${goal._id}` as any)}
                   >
                     <View className="flex-row items-start justify-between mb-3">
-                      <View className="flex-1">
-                        <Text className="font-bold text-base mb-1" style={{ color: colors.text }}>
+                      <View className="flex-1 mr-3">
+                        <Text className="font-bold text-base mb-1" style={{ color: colors.text }} numberOfLines={2}>
                           {goal.description}
                         </Text>
                         {goal.deadline && (
@@ -161,7 +184,12 @@ export default function ClientHomeScreen() {
                           </Text>
                         )}
                       </View>
-                      <Ionicons name="analytics" size={20} color={colors.primary} />
+                      <View
+                        className="p-2 rounded-xl"
+                        style={{ backgroundColor: `${colors.primary}15` }}
+                      >
+                        <Ionicons name="analytics" size={18} color={colors.primary} />
+                      </View>
                     </View>
 
                     {goal.currentWeight && goal.targetWeight && (
@@ -170,66 +198,77 @@ export default function ClientHomeScreen() {
                           <Text className="text-sm" style={{ color: colors.textSecondary }}>
                             {goal.currentWeight} {goal.weightUnit}
                           </Text>
-                          <Ionicons name="arrow-forward" size={14} color={colors.textSecondary} />
+                          <Ionicons name="arrow-forward" size={12} color={colors.textTertiary} />
                           <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
                             {goal.targetWeight} {goal.weightUnit}
                           </Text>
                         </View>
-                        <View className="h-1 rounded-full" style={{ backgroundColor: `${colors.primary}20` }}>
+                        <View className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${colors.primary}20` }}>
                           <View className="h-full rounded-full" style={{ backgroundColor: colors.primary, width: '60%' }} />
                         </View>
                       </View>
                     )}
-                  </TouchableOpacity>
+                  </AnimatedCard>
                 ))}
               </View>
             </ScrollView>
           </View>
         )}
 
-        {/* My Trainers - Book Sessions */}
+        {/* My Trainers */}
         <View>
-          <View className="flex-row justify-between items-center mb-5">
+          <Animated.View
+            entering={FadeIn.delay(350)}
+            className="flex-row justify-between items-center mb-4"
+          >
             <Text className="text-lg font-bold" style={{ color: colors.text }}>My Trainers</Text>
             {clientTrainers && clientTrainers.length > 0 && (
               <TouchableOpacity>
                 <Text className="text-sm font-semibold" style={{ color: colors.primary }}>See all</Text>
               </TouchableOpacity>
             )}
-          </View>
+          </Animated.View>
 
           {!clientTrainers ? (
             <View className="items-center py-8">
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : clientTrainers.length === 0 ? (
-            <View
-              className="rounded-2xl p-8 items-center mb-6"
-              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+            <AnimatedCard
+              delay={400}
+              style={{ alignItems: 'center', paddingVertical: 40 }}
+              elevation="medium"
+              borderRadius="xlarge"
             >
-              <Ionicons name="person-add-outline" size={64} color={colors.textTertiary} />
-              <Text className="mt-4 font-semibold text-base" style={{ color: colors.textSecondary }}>
+              <View
+                className="w-20 h-20 rounded-full items-center justify-center mb-4"
+                style={{ backgroundColor: `${colors.primary}10` }}
+              >
+                <Ionicons name="person-add-outline" size={36} color={colors.primary} />
+              </View>
+              <Text className="font-semibold text-base mb-2" style={{ color: colors.text }}>
                 No trainers added yet
               </Text>
-              <Text className="mt-2 text-sm text-center" style={{ color: colors.textTertiary }}>
+              <Text className="text-sm text-center mb-5 px-6" style={{ color: colors.textSecondary }}>
                 Find and add trainers to start booking sessions
               </Text>
-              <TouchableOpacity
-                className="mt-4 px-6 py-3 rounded-full"
-                style={{ backgroundColor: colors.primary }}
+              <AnimatedButton
+                variant="primary"
                 onPress={() => router.push('/(client)/find-trainers' as any)}
               >
-                <Text className="text-white font-semibold">Find Trainers</Text>
-              </TouchableOpacity>
-            </View>
+                Find Trainers
+              </AnimatedButton>
+            </AnimatedCard>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View className="flex-row gap-4 mb-6">
-                {clientTrainers.map((trainer: any) => (
-                  <TouchableOpacity
+                {clientTrainers.map((trainer: any, index: number) => (
+                  <AnimatedCard
                     key={trainer._id}
-                    className="w-36 rounded-xl p-5 items-center"
-                    style={{ backgroundColor: colors.surface, ...shadows.medium }}
+                    delay={450 + index * 80}
+                    style={{ width: 150, alignItems: 'center', paddingVertical: 24 }}
+                    elevation="medium"
+                    borderRadius="xlarge"
                     onPress={() => router.push('/(client)/book-trainer' as any)}
                   >
                     <View
@@ -247,37 +286,45 @@ export default function ClientHomeScreen() {
                         </Text>
                       )}
                     </View>
-                    <Text className="font-bold text-[15px] mb-0.5" style={{ color: colors.text }}>
+                    <Text className="font-bold text-sm mb-0.5 text-center" style={{ color: colors.text }}>
                       {trainer.fullName || 'Trainer'}
                     </Text>
-                    <Text className="text-xs mb-2 text-center" style={{ color: colors.textSecondary }}>
+                    <Text className="text-xs mb-3 text-center" style={{ color: colors.textSecondary }}>
                       {trainer.username || 'Personal Trainer'}
                     </Text>
                     <View
-                      className="px-3 py-1 rounded-full"
+                      className="px-4 py-2 rounded-full"
                       style={{ backgroundColor: colors.primary }}
                     >
-                      <Text className="text-white text-xs font-semibold">Book Session</Text>
+                      <Text className="text-white text-xs font-semibold">Book</Text>
                     </View>
-                  </TouchableOpacity>
+                  </AnimatedCard>
                 ))}
 
                 {/* Add New Trainer Card */}
-                <TouchableOpacity
-                  className="w-36 rounded-xl p-5 items-center justify-center"
-                  style={{ backgroundColor: colors.surface, ...shadows.medium, borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed' }}
+                <AnimatedCard
+                  delay={450 + clientTrainers.length * 80}
+                  style={{
+                    width: 150,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingVertical: 24,
+                    borderStyle: 'dashed',
+                  }}
+                  elevation="none"
+                  borderRadius="xlarge"
                   onPress={() => router.push('/(client)/find-trainers' as any)}
                 >
                   <View
                     className="w-20 h-20 rounded-full mb-3 items-center justify-center"
-                    style={{ backgroundColor: colors.border }}
+                    style={{ backgroundColor: colors.surfaceSecondary }}
                   >
-                    <Ionicons name="add" size={40} color={colors.textTertiary} />
+                    <Ionicons name="add" size={36} color={colors.textTertiary} />
                   </View>
-                  <Text className="font-bold text-[15px] text-center" style={{ color: colors.textSecondary }}>
+                  <Text className="font-semibold text-sm text-center" style={{ color: colors.textSecondary }}>
                     Find Trainer
                   </Text>
-                </TouchableOpacity>
+                </AnimatedCard>
               </View>
             </ScrollView>
           )}

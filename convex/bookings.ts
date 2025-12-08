@@ -9,6 +9,11 @@ export const getAvailableSlots = query({
     duration: v.number(),
   },
   handler: async (ctx, args) => {
+    // Validate duration
+    if (args.duration !== 45 && args.duration !== 60) {
+      throw new Error("Invalid duration. Only 45 minutes and 1 hour sessions are supported.");
+    }
+
     // Get day of week from date
     const dateObj = new Date(args.date);
     const dayOfWeek = dateObj.getDay();
@@ -56,6 +61,11 @@ export const createBooking = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Validate duration
+    if (args.duration !== 45 && args.duration !== 60) {
+      throw new Error("Invalid duration. Only 45 minutes and 1 hour sessions are supported.");
+    }
+
     const endTime = addMinutesToTime(args.startTime, args.duration);
     const now = Date.now();
 
@@ -73,16 +83,17 @@ export const createBooking = mutation({
       const newStart = timeToMinutes(args.startTime);
       const newEnd = timeToMinutes(endTime);
 
-      // Check for any overlap
-      return (
-        (newStart >= bookingStart && newStart < bookingEnd) ||
-        (newEnd > bookingStart && newEnd <= bookingEnd) ||
-        (newStart <= bookingStart && newEnd >= bookingEnd)
-      );
+      // Check for any overlap greater than 5 minutes
+      const overlapStart = Math.max(newStart, bookingStart);
+      const overlapEnd = Math.min(newEnd, bookingEnd);
+      const overlapDuration = Math.max(0, overlapEnd - overlapStart);
+
+      // Only consider it a conflict if overlap is more than 5 minutes
+      return overlapDuration > 5;
     });
 
     if (hasConflict) {
-      throw new Error("This time slot is no longer available");
+      throw new Error("This time slot is no longer available (conflicts with existing booking)");
     }
 
     const bookingId = await ctx.db.insert("bookings", {
@@ -179,7 +190,7 @@ function generateTimeSlots(
     const overlapsBreak = breaks.some((br) => {
       const breakStart = timeToMinutes(br.startTime);
       const breakEnd = timeToMinutes(br.endTime);
-      
+
       return (
         (slotStart >= breakStart && slotStart < breakEnd) ||
         (slotEndMinutes > breakStart && slotEndMinutes <= breakEnd) ||
@@ -188,15 +199,17 @@ function generateTimeSlots(
     });
 
     // Check if slot overlaps with bookings (any overlap at all)
+    // Check if slot overlaps with bookings (allow <= 5 min overlap)
     const overlapsBooking = bookings.some((booking) => {
       const bookingStart = timeToMinutes(booking.startTime);
       const bookingEnd = timeToMinutes(booking.endTime);
-      
-      return (
-        (slotStart >= bookingStart && slotStart < bookingEnd) ||
-        (slotEndMinutes > bookingStart && slotEndMinutes <= bookingEnd) ||
-        (slotStart <= bookingStart && slotEndMinutes >= bookingEnd)
-      );
+
+      const overlapStart = Math.max(slotStart, bookingStart);
+      const overlapEnd = Math.min(slotEndMinutes, bookingEnd);
+      const overlapDuration = Math.max(0, overlapEnd - overlapStart);
+
+      // Only consider it a conflict if overlap is more than 5 minutes
+      return overlapDuration > 5;
     });
 
     if (!overlapsBreak && !overlapsBooking) {

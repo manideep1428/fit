@@ -1,24 +1,22 @@
-import { useColorScheme as useNativeColorScheme } from 'react-native';
-import { useState } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export type ColorScheme = 'light' | 'dark';
 
+/**
+ * Hook to get dark mode state and toggle function
+ * Uses ThemeContext for proper state management across the app
+ */
 export function useDarkMode() {
-  const systemColorScheme = useNativeColorScheme();
-  const [isDarkMode, setIsDarkMode] = useState(systemColorScheme === 'dark');
-
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-  };
+  const { isDark, toggleTheme, setTheme } = useTheme();
 
   const setDarkMode = (value: boolean) => {
-    setIsDarkMode(value);
+    setTheme(value ? 'dark' : 'light');
   };
 
   return {
-    isDark: isDarkMode,
-    colorScheme: (isDarkMode ? 'dark' : 'light') as ColorScheme,
-    toggleDarkMode,
+    isDark,
+    colorScheme: (isDark ? 'dark' : 'light') as ColorScheme,
+    toggleDarkMode: toggleTheme,
     setDarkMode,
   };
 }

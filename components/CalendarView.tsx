@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
+import Animated, { FadeIn, FadeInRight } from 'react-native-reanimated';
 
 interface Booking {
   _id: string;
@@ -22,20 +23,23 @@ interface CalendarViewProps {
   userRole: 'client' | 'trainer';
 }
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export default function CalendarView({ bookings, userRole }: CalendarViewProps) {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
 
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
 
-  // Get the start of the week for the selected date
+  // Get week dates for selected date
   const getWeekDates = (date: Date) => {
     const week = [];
     const current = new Date(date);
     const day = current.getDay();
-    const diff = current.getDate() - day + (day === 0 ? -6 : 1); // Start from Monday
+    const diff = current.getDate() - day;
     current.setDate(diff);
 
     for (let i = 0; i < 7; i++) {
@@ -47,27 +51,24 @@ export default function CalendarView({ bookings, userRole }: CalendarViewProps) 
 
   const weekDates = getWeekDates(selectedDate);
 
-  // Navigate month (limited to one month range)
-  const changeMonth = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    if (direction === 'prev') {
-      newDate.setMonth(newDate.getMonth() - 1);
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1);
+  // Get month dates for calendar popup
+  const getMonthDates = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    const dates: (Date | null)[] = [];
+    for (let i = 0; i < firstDay.getDay(); i++) {
+      dates.push(null);
     }
-    
-    // Limit to one month from today
-    const today = new Date();
-    const oneMonthFromNow = new Date(today);
-    oneMonthFromNow.setMonth(today.getMonth() + 1);
-    
-    if (newDate >= today && newDate <= oneMonthFromNow) {
-      setCurrentDate(newDate);
-      setSelectedDate(newDate);
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      dates.push(new Date(year, month, day));
     }
+    return dates;
   };
 
-  // Get bookings for selected date
+  // Get bookings for a date
   const getBookingsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
     return bookings.filter(b => b.date === dateStr);
@@ -75,67 +76,72 @@ export default function CalendarView({ bookings, userRole }: CalendarViewProps) 
 
   const selectedDateBookings = getBookingsForDate(selectedDate);
 
-  // Generate time slots (9 AM to 6 PM)
-  const generateTimeSlots = () => {
-    const slots = [];
-    for (let hour = 9; hour <= 18; hour++) {
-      slots.push(`${hour.toString().padStart(2, '0')}:00`);
+  const isToday = (date: Date) => new Date().toDateString() === date.toDateString();
+  const isSameDate = (d1: Date, d2: Date) => d1.toDateString() === d2.toDateString();
+  const hasBookings = (date: Date) => getBookingsForDate(date).length > 0;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed': return colors.success;
+      case 'pending': return colors.warning;
+      case 'cancelled': return colors.error;
+      default: return colors.primary;
     }
-    return slots;
   };
 
-  const timeSlots = generateTimeSlots();
-
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setCalendarVisible(false);
   };
 
-  const isSameDate = (date1: Date, date2: Date) => {
-    return date1.toDateString() === date2.toDateString();
+  const changeMonth = (dir: 'prev' | 'next') => {
+    const newDate = new Date(calendarMonth);
+    newDate.setMonth(newDate.getMonth() + (dir === 'next' ? 1 : -1));
+    setCalendarMonth(newDate);
   };
 
   return (
     <View className="flex-1">
-      {/* Header with Month/Year */}
-      <View className="px-6 pt-4 pb-3">
-        <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
-          Schedule
-        </Text>
+      {/* Header with week selector */}
+      <View className="px-6 pt-5 pb-4">
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-xl font-bold" style={{ color: colors.text }}>
-            {currentDate.toLocaleDateString('en-US', { month: 'long' })}
+          <Text className="text-lg font-bold" style={{ color: colors.text }}>
+            {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </Text>
-          <View className="flex-row items-center gap-4">
-            <TouchableOpacity onPress={() => changeMonth('prev')}>
-              <Ionicons name="chevron-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text className="text-lg font-semibold" style={{ color: colors.text }}>
-              {currentDate.getFullYear()}
-            </Text>
-            <TouchableOpacity onPress={() => changeMonth('next')}>
-              <Ionicons name="chevron-forward" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={() => {
+              setCalendarMonth(selectedDate);
+              setCalendarVisible(true);
+            }}
+            className="w-10 h-10 rounded-xl items-center justify-center"
+            style={{ backgroundColor: colors.surface, ...shadows.small }}
+          >
+            <Ionicons name="calendar" size={20} color={colors.primary} />
+          </TouchableOpacity>
         </View>
 
-        {/* Week Days */}
+        {/* Week View */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View className="flex-row gap-2">
             {weekDates.map((date, index) => {
               const isSelected = isSameDate(date, selectedDate);
               const isTodayDate = isToday(date);
-              
+              const hasBooking = hasBookings(date);
+
               return (
                 <TouchableOpacity
                   key={index}
                   onPress={() => setSelectedDate(date)}
-                  className="items-center justify-center rounded-2xl px-4 py-3"
+                  className="items-center justify-center rounded-2xl"
                   style={{
                     backgroundColor: isSelected ? colors.primary : colors.surface,
-                    minWidth: 70,
+                    width: 52,
+                    paddingVertical: 12,
                     ...shadows.small,
+                    borderWidth: isTodayDate && !isSelected ? 1.5 : 0,
+                    borderColor: colors.primary,
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text
                     className="text-xs font-medium mb-1"
@@ -144,11 +150,18 @@ export default function CalendarView({ bookings, userRole }: CalendarViewProps) 
                     {date.toLocaleDateString('en-US', { weekday: 'short' })}
                   </Text>
                   <Text
-                    className="text-2xl font-bold"
-                    style={{ color: isSelected ? '#FFF' : isTodayDate ? colors.primary : colors.text }}
+                    className="text-lg font-bold"
+                    style={{ color: isSelected ? '#FFF' : colors.text }}
                   >
                     {date.getDate()}
                   </Text>
+                  {/* Booking indicator - green dot */}
+                  {hasBooking && (
+                    <View
+                      className="w-1.5 h-1.5 rounded-full mt-1"
+                      style={{ backgroundColor: isSelected ? '#FFF' : colors.success }}
+                    />
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -156,93 +169,146 @@ export default function CalendarView({ bookings, userRole }: CalendarViewProps) 
         </ScrollView>
       </View>
 
-      {/* Schedule Timeline */}
-      <ScrollView className="flex-1 px-6">
-        {bookings.length === 0 ? (
-          <View className="flex-1 items-center justify-center py-20">
-            <Ionicons name="calendar-outline" size={80} color={colors.textTertiary} />
-            <Text className="mt-6 text-lg font-semibold" style={{ color: colors.textSecondary }}>
-              No bookings yet
-            </Text>
-            <Text className="mt-2 text-sm text-center px-8" style={{ color: colors.textTertiary }}>
-              {userRole === 'client' 
-                ? 'Book a session with your trainer to get started'
-                : 'Your scheduled sessions will appear here'}
-            </Text>
-          </View>
-        ) : selectedDateBookings.length === 0 ? (
-          <View className="flex-1 items-center justify-center py-20">
-            <Ionicons name="calendar-clear-outline" size={80} color={colors.textTertiary} />
-            <Text className="mt-6 text-lg font-semibold" style={{ color: colors.textSecondary }}>
-              No sessions on this day
-            </Text>
-            <Text className="mt-2 text-sm text-center px-8" style={{ color: colors.textTertiary }}>
-              Select another date to view your schedule
+      {/* Divider */}
+      <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 24 }} />
+
+      {/* Selected Date Bookings */}
+      <ScrollView
+        className="flex-1 px-6 pt-4"
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text className="text-sm font-medium mb-3" style={{ color: colors.textSecondary }}>
+          {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+        </Text>
+
+        {selectedDateBookings.length === 0 ? (
+          <View
+            className="py-10 items-center rounded-2xl"
+            style={{ backgroundColor: colors.surface, ...shadows.small }}
+          >
+            <Ionicons name="calendar-outline" size={32} color={colors.textTertiary} />
+            <Text className="text-base font-medium mt-3" style={{ color: colors.textSecondary }}>
+              No sessions
             </Text>
           </View>
         ) : (
-          timeSlots.map((time, index) => {
-            const hour = parseInt(time.split(':')[0]);
-            const bookingsAtTime = selectedDateBookings.filter(b => {
-              const bookingHour = parseInt(b.startTime.split(':')[0]);
-              return bookingHour === hour;
-            });
-
-            return (
-              <View key={time} className="mb-4">
-                <View className="flex-row">
-                  {/* Time Label */}
-                  <View className="w-16">
-                    <Text className="text-sm font-medium" style={{ color: colors.textSecondary }}>
-                      {time}
-                    </Text>
-                  </View>
-
-                  {/* Booking Cards */}
-                  <View className="flex-1">
-                    {bookingsAtTime.length > 0 ? (
-                      bookingsAtTime.map((booking) => (
-                        <View
-                          key={booking._id}
-                          className="rounded-xl p-4 mb-2"
-                          style={{
-                            backgroundColor: booking.status === 'confirmed' 
-                              ? `${colors.primary}20` 
-                              : colors.surface,
-                            borderLeftWidth: 3,
-                            borderLeftColor: booking.status === 'confirmed' 
-                              ? colors.primary 
-                              : colors.border,
-                            ...shadows.small,
-                          }}
-                        >
-                          <Text className="font-bold text-base mb-1" style={{ color: colors.primary }}>
-                            {booking.scheduleName || 'Training Session'}
-                          </Text>
-                          <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>
-                            {userRole === 'trainer' 
-                              ? booking.clientName || 'Client' 
-                              : booking.trainerName || 'Trainer'}, {booking.startTime} - {booking.endTime}
-                          </Text>
-                        </View>
-                      ))
-                    ) : (
-                      <View
-                        className="h-12 rounded-lg"
-                        style={{
-                          borderTopWidth: 1,
-                          borderTopColor: colors.border,
-                          opacity: 0.3,
-                        }}
-                      />
-                    )}
-                  </View>
-                </View>
+          selectedDateBookings.map((booking, index) => (
+            <Animated.View
+              key={booking._id}
+              entering={FadeInRight.delay(50 * index)}
+              className="rounded-2xl p-4 mb-3"
+              style={{ backgroundColor: colors.surface, ...shadows.small, borderLeftWidth: 3, borderLeftColor: getStatusColor(booking.status) }}
+            >
+              <View className="flex-row items-center justify-between">
+                <Text className="font-bold text-base" style={{ color: colors.text }}>
+                  {booking.scheduleName || 'Training Session'}
+                </Text>
+                <Text className="text-xs font-semibold uppercase" style={{ color: getStatusColor(booking.status) }}>
+                  {booking.status}
+                </Text>
               </View>
-            );
-          })
+              <View className="flex-row items-center mt-2">
+                <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
+                <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
+                  {userRole === 'trainer' ? booking.clientName || 'Client' : booking.trainerName || 'Trainer'}
+                </Text>
+              </View>
+              <View className="flex-row items-center mt-1">
+                <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
+                  {booking.startTime} - {booking.endTime}
+                </Text>
+              </View>
+            </Animated.View>
+          ))
         )}
       </ScrollView>
+
+      {/* Calendar Modal */}
+      <Modal visible={calendarVisible} transparent animationType="fade">
+        <TouchableOpacity
+          className="flex-1 items-center justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          activeOpacity={1}
+          onPress={() => setCalendarVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            className="mx-6 rounded-3xl p-5"
+            style={{ backgroundColor: colors.surface, width: '90%', ...shadows.large }}
+          >
+            {/* Calendar Header */}
+            <View className="flex-row items-center justify-between mb-4">
+              <TouchableOpacity onPress={() => changeMonth('prev')}>
+                <Ionicons name="chevron-back" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text className="text-lg font-bold" style={{ color: colors.text }}>
+                {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </Text>
+              <TouchableOpacity onPress={() => changeMonth('next')}>
+                <Ionicons name="chevron-forward" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Weekday headers */}
+            <View className="flex-row mb-2">
+              {WEEKDAYS.map((day) => (
+                <View key={day} className="flex-1 items-center">
+                  <Text className="text-xs font-medium" style={{ color: colors.textTertiary }}>{day}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Calendar Grid */}
+            <View className="flex-row flex-wrap">
+              {getMonthDates(calendarMonth).map((date, i) => {
+                if (!date) return <View key={`e-${i}`} className="w-[14.28%] h-10" />;
+                const isSelected = isSameDate(date, selectedDate);
+                const isTodayDate = isToday(date);
+                const hasBooking = hasBookings(date);
+
+                return (
+                  <TouchableOpacity
+                    key={date.toISOString()}
+                    onPress={() => handleDateSelect(date)}
+                    className="w-[14.28%] h-10 items-center justify-center"
+                  >
+                    <View
+                      className="w-8 h-8 rounded-full items-center justify-center"
+                      style={{
+                        backgroundColor: isSelected ? colors.primary : 'transparent',
+                        borderWidth: isTodayDate && !isSelected ? 1 : 0,
+                        borderColor: colors.primary,
+                      }}
+                    >
+                      <Text style={{ color: isSelected ? '#FFF' : colors.text, fontWeight: '500', fontSize: 14 }}>
+                        {date.getDate()}
+                      </Text>
+                    </View>
+                    {/* Green indicator for bookings */}
+                    {hasBooking && (
+                      <View
+                        className="absolute bottom-0.5 w-1 h-1 rounded-full"
+                        style={{ backgroundColor: colors.success }}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Close button */}
+            <TouchableOpacity
+              className="mt-4 py-3 rounded-xl items-center"
+              style={{ backgroundColor: colors.background }}
+              onPress={() => setCalendarVisible(false)}
+            >
+              <Text className="font-semibold" style={{ color: colors.textSecondary }}>Close</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }

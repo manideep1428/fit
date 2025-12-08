@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 
@@ -15,6 +16,7 @@ export default function FindTrainersScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTrainer, setSelectedTrainer] = useState<any>(null);
@@ -40,7 +42,7 @@ export default function FindTrainersScreen() {
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <StatusBar style="auto" />
       <ScrollView className="flex-1">
-        <View className="px-6 pt-16 pb-6">
+        <View className="px-6 pb-6" style={{ paddingTop: insets.top + 12 }}>
           {/* Header */}
           <View className="flex-row items-center mb-6">
             <TouchableOpacity onPress={() => router.back()} className="mr-4">

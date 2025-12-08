@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSignIn, useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from 'convex/react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/convex/_generated/api';
 import GoogleOAuthButton from '@/components/GoogleOAuthButton';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -28,6 +29,7 @@ export default function SignInScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,7 +56,7 @@ export default function SignInScreen() {
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        
+
         // Check if user has Google Calendar token
         setNeedsCalendarConnect(true);
       }
@@ -71,14 +73,14 @@ export default function SignInScreen() {
 
     try {
       const token = await getToken({ template: 'integration_google' });
-      
+
       if (token) {
         await saveGoogleTokens({
           clerkId: userId,
           accessToken: token,
         });
       }
-      
+
       // Navigate to role selection or main app
       router.replace('/(auth)/role-selection');
     } catch (error) {
@@ -96,7 +98,7 @@ export default function SignInScreen() {
     return (
       <View className="flex-1 px-6 justify-center" style={{ backgroundColor: colors.background }}>
         <StatusBar style="auto" />
-        
+
         <View className="p-6 rounded-2xl" style={{ backgroundColor: colors.surface, ...shadows.medium }}>
           <View className="items-center mb-4">
             <View
@@ -148,7 +150,7 @@ export default function SignInScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-1 px-6 pt-16 pb-8">
+        <View className="flex-1 px-6 pb-8" style={{ paddingTop: insets.top + 12 }}>
           {/* Back Button */}
           <TouchableOpacity
             onPress={() => router.back()}

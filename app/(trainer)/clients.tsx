@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 
@@ -13,6 +14,7 @@ export default function ClientsScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
 
   const clients = useQuery(
     api.users.getTrainerClients,
@@ -41,20 +43,20 @@ export default function ClientsScreen() {
   const getLastBookingDate = (clientId: string) => {
     const clientBookings = bookings?.filter((b: any) => b.clientId === clientId) || [];
     if (clientBookings.length === 0) return null;
-    
+
     const sorted = clientBookings.sort((a: any, b: any) => {
       const dateA = new Date(a.date + 'T' + a.startTime);
       const dateB = new Date(b.date + 'T' + b.startTime);
       return dateB.getTime() - dateA.getTime();
     });
-    
+
     return sorted[0].date;
   };
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <ScrollView className="flex-1">
-        <View className="px-6 pt-16 pb-6">
+        <View className="px-6 pb-6" style={{ paddingTop: insets.top + 12 }}>
           {/* Header */}
           <View className="mb-6 flex-row items-center justify-between">
             <View className="flex-1">
@@ -87,9 +89,11 @@ export default function ClientsScreen() {
               <Text className="text-white text-xs mt-1">Total Clients</Text>
             </View>
 
-            <View
+            <TouchableOpacity
               className="flex-1 rounded-2xl p-4"
               style={{ backgroundColor: colors.surface, ...shadows.medium }}
+              onPress={() => router.push('/(trainer)/session-history' as any)}
+              activeOpacity={0.7}
             >
               <Ionicons name="calendar" size={24} color={colors.primary} />
               <Text className="text-2xl font-bold mt-2" style={{ color: colors.text }}>
@@ -98,7 +102,7 @@ export default function ClientsScreen() {
               <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
                 Total Sessions
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Clients List */}

@@ -12,6 +12,7 @@ import type * as availability from "../availability.js";
 import type * as bookings from "../bookings.js";
 import type * as goals from "../goals.js";
 import type * as notifications from "../notifications.js";
+import type * as packages from "../packages.js";
 import type * as paymentRequests from "../paymentRequests.js";
 import type * as pushNotifications from "../pushNotifications.js";
 import type * as users from "../users.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   bookings: typeof bookings;
   goals: typeof goals;
   notifications: typeof notifications;
+  packages: typeof packages;
   paymentRequests: typeof paymentRequests;
   pushNotifications: typeof pushNotifications;
   users: typeof users;

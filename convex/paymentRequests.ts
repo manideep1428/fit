@@ -14,7 +14,7 @@ export const createPaymentRequest = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    
+
     return await ctx.db.insert("paymentRequests", {
       trainerId: args.trainerId,
       clientId: args.clientId,
@@ -62,7 +62,7 @@ export const getPendingClientPaymentRequests = query({
       .query("paymentRequests")
       .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
       .collect();
-    
+
     return requests.filter((req) => req.status === "pending");
   },
 });
@@ -95,5 +95,37 @@ export const getPaymentRequestById = query({
   args: { paymentRequestId: v.id("paymentRequests") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.paymentRequestId);
+  },
+});
+
+// Create bulk payment requests for multiple clients
+export const createBulkPaymentRequests = mutation({
+  args: {
+    trainerId: v.string(),
+    clientIds: v.array(v.string()),
+    amount: v.number(),
+    currency: v.string(),
+    description: v.string(),
+    packageId: v.optional(v.id("packages")),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const results = [];
+
+    for (const clientId of args.clientIds) {
+      const id = await ctx.db.insert("paymentRequests", {
+        trainerId: args.trainerId,
+        clientId: clientId,
+        amount: args.amount,
+        currency: args.currency,
+        description: args.description,
+        status: "pending",
+        createdAt: now,
+        updatedAt: now,
+      });
+      results.push(id);
+    }
+
+    return results;
   },
 });

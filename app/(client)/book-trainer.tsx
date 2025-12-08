@@ -12,7 +12,7 @@ import { useGoogleCalendar, formatBookingForCalendar } from '@/utils/googleCalen
 import { Id } from '@/convex/_generated/dataModel';
 
 const DURATIONS = [
-  { value: 40, label: '40 min' },
+  { value: 45, label: '45 min' },
   { value: 60, label: '1 hour' },
 ];
 
@@ -40,10 +40,10 @@ export default function BookTrainerScreen() {
     api.bookings.getAvailableSlots,
     trainerId && selectedDate
       ? {
-          trainerId,
-          date: selectedDate.toISOString().split('T')[0],
-          duration: selectedDuration,
-        }
+        trainerId,
+        date: selectedDate.toISOString().split('T')[0],
+        duration: selectedDuration,
+      }
       : 'skip'
   );
 
@@ -51,7 +51,7 @@ export default function BookTrainerScreen() {
   const updateBookingCalendarEvent = useMutation(api.bookings.updateBookingCalendarEvent);
   const { getToken } = useAuth();
   const { getCalendarService } = useGoogleCalendar();
-  
+
   // Check if user has Google Calendar connected
   const currentUser = useQuery(
     api.users.getUserByClerkId,
@@ -108,7 +108,7 @@ export default function BookTrainerScreen() {
       });
 
       const event = await calendarService.createEvent(calendarEvent);
-      
+
       // Save the Google Calendar event ID to the booking
       await updateBookingCalendarEvent({
         bookingId,

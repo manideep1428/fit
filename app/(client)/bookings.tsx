@@ -1,21 +1,27 @@
 import { useState } from 'react';
-import {
-  View,
-  ActivityIndicator,
-  TouchableOpacity,
-  Text,
-  ScrollView,
-  Modal,
-} from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity, Text, ScrollView, Modal } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
+import { useRouter } from 'expo-router';
 import { useQuery } from 'convex/react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import CalendarView from '@/components/CalendarView';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleCalendarConnect from '@/components/GoogleCalendarConnect';
+import Svg, { Path } from 'react-native-svg';
+
+// Google Calendar SVG Icon
+const GoogleCalendarIcon = ({ size = 20 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path fill="#4285F4" d="M22 6c0-1.1-.9-2-2-2h-3V2h-2v2H9V2H7v2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 14H4V9h16v11z" />
+    <Path fill="#34A853" d="M10 17h4v-4h-4v4z" />
+    <Path fill="#EA4335" d="M16 11.5h2v2h-2z" />
+    <Path fill="#FBBC05" d="M6 11.5h2v2H6z" />
+  </Svg>
+);
 
 export default function BookingsScreen() {
   const { user } = useUser();
@@ -23,10 +29,10 @@ export default function BookingsScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
-  const [activeTab, setActiveTab] = useState<'schedule' | 'bookings'>('schedule');
+  const insets = useSafeAreaInsets();
+  const [activeTab, setActiveTab] = useState<'schedule' | 'bookings'>('bookings');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
 
-  // Get current user to check Google Calendar connection
   const currentUser = useQuery(
     api.users.getUserByClerkId,
     user?.id ? { clerkId: user.id } : 'skip'
@@ -37,7 +43,6 @@ export default function BookingsScreen() {
     user?.id ? { clientId: user.id } : 'skip'
   );
 
-  // Get only the client's assigned trainers
   const clientTrainers = useQuery(
     api.users.getClientTrainers,
     user?.id ? { clientId: user.id } : 'skip'
@@ -45,16 +50,12 @@ export default function BookingsScreen() {
 
   if (!user || !bookings || !clientTrainers) {
     return (
-      <View
-        className="flex-1 items-center justify-center"
-        style={{ backgroundColor: colors.background }}
-      >
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
-  // Enrich bookings with trainer names and schedule names
   const enrichedBookings = bookings.map((booking: any) => {
     const trainer = clientTrainers.find((t: any) => t.clerkId === booking.trainerId);
     return {
@@ -64,12 +65,18 @@ export default function BookingsScreen() {
     };
   });
 
-  // Separate current and past bookings
   const now = new Date();
-  const currentBookings = enrichedBookings.filter(
-    (b: any) => new Date(b.startTime) >= now
-  );
+  const currentBookings = enrichedBookings.filter((b: any) => new Date(b.startTime) >= now);
   const pastBookings = enrichedBookings.filter((b: any) => new Date(b.startTime) < now);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed': return colors.success;
+      case 'pending': return colors.warning;
+      case 'cancelled': return colors.error;
+      default: return colors.primary;
+    }
+  };
 
   const handleBookTrainer = (trainer: any) => {
     router.push({
@@ -82,192 +89,282 @@ export default function BookingsScreen() {
     });
   };
 
+  const isCalendarConnected = !!currentUser?.googleAccessToken;
+
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      {/* Header with Calendar Connect Button */}
-      <View className="flex-row items-center justify-between px-6 pt-16 pb-4 border-b" style={{ borderBottomColor: colors.border }}>
-        <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-          Bookings
-        </Text>
-        {!currentUser?.googleAccessToken && (
-          <TouchableOpacity
-            onPress={() => setShowCalendarModal(true)}
-            className="flex-row items-center px-3 py-2 rounded-lg"
-            style={{ backgroundColor: colors.primary + '20' }}
-          >
-            <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-            <Text className="ml-2 text-sm font-semibold" style={{ color: colors.primary }}>
-              Connect Calendar
-            </Text>
-          </TouchableOpacity>
-        )}
-        {currentUser?.googleAccessToken && (
-          <View className="flex-row items-center">
-            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-            <Text className="ml-1 text-sm" style={{ color: colors.success }}>
-              Calendar Connected
+      {/* Header */}
+      <Animated.View
+        entering={FadeInDown.duration(400)}
+        className="px-6 pb-5"
+        style={{ backgroundColor: colors.surface, paddingTop: insets.top + 12 }}
+      >
+        <View className="flex-row items-center justify-between">
+          <View>
+            <Text className="text-3xl font-bold" style={{ color: colors.text }}>Bookings</Text>
+            <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+              Manage your sessions
             </Text>
           </View>
-        )}
-      </View>
+
+          {/* Google Calendar Button */}
+          <TouchableOpacity
+            className="flex-row items-center px-3 py-2.5 rounded-xl"
+            style={{
+              backgroundColor: isCalendarConnected ? `${colors.success}15` : colors.surfaceSecondary,
+            }}
+            onPress={() => !isCalendarConnected && setShowCalendarModal(true)}
+          >
+            <GoogleCalendarIcon size={18} />
+            <Text
+              className="text-sm font-medium ml-2"
+              style={{ color: isCalendarConnected ? colors.success : colors.text }}
+            >
+              {isCalendarConnected ? 'Connected' : 'Connect'}
+            </Text>
+            {isCalendarConnected && (
+              <Ionicons name="checkmark-circle" size={16} color={colors.success} style={{ marginLeft: 4 }} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
 
       {/* Tab Header */}
-      <View className="flex-row border-b" style={{ borderBottomColor: colors.border }}>
+      <View
+        className="mx-6 my-4 p-1.5 rounded-2xl flex-row"
+        style={{ backgroundColor: colors.surfaceSecondary }}
+      >
         <TouchableOpacity
-          className="flex-1 py-4 items-center"
+          className="flex-1 py-3 rounded-xl items-center flex-row justify-center"
           style={{
-            borderBottomWidth: activeTab === 'schedule' ? 2 : 0,
-            borderBottomColor: colors.primary,
-          }}
-          onPress={() => setActiveTab('schedule')}
-        >
-          <Text
-            className="text-base font-semibold"
-            style={{
-              color: activeTab === 'schedule' ? colors.primary : colors.textSecondary,
-            }}
-          >
-            My Schedule
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className="flex-1 py-4 items-center"
-          style={{
-            borderBottomWidth: activeTab === 'bookings' ? 2 : 0,
-            borderBottomColor: colors.primary,
+            backgroundColor: activeTab === 'bookings' ? colors.surface : 'transparent',
+            ...(activeTab === 'bookings' ? shadows.small : {}),
           }}
           onPress={() => setActiveTab('bookings')}
         >
+          <Ionicons
+            name="list-outline"
+            size={18}
+            color={activeTab === 'bookings' ? colors.primary : colors.textSecondary}
+          />
           <Text
-            className="text-base font-semibold"
-            style={{
-              color: activeTab === 'bookings' ? colors.primary : colors.textSecondary,
-            }}
+            className="text-sm font-semibold ml-2"
+            style={{ color: activeTab === 'bookings' ? colors.primary : colors.textSecondary }}
           >
             Bookings
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="flex-1 py-3 rounded-xl items-center flex-row justify-center"
+          style={{
+            backgroundColor: activeTab === 'schedule' ? colors.surface : 'transparent',
+            ...(activeTab === 'schedule' ? shadows.small : {}),
+          }}
+          onPress={() => setActiveTab('schedule')}
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={18}
+            color={activeTab === 'schedule' ? colors.primary : colors.textSecondary}
+          />
+          <Text
+            className="text-sm font-semibold ml-2"
+            style={{ color: activeTab === 'schedule' ? colors.primary : colors.textSecondary }}
+          >
+            Schedule
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Tab Content */}
-      {activeTab === 'schedule' ? (
-        <CalendarView bookings={enrichedBookings} userRole="client" />
-      ) : (
-        <ScrollView className="flex-1">
+      {activeTab === 'bookings' ? (
+        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
           {/* My Trainers Section */}
-          <View className="p-4">
-            <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
-              My Trainers
-            </Text>
-            {clientTrainers.length === 0 ? (
-              <Text className="text-center py-8" style={{ color: colors.textSecondary }}>
-                No trainers assigned yet
+          <View className="px-6 pt-2">
+            <Animated.View entering={FadeIn.delay(200)} className="flex-row items-center mb-4">
+              <View
+                className="w-8 h-8 rounded-lg items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.primary}15` }}
+              >
+                <Ionicons name="people" size={16} color={colors.primary} />
+              </View>
+              <Text className="text-lg font-bold" style={{ color: colors.text }}>
+                My Trainers
               </Text>
+            </Animated.View>
+
+            {clientTrainers.length === 0 ? (
+              <View
+                className="py-10 items-center rounded-2xl"
+                style={{ backgroundColor: colors.surface, ...shadows.small }}
+              >
+                <Ionicons name="people-outline" size={32} color={colors.textTertiary} />
+                <Text className="text-base font-semibold mt-3" style={{ color: colors.textSecondary }}>
+                  No trainers yet
+                </Text>
+              </View>
             ) : (
-              clientTrainers.map((trainer: any) => (
-                <TouchableOpacity
-                  key={trainer._id}
-                  onPress={() => handleBookTrainer(trainer)}
-                  className="mb-3 p-4 rounded-lg flex-row items-center"
-                  style={{ backgroundColor: colors.cardBackground, ...shadows.small }}
+              clientTrainers.map((trainer: any, index: number) => (
+                <Animated.View key={trainer._id} entering={FadeInRight.delay(250 + index * 50)}>
+                  <TouchableOpacity
+                    className="rounded-2xl p-4 mb-3 flex-row items-center"
+                    style={{ backgroundColor: colors.surface, ...shadows.small }}
+                    onPress={() => handleBookTrainer(trainer)}
+                  >
+                    <View
+                      className="w-12 h-12 rounded-full items-center justify-center mr-3"
+                      style={{ backgroundColor: colors.primary }}
+                    >
+                      <Text className="text-white text-lg font-bold">
+                        {trainer.fullName?.[0] || 'T'}
+                      </Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                        {trainer.fullName}
+                      </Text>
+                      <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                        {trainer.specialty || 'Personal Trainer'}
+                      </Text>
+                    </View>
+                    <View
+                      className="px-3 py-1.5 rounded-lg"
+                      style={{ backgroundColor: colors.primary }}
+                    >
+                      <Text className="text-white text-xs font-semibold">Book</Text>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              ))
+            )}
+          </View>
+
+          {/* Divider */}
+          <View className="px-6 py-6">
+            <View className="flex-row items-center">
+              <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
+              <Text className="px-4 text-xs font-semibold uppercase" style={{ color: colors.textTertiary }}>
+                Sessions
+              </Text>
+              <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
+            </View>
+          </View>
+
+          {/* Upcoming Bookings */}
+          <View className="px-6">
+            <Animated.View entering={FadeIn.delay(350)} className="flex-row items-center mb-4">
+              <View
+                className="w-8 h-8 rounded-lg items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.success}15` }}
+              >
+                <Ionicons name="calendar" size={16} color={colors.success} />
+              </View>
+              <Text className="text-lg font-bold" style={{ color: colors.text }}>
+                Upcoming
+              </Text>
+              {currentBookings.length > 0 && (
+                <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: `${colors.primary}15` }}>
+                  <Text className="text-xs font-bold" style={{ color: colors.primary }}>{currentBookings.length}</Text>
+                </View>
+              )}
+            </Animated.View>
+
+            {currentBookings.length === 0 ? (
+              <View
+                className="py-10 items-center rounded-2xl"
+                style={{ backgroundColor: colors.surface, ...shadows.small }}
+              >
+                <Ionicons name="calendar-outline" size={32} color={colors.textTertiary} />
+                <Text className="text-base font-semibold mt-3" style={{ color: colors.textSecondary }}>
+                  No upcoming sessions
+                </Text>
+              </View>
+            ) : (
+              currentBookings.map((booking: any, index: number) => (
+                <Animated.View
+                  key={booking._id}
+                  entering={FadeInRight.delay(400 + index * 50)}
+                  className="rounded-2xl p-4 mb-3 overflow-hidden"
+                  style={{ backgroundColor: colors.surface, ...shadows.small }}
                 >
                   <View
-                    className="w-12 h-12 rounded-full mr-3 items-center justify-center"
-                    style={{ backgroundColor: colors.primary }}
-                  >
-                    <Text className="text-white text-lg font-bold">
-                      {trainer.fullName?.[0] || 'T'}
-                    </Text>
+                    className="absolute left-0 top-0 bottom-0 w-1"
+                    style={{ backgroundColor: getStatusColor(booking.status) }}
+                  />
+                  <View className="pl-2">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-lg font-bold" style={{ color: colors.text }}>
+                        {booking.trainerName}
+                      </Text>
+                      <View
+                        className="px-2.5 py-1 rounded-lg"
+                        style={{ backgroundColor: `${getStatusColor(booking.status)}15` }}
+                      >
+                        <Text className="text-xs font-bold uppercase" style={{ color: getStatusColor(booking.status) }}>
+                          {booking.status}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center mt-2">
+                      <Ionicons name="fitness-outline" size={14} color={colors.textSecondary} />
+                      <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
+                        {booking.scheduleName}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center mt-1.5">
+                      <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                      <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
+                        {new Date(booking.startTime).toLocaleString()}
+                      </Text>
+                    </View>
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold" style={{ color: colors.text }}>
-                      {trainer.fullName}
-                    </Text>
-                    <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                      {trainer.specialty || 'Personal Trainer'}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
+                </Animated.View>
               ))
             )}
           </View>
 
-          {/* Current Bookings */}
-          <View className="p-4 border-t" style={{ borderTopColor: colors.border }}>
-            <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
-              Current Bookings
-            </Text>
-            {currentBookings.length === 0 ? (
-              <Text className="text-center py-8" style={{ color: colors.textSecondary }}>
-                No upcoming bookings
-              </Text>
-            ) : (
-              currentBookings.map((booking: any) => (
+          {/* Past Sessions */}
+          {pastBookings.length > 0 && (
+            <View className="px-6 mt-6">
+              <Animated.View entering={FadeIn.delay(500)} className="flex-row items-center mb-4">
                 <View
-                  key={booking._id}
-                  className="mb-3 p-4 rounded-lg"
-                  style={{ backgroundColor: colors.cardBackground }}
+                  className="w-8 h-8 rounded-lg items-center justify-center mr-3"
+                  style={{ backgroundColor: colors.surfaceSecondary }}
                 >
-                  <Text className="text-lg font-semibold" style={{ color: colors.text }}>
-                    {booking.trainerName}
-                  </Text>
-                  <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                    {booking.scheduleName}
-                  </Text>
-                  <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                    {new Date(booking.startTime).toLocaleString()}
-                  </Text>
-                  <Text
-                    className="text-xs mt-2 font-medium"
-                    style={{
-                      color:
-                        booking.status === 'confirmed' ? colors.success : colors.primary,
-                    }}
-                  >
-                    {booking.status?.toUpperCase()}
-                  </Text>
+                  <Ionicons name="time" size={16} color={colors.textTertiary} />
                 </View>
-              ))
-            )}
-          </View>
+                <Text className="text-lg font-bold" style={{ color: colors.text }}>
+                  Past Sessions
+                </Text>
+              </Animated.View>
 
-          {/* Booking History */}
-          <View className="p-4 border-t" style={{ borderTopColor: colors.border }}>
-            <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
-              Booking History
-            </Text>
-            {pastBookings.length === 0 ? (
-              <Text className="text-center py-8" style={{ color: colors.textSecondary }}>
-                No past bookings
-              </Text>
-            ) : (
-              pastBookings.map((booking: any) => (
-                <View
+              {pastBookings.slice(0, 3).map((booking: any, index: number) => (
+                <Animated.View
                   key={booking._id}
-                  className="mb-3 p-4 rounded-lg opacity-70"
-                  style={{ backgroundColor: colors.cardBackground }}
+                  entering={FadeInRight.delay(550 + index * 50)}
+                  className="rounded-2xl p-4 mb-3"
+                  style={{ backgroundColor: colors.surface, opacity: 0.7, ...shadows.small }}
                 >
-                  <Text className="text-lg font-semibold" style={{ color: colors.text }}>
-                    {booking.trainerName}
-                  </Text>
-                  <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                    {booking.scheduleName}
-                  </Text>
-                  <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                    {new Date(booking.startTime).toLocaleString()}
-                  </Text>
-                  <Text
-                    className="text-xs mt-2 font-medium"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    {booking.status?.toUpperCase()}
-                  </Text>
-                </View>
-              ))
-            )}
-          </View>
+                  <View className="flex-row items-start">
+                    <View className="flex-1">
+                      <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                        {booking.trainerName}
+                      </Text>
+                      <Text className="text-sm mt-1" style={{ color: colors.textTertiary }}>
+                        {new Date(booking.startTime).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <Text className="text-xs font-medium uppercase" style={{ color: colors.textTertiary }}>
+                      Completed
+                    </Text>
+                  </View>
+                </Animated.View>
+              ))}
+            </View>
+          )}
         </ScrollView>
+      ) : (
+        <CalendarView bookings={enrichedBookings} userRole="client" />
       )}
 
       {/* Google Calendar Connect Modal */}

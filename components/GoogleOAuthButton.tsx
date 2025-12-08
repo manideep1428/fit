@@ -9,6 +9,7 @@ import { useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { useColorScheme } from '@/hooks/use-color-scheme'
 import { getColors, Shadows } from '@/constants/colors'
+import { showToast } from '@/utils/toast'
 
 // Preloads the browser for Android devices to reduce authentication load time
 // See: https://docs.expo.dev/guides/authentication/#improving-user-experience
@@ -53,15 +54,20 @@ export default function GoogleOAuthButton({ mode, onError }: GoogleOAuthButtonPr
             })
 
             if (createdSessionId) {
+                // Check if this was a sign-in (existing user) while in signup mode
+                if (mode === 'signup' && signIn?.status === 'complete') {
+                    showToast.success('Account already exists. Signing you in...')
+                }
+
                 await setActive!({ session: createdSessionId })
-                
+
                 // Wait a moment for session to be fully active
                 await new Promise(resolve => setTimeout(resolve, 500))
-                
+
                 // Try to get and save Google Calendar token
                 try {
                     const token = await getToken({ template: 'integration_google' })
-                    
+
                     if (token && userId) {
                         await saveGoogleTokens({
                             clerkId: userId,
@@ -72,7 +78,7 @@ export default function GoogleOAuthButton({ mode, onError }: GoogleOAuthButtonPr
                 } catch (tokenError) {
                     console.error('Error saving Google tokens:', tokenError)
                 }
-                
+
                 // Navigate based on user role and phone number
                 const currentUser = (signIn as any)?.userData || (signUp as any)?.userData
                 const userRole = currentUser?.unsafeMetadata?.role as string | undefined
@@ -108,7 +114,7 @@ export default function GoogleOAuthButton({ mode, onError }: GoogleOAuthButtonPr
         } finally {
             setLoading(false)
         }
-    }, [startSSOFlow, router, onError, saveGoogleTokens, getToken, userId])
+    }, [startSSOFlow, router, onError, saveGoogleTokens, getToken, userId, mode])
 
     return (
         <TouchableOpacity

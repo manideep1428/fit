@@ -5,6 +5,7 @@ import { useUser } from '@clerk/clerk-expo';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
@@ -37,11 +38,12 @@ export default function SetGoalScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
 
   const createGoal = useMutation(api.goals.createGoal);
 
   const [goalDescription, setGoalDescription] = useState('');
-  
+
   const checkGoalNameUnique = useQuery(
     api.goals.checkGoalNameUnique,
     clientId && goalDescription ? { clientId: clientId as string, description: goalDescription } : 'skip'
@@ -62,7 +64,7 @@ export default function SetGoalScreen() {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }
-    
+
     if (date) {
       setSelectedDate(date);
       const formattedDate = date.toISOString().split('T')[0];
@@ -128,11 +130,12 @@ export default function SetGoalScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-      
+
       {/* Header */}
-      <View 
-        className="px-5 pt-14 pb-5 flex-row items-center justify-between"
+      <View
+        className="px-5 pb-5 flex-row items-center justify-between"
         style={{
+          paddingTop: insets.top + 12,
           borderBottomWidth: 1,
           borderBottomColor: colors.border,
         }}
@@ -150,8 +153,8 @@ export default function SetGoalScreen() {
         <View className="w-10" />
       </View>
 
-      <ScrollView 
-        className="flex-1" 
+      <ScrollView
+        className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20 }}
         showsVerticalScrollIndicator={false}
       >
@@ -191,7 +194,7 @@ export default function SetGoalScreen() {
           }}
         >
           <View className="flex-row items-center mb-4">
-            <View 
+            <View
               className="w-10 h-10 rounded-full items-center justify-center mr-3"
               style={{ backgroundColor: `${colors.primary}15` }}
             >
@@ -279,7 +282,7 @@ export default function SetGoalScreen() {
         >
           <View className="flex-row items-center justify-between mb-4">
             <View className="flex-row items-center flex-1">
-              <View 
+              <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
                 style={{ backgroundColor: `${colors.primary}15` }}
               >
@@ -302,12 +305,12 @@ export default function SetGoalScreen() {
           </View>
 
           {measurements.map((measurement, index) => (
-            <View 
-              key={index} 
+            <View
+              key={index}
               className="mb-4 pb-4"
-              style={{ 
+              style={{
                 borderBottomWidth: index < measurements.length - 1 ? 1 : 0,
-                borderBottomColor: colors.border 
+                borderBottomColor: colors.border
               }}
             >
               {/* Body Part Selector */}
@@ -426,7 +429,7 @@ export default function SetGoalScreen() {
             onPress={() => setShowDatePicker(true)}
             className="relative"
           >
-            <View 
+            <View
               className="absolute left-4 top-4 z-10 w-8 h-8 rounded-full items-center justify-center"
               style={{ backgroundColor: `${colors.primary}15` }}
             >
@@ -510,7 +513,7 @@ export default function SetGoalScreen() {
       >
         <TouchableOpacity
           className="rounded-2xl py-4 items-center"
-          style={{ 
+          style={{
             backgroundColor: colors.primary,
             opacity: (!goalDescription.trim() || loading || checkGoalNameUnique === false) ? 0.5 : 1,
           }}
@@ -546,7 +549,7 @@ export default function SetGoalScreen() {
               <Text className="text-lg font-bold" style={{ color: colors.text }}>
                 Select Body Part
               </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowBodyPartPicker(false)}
                 className="w-9 h-9 rounded-full items-center justify-center"
                 style={{ backgroundColor: colors.surface }}
@@ -560,11 +563,11 @@ export default function SetGoalScreen() {
                 <TouchableOpacity
                   key={part}
                   className="px-6 py-4 flex-row items-center justify-between"
-                  style={{ 
+                  style={{
                     borderBottomWidth: idx < BODY_PARTS.length - 1 ? 1 : 0,
                     borderBottomColor: colors.border,
-                    backgroundColor: measurements[selectedMeasurementIndex]?.bodyPart === part 
-                      ? `${colors.primary}10` 
+                    backgroundColor: measurements[selectedMeasurementIndex]?.bodyPart === part
+                      ? `${colors.primary}10`
                       : 'transparent',
                   }}
                   onPress={() => {
