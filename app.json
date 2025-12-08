@@ -12,7 +12,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.manideep1428.fit",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
+        "UIViewControllerBasedStatusBarAppearance": true
       }
     },
     "android": {
@@ -29,7 +32,11 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "WAKE_LOCK"
-      ]
+      ],
+      "statusBar": {
+        "translucent": true,
+        "backgroundColor": "#00000000"
+      }
     },
     "notification": {
       "icon": "./assets/images/icon.png",
@@ -65,7 +72,10 @@
           ],
           "mode": "production"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

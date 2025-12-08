@@ -143,20 +143,6 @@ export default function TrainerHomeScreen() {
                         </View>
                         <Text className="text-sm font-semibold" style={{ color: colors.text }}>Manage Schedule</Text>
                     </TouchableOpacity>
-
-                    {/* Messages */}
-                    <TouchableOpacity
-                        className="flex-1 p-5 rounded-xl items-center"
-                        style={{ backgroundColor: colors.surface, ...shadows.medium }}
-                    >
-                        <View
-                            className="w-14 h-14 rounded-lg justify-center items-center mb-3"
-                            style={{ backgroundColor: `${colors.primary}15` }}
-                        >
-                            <Ionicons name="chatbubble-outline" size={28} color={colors.primary} />
-                        </View>
-                        <Text className="text-sm font-semibold" style={{ color: colors.text }}>Client Messages</Text>
-                    </TouchableOpacity>
                 </View>
 
                 {/* Upcoming Sessions */}

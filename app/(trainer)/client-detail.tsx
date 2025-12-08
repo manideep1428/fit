@@ -81,23 +81,14 @@ export default function ClientDetailScreen() {
 
           {/* Action Buttons */}
           <View className="gap-3 w-full max-w-md">
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                className="flex-1 rounded-full py-3 px-6 border"
-                style={{ borderColor: colors.primary }}
-              >
-                <Text className="text-center font-semibold" style={{ color: colors.primary }}>
-                  Message
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-1 rounded-full py-3 px-6"
-                style={{ backgroundColor: colors.primary }}
-                onPress={() => router.push(`/(trainer)/set-goal?clientId=${clientId}` as any)}
-              >
-                <Text className="text-center font-semibold text-white">
-                  Set Goal
-                </Text>
+            <TouchableOpacity
+              className="rounded-full py-3 px-6"
+              style={{ backgroundColor: colors.primary }}
+              onPress={() => router.push(`/(trainer)/set-goal?clientId=${clientId}` as any)}
+            >
+              <Text className="text-center font-semibold text-white">
+                Set Goal
+              </Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity
@@ -111,7 +102,6 @@ export default function ClientDetailScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
 
         {/* Stats Cards */}
         <View className="flex-row gap-3 px-4 py-3">

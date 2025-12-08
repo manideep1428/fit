@@ -1,7 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 import 'react-native-reanimated';
 import { ClerkProvider } from '@clerk/clerk-expo';
 import { tokenCache } from '@clerk/clerk-expo/token-cache';
@@ -10,21 +10,25 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from '@/components/ToastConfig';
+import { getColors } from '@/constants/colors';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import "../global.css"
 
 function AppContent() {
   useNotifications();
+  const scheme = useColorScheme();
+  const colors = getColors(scheme === 'dark');
   
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(trainer)" options={{ headerShown: false }} />
         <Stack.Screen name="(client)" options={{ headerShown: false }} />
       </Stack>
-    </SafeAreaView>
+    </View>
   );
 }
 
