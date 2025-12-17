@@ -25,6 +25,7 @@
       "ios": {
         "resourceClass": "m-medium"
       },
+      "android":{"buildType" : "apk"},
       "autoIncrement": true
     }
   },
