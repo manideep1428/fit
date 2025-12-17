@@ -125,17 +125,17 @@ export default function SignUpScreen() {
         });
       }
 
-      // Navigate to role selection
-      router.replace('/(auth)/role-selection');
+      // Navigate to main index which handles role-based routing
+      router.replace('/');
     } catch (error) {
       console.error('Error checking calendar token:', error);
       // Continue anyway
-      router.replace('/(auth)/role-selection');
+      router.replace('/');
     }
   };
 
   const handleSkipCalendar = () => {
-    router.replace('/(auth)/role-selection');
+    router.replace('/');
   };
 
   if (needsCalendarConnect) {

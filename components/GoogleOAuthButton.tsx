@@ -2,7 +2,7 @@ import React, { useCallback, useEffect } from 'react'
 import { TouchableOpacity, Text, ActivityIndicator, View, Platform } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 import * as AuthSession from 'expo-auth-session'
-import { useSSO, useAuth } from '@clerk/clerk-expo'
+import { useSSO, useAuth, useUser } from '@clerk/clerk-expo'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useMutation } from 'convex/react'
@@ -40,6 +40,7 @@ export default function GoogleOAuthButton({ mode, onError }: GoogleOAuthButtonPr
     const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light
     const [loading, setLoading] = React.useState(false)
     const { getToken, userId } = useAuth()
+    const { user } = useUser()
     const saveGoogleTokens = useMutation(api.users.saveGoogleTokens)
 
     // Use the `useSSO()` hook to access the `startSSOFlow()` method
@@ -79,21 +80,9 @@ export default function GoogleOAuthButton({ mode, onError }: GoogleOAuthButtonPr
                     console.error('Error saving Google tokens:', tokenError)
                 }
 
-                // Navigate based on user role and phone number
-                const currentUser = (signIn as any)?.userData || (signUp as any)?.userData
-                const userRole = currentUser?.unsafeMetadata?.role as string | undefined
-                const hasPhoneNumber = currentUser?.unsafeMetadata?.phoneNumber
-
-                if (userRole === 'trainer') {
-                    router.replace('/(trainer)')
-                } else if (userRole === 'client') {
-                    router.replace('/(client)')
-                } else if (!hasPhoneNumber) {
-                    // New Google OAuth user without phone number
-                    router.replace('/(auth)/phone-number')
-                } else {
-                    router.replace('/(auth)/role-selection')
-                }
+                // Navigate to the main index which handles role-based routing
+                // The index.tsx will check user role and redirect appropriately
+                router.replace('/')
             } else {
                 console.log('Missing requirements detected')
                 if (signIn) {
