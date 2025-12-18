@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
-import Animated, { FadeIn, FadeInRight } from 'react-native-reanimated';
 
 export default function SessionHistoryScreen() {
     const { user } = useUser();
@@ -92,8 +91,7 @@ export default function SessionHistoryScreen() {
             >
                 <View className="px-6 pt-4">
                     {pastSessions.length === 0 ? (
-                        <Animated.View
-                            entering={FadeIn.delay(200)}
+                        <View
                             className="py-16 items-center rounded-2xl"
                             style={{ backgroundColor: colors.surface, ...shadows.medium }}
                         >
@@ -109,12 +107,11 @@ export default function SessionHistoryScreen() {
                             <Text className="text-sm mt-2 text-center px-8" style={{ color: colors.textTertiary }}>
                                 Your completed sessions will appear here
                             </Text>
-                        </Animated.View>
+                        </View>
                     ) : (
                         pastSessions.map((session: any, index: number) => (
-                            <Animated.View
+                            <View
                                 key={session._id}
-                                entering={FadeInRight.delay(100 + index * 50)}
                                 className="rounded-2xl p-4 mb-3 overflow-hidden"
                                 style={{
                                     backgroundColor: colors.surface,
@@ -186,7 +183,7 @@ export default function SessionHistoryScreen() {
                                         </View>
                                     </View>
                                 </View>
-                            </Animated.View>
+                            </View>
                         ))
                     )}
                 </View>

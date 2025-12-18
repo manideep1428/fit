@@ -221,6 +221,18 @@ export default function FindTrainersScreen() {
           </View>
 
           <View className="gap-3 mb-4">
+            {selectedTrainer.phoneNumber && (
+              <View
+                className="flex-row items-center p-4 rounded-xl"
+                style={{ backgroundColor: colors.background }}
+              >
+                <Ionicons name="call" size={20} color={colors.primary} />
+                <Text className="ml-3 flex-1 font-medium" style={{ color: colors.text }}>
+                  {selectedTrainer.phoneNumber}
+                </Text>
+              </View>
+            )}
+
             {selectedTrainer.email && (
               <View
                 className="flex-row items-center p-4 rounded-xl"
@@ -229,30 +241,6 @@ export default function FindTrainersScreen() {
                 <Ionicons name="mail" size={20} color={colors.primary} />
                 <Text className="ml-3 flex-1" style={{ color: colors.text }}>
                   {selectedTrainer.email}
-                </Text>
-              </View>
-            )}
-
-            {selectedTrainer.phoneNumber && (
-              <View
-                className="flex-row items-center p-4 rounded-xl"
-                style={{ backgroundColor: colors.background }}
-              >
-                <Ionicons name="call" size={20} color={colors.primary} />
-                <Text className="ml-3 flex-1" style={{ color: colors.text }}>
-                  {selectedTrainer.phoneNumber}
-                </Text>
-              </View>
-            )}
-
-            {selectedTrainer.username && (
-              <View
-                className="flex-row items-center p-4 rounded-xl"
-                style={{ backgroundColor: colors.background }}
-              >
-                <Ionicons name="at" size={20} color={colors.primary} />
-                <Text className="ml-3 flex-1" style={{ color: colors.text }}>
-                  @{selectedTrainer.username}
                 </Text>
               </View>
             )}

@@ -8,7 +8,6 @@ import {
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery } from 'convex/react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows, BorderRadius } from '@/constants/colors';
@@ -67,14 +66,14 @@ export default function ProgressScreen() {
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="px-5 pb-6" style={{ paddingTop: insets.top + 12 }}>
-          <Animated.View entering={FadeInDown.duration(400).delay(100)}>
+          <View>
             <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
               My Progress
             </Text>
             <Text className="text-base" style={{ color: colors.textSecondary }}>
               Track your fitness journey
             </Text>
-          </Animated.View>
+          </View>
         </View>
 
         {/* Stats Overview */}
@@ -144,11 +143,11 @@ export default function ProgressScreen() {
 
         {/* Active Goals */}
         <View className="px-5 mb-6">
-          <Animated.View entering={FadeIn.delay(350)} className="flex-row items-center justify-between mb-4">
+          <View className="flex-row items-center justify-between mb-4">
             <Text className="text-xl font-bold" style={{ color: colors.text }}>
               Active Goals
             </Text>
-          </Animated.View>
+          </View>
 
           {activeGoals.length === 0 ? (
             <AnimatedCard
@@ -276,11 +275,11 @@ export default function ProgressScreen() {
         {/* Recent Progress Updates */}
         {progressLogs.length > 0 && (
           <View className="px-5 mb-6">
-            <Animated.View entering={FadeIn.delay(500)}>
+            <View>
               <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>
                 Recent Updates
               </Text>
-            </Animated.View>
+            </View>
             <View className="gap-3">
               {progressLogs.slice(0, 5).map((log: any) => {
                 const goal = goals.find((g: any) => g._id === log.goalId);

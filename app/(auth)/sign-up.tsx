@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useSignUp } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import GoogleOAuthButton from '@/components/GoogleOAuthButton';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { showToast } from '@/utils/toast';
@@ -35,6 +34,8 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const handleSignUp = async () => {
     if (!isLoaded || !signUp) return;
@@ -76,6 +77,14 @@ export default function SignUpScreen() {
     }
   };
 
+  // Cooldown timer effect
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
   const handleVerifyEmail = async () => {
     if (!isLoaded || !signUp) return;
 
@@ -96,15 +105,30 @@ export default function SignUpScreen() {
         // Give Clerk time to fully initialize the session
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Navigate to main index which handles role-based routing
-        // New users will be redirected to role-selection from there
-        router.replace('/');
+        // Navigate to role selection for new users
+        router.replace('/(auth)/role-selection');
       }
     } catch (err: any) {
       console.error('Verification error:', err);
       showToast.error(err.errors?.[0]?.message || 'Failed to verify email');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!isLoaded || !signUp || resendCooldown > 0) return;
+
+    setResending(true);
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      showToast.success('Verification code sent!');
+      setResendCooldown(60); // 60 second cooldown
+    } catch (err: any) {
+      console.error('Resend error:', err);
+      showToast.error(err.errors?.[0]?.message || 'Failed to resend code');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -186,6 +210,28 @@ export default function SignUpScreen() {
               </Text>
             )}
           </TouchableOpacity>
+
+          {/* Resend Code */}
+          <View className="flex-row justify-center items-center py-3">
+            <Text className="text-sm" style={{ color: colors.textSecondary }}>
+              Didn't receive the code?{' '}
+            </Text>
+            {resendCooldown > 0 ? (
+              <Text className="text-sm font-semibold" style={{ color: colors.textTertiary }}>
+                Resend in {resendCooldown}s
+              </Text>
+            ) : (
+              <TouchableOpacity onPress={handleResendCode} disabled={resending}>
+                {resending ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
+                    Resend Code
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
 
           <TouchableOpacity
             onPress={() => setPendingVerification(false)}
@@ -389,7 +435,7 @@ export default function SignUpScreen() {
           <TouchableOpacity
             onPress={handleSignUp}
             disabled={loading}
-            className="py-4 rounded-xl mb-4"
+            className="py-4 rounded-xl mb-6"
             style={{ backgroundColor: colors.primary, ...shadows.medium }}
           >
             {loading ? (
@@ -401,26 +447,8 @@ export default function SignUpScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Divider */}
-          <View className="flex-row items-center my-6">
-            <View
-              className="flex-1 h-px"
-              style={{ backgroundColor: colors.border }}
-            />
-            <Text className="mx-4 text-sm" style={{ color: colors.textSecondary }}>
-              Or continue with
-            </Text>
-            <View
-              className="flex-1 h-px"
-              style={{ backgroundColor: colors.border }}
-            />
-          </View>
-
-          {/* Google Sign Up */}
-          <GoogleOAuthButton mode="signup" />
-
           {/* Sign In Link */}
-          <View className="flex-row justify-center mt-6">
+          <View className="flex-row justify-center">
             <Text className="text-base" style={{ color: colors.textSecondary }}>
               Already have an account?{' '}
             </Text>

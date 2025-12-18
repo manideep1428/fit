@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery } from 'convex/react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Spacing, BorderRadius, Shadows } from '@/constants/colors';
@@ -55,8 +54,7 @@ export default function TrainerHomeScreen() {
 
       {/* Header */}
       <View className="px-5 pb-6" style={{ paddingTop: insets.top + 12 }}>
-        <Animated.View
-          entering={FadeInDown.duration(400).delay(100)}
+        <View
           className="flex-row justify-between items-center mb-6"
         >
           <View className="flex-row items-center">
@@ -91,7 +89,7 @@ export default function TrainerHomeScreen() {
           >
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
           </TouchableOpacity>
-        </Animated.View>
+        </View>
 
         {/* Stats Card with Gradient */}
         {bookings && bookings.length > 0 && (
@@ -104,7 +102,7 @@ export default function TrainerHomeScreen() {
             intensity="heavy"
             borderRadius="xlarge"
           >
-            <Animated.View entering={FadeIn.delay(200)}>
+            <View>
               <Text className="text-sm font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.9)' }}>
                 Your Sessions
               </Text>
@@ -131,12 +129,12 @@ export default function TrainerHomeScreen() {
                   <Text className="text-sm font-semibold text-white">View All</Text>
                 </TouchableOpacity>
               </View>
-            </Animated.View>
+            </View>
           </GlassCard>
         )}
 
         {/* Quick Actions */}
-        <Animated.View entering={FadeIn.delay(300)} className="mb-6">
+        <View className="mb-6">
           <AnimatedCard
             delay={350}
             elevation="medium"
@@ -157,12 +155,11 @@ export default function TrainerHomeScreen() {
               <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
             </View>
           </AnimatedCard>
-        </Animated.View>
+        </View>
 
         {/* Upcoming Sessions */}
         <View>
-          <Animated.View
-            entering={FadeIn.delay(400)}
+          <View
             className="flex-row justify-between items-center mb-4"
           >
             <Text className="text-lg font-bold" style={{ color: colors.text }}>
@@ -173,7 +170,7 @@ export default function TrainerHomeScreen() {
                 <Text className="text-sm font-semibold" style={{ color: colors.primary }}>View All</Text>
               </TouchableOpacity>
             )}
-          </Animated.View>
+          </View>
 
           {!bookings ? (
             <View className="items-center py-8">

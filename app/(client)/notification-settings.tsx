@@ -9,7 +9,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows, BorderRadius } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { AnimatedButton } from '@/components/AnimatedButton';
 
 export default function NotificationSettingsScreen() {
@@ -140,7 +139,7 @@ export default function NotificationSettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Session Reminders */}
-        <Animated.View entering={FadeIn.delay(100)}>
+        <View>
           <Text className="text-xs font-semibold uppercase tracking-wide mb-2 mt-4" style={{ color: colors.textTertiary }}>
             Reminders
           </Text>
@@ -190,10 +189,10 @@ export default function NotificationSettingsScreen() {
               </View>
             )}
           </View>
-        </Animated.View>
+        </View>
 
         {/* Activity Notifications */}
-        <Animated.View entering={FadeIn.delay(200)}>
+        <View>
           <Text className="text-xs font-semibold uppercase tracking-wide mb-2 mt-6" style={{ color: colors.textTertiary }}>
             Activity
           </Text>
@@ -231,7 +230,7 @@ export default function NotificationSettingsScreen() {
               isLast
             />
           </View>
-        </Animated.View>
+        </View>
         {/* Save Button */}
         <TouchableOpacity
           className="mt-8 py-4 rounded-2xl items-center"

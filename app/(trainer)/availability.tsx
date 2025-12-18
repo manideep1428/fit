@@ -9,7 +9,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { AnimatedCard } from '@/components/AnimatedCard';
 
 const DAYS = [
     'Sunday',
@@ -188,12 +187,10 @@ export default function AvailabilityScreen() {
 
             <ScrollView className="flex-1 px-4 py-4">
                 {schedule.map((day, index) => (
-                    <AnimatedCard
+                    <View
                         key={index}
-                        delay={index * 50}
-                        style={{ marginBottom: 16 }}
-                        elevation="small"
-                        borderRadius="large"
+                        className="rounded-2xl p-5 mb-4"
+                        style={{ backgroundColor: colors.surface, ...shadows.small }}
                     >
                         <View className="flex-row items-center justify-between mb-2">
                             <Text className="text-lg font-semibold" style={{ color: colors.text }}>
@@ -234,7 +231,7 @@ export default function AvailabilityScreen() {
                                 </TouchableOpacity>
                             </View>
                         )}
-                    </AnimatedCard>
+                    </View>
                 ))}
 
                 <View className="h-10" />

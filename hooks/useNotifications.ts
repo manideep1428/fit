@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useUser } from '@clerk/clerk-expo';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import * as Notifications from 'expo-notifications';
 import { registerForPushNotificationsAsync } from '@/utils/notifications';
@@ -11,8 +11,15 @@ export function useNotifications() {
   const notificationListener = useRef<any>(null);
   const responseListener = useRef<any>(null);
 
+  // Check if user exists in Convex before trying to save push token
+  const convexUser = useQuery(
+    api.users.getUserByClerkId,
+    user?.id ? { clerkId: user.id } : 'skip'
+  );
+
   useEffect(() => {
-    if (!user?.id) return;
+    // Only register for push notifications if user exists in Convex
+    if (!user?.id || !convexUser) return;
 
     // Register for push notifications
     registerForPushNotificationsAsync().then((token) => {
@@ -20,7 +27,10 @@ export function useNotifications() {
         savePushToken({
           clerkId: user.id,
           expoPushToken: token,
-        }).catch(console.error);
+        }).catch((err) => {
+          // Silently handle errors - user might not exist yet
+          console.log('Push token save skipped:', err.message);
+        });
       }
     });
 
@@ -45,5 +55,5 @@ export function useNotifications() {
         responseListener.current.remove();
       }
     };
-  }, [user?.id]);
+  }, [user?.id, convexUser]);
 }

@@ -47,6 +47,13 @@ export default function ProfileScreen() {
   const [bio, setBio] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [notifications, setNotifications] = useState(true);
+  
+  // Change password states
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (userData) {
@@ -94,6 +101,44 @@ export default function ProfileScreen() {
         },
       ]
     );
+  };
+
+  const handleChangePassword = async () => {
+    if (!user) return;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all password fields');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      Alert.alert('Error', 'New password must be at least 8 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await user.updatePassword({
+        currentPassword,
+        newPassword,
+      });
+      
+      Alert.alert('Success', 'Password changed successfully');
+      setShowChangePassword(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      Alert.alert('Error', error.errors?.[0]?.message || 'Failed to change password. Please check your current password.');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   if (!user) {
@@ -337,6 +382,53 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {/* Integrations Section */}
+          <View className="mb-6">
+            <Text className="text-xs font-semibold mb-3 uppercase" style={{ color: colors.textTertiary }}>
+              Integrations
+            </Text>
+
+            {/* Google Calendar */}
+            <TouchableOpacity
+              onPress={() => {
+                if (!userData?.googleAccessToken) {
+                  Alert.alert(
+                    'Connect Google Calendar',
+                    'To sync your sessions with Google Calendar, please sign out and sign in with Google.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Sign Out', onPress: handleLogout },
+                    ]
+                  );
+                }
+              }}
+              className="rounded-2xl p-5 mb-3 flex-row items-center justify-between"
+              style={{ backgroundColor: colors.surface, ...shadows.small }}
+            >
+              <View className="flex-row items-center flex-1">
+                <View
+                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                  style={{ backgroundColor: colors.background }}
+                >
+                  <Ionicons name="calendar-outline" size={20} color={colors.text} />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-semibold" style={{ color: colors.text }}>
+                    Google Calendar
+                  </Text>
+                  <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+                    {userData?.googleAccessToken ? 'Connected' : 'Not connected'}
+                  </Text>
+                </View>
+              </View>
+              {userData?.googleAccessToken ? (
+                <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
+              ) : (
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              )}
+            </TouchableOpacity>
+          </View>
+
           {/* Account Section */}
           <View className="mb-6">
             <Text className="text-xs font-semibold mb-3 uppercase" style={{ color: colors.textTertiary }}>
@@ -345,6 +437,7 @@ export default function ProfileScreen() {
 
             {/* Change Password */}
             <TouchableOpacity
+              onPress={() => setShowChangePassword(!showChangePassword)}
               className="rounded-2xl p-5 mb-3 flex-row items-center justify-between"
               style={{ backgroundColor: colors.surface, ...shadows.small }}
             >
@@ -361,6 +454,72 @@ export default function ProfileScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
             </TouchableOpacity>
+
+            {/* Change Password Form */}
+            {showChangePassword && (
+              <View
+                className="rounded-2xl p-5 mb-3"
+                style={{ backgroundColor: colors.surface, ...shadows.medium }}
+              >
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
+                    Current Password
+                  </Text>
+                  <TextInput
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Enter current password"
+                    placeholderTextColor={colors.textTertiary}
+                    secureTextEntry
+                    className="rounded-xl px-4 py-3"
+                    style={{ backgroundColor: colors.background, color: colors.text }}
+                  />
+                </View>
+
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
+                    New Password
+                  </Text>
+                  <TextInput
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="At least 8 characters"
+                    placeholderTextColor={colors.textTertiary}
+                    secureTextEntry
+                    className="rounded-xl px-4 py-3"
+                    style={{ backgroundColor: colors.background, color: colors.text }}
+                  />
+                </View>
+
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
+                    Confirm New Password
+                  </Text>
+                  <TextInput
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm new password"
+                    placeholderTextColor={colors.textTertiary}
+                    secureTextEntry
+                    className="rounded-xl px-4 py-3"
+                    style={{ backgroundColor: colors.background, color: colors.text }}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleChangePassword}
+                  disabled={changingPassword}
+                  className="rounded-xl py-3 items-center"
+                  style={{ backgroundColor: colors.primary }}
+                >
+                  {changingPassword ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text className="text-white font-bold">Update Password</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Logout */}
             <TouchableOpacity

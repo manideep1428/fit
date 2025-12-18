@@ -14,7 +14,6 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows, BorderRadius } from '@/constants/colors';
 import { useRouter } from 'expo-router';
@@ -51,6 +50,13 @@ export default function ProfileScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [bio, setBio] = useState('');
   const [notifications, setNotifications] = useState(true);
+  
+  // Change password states
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (userData) {
@@ -96,6 +102,44 @@ export default function ProfileScreen() {
         },
       ]
     );
+  };
+
+  const handleChangePassword = async () => {
+    if (!user) return;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all password fields');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      Alert.alert('Error', 'New password must be at least 8 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await user.updatePassword({
+        currentPassword,
+        newPassword,
+      });
+      
+      Alert.alert('Success', 'Password changed successfully');
+      setShowChangePassword(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      Alert.alert('Error', error.errors?.[0]?.message || 'Failed to change password. Please check your current password.');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const handlePickImage = async () => {
@@ -207,14 +251,14 @@ export default function ProfileScreen() {
           colors={isDark ? ['#1F1F28', colors.background] : ['#F8F6F2', colors.background]}
           style={{ paddingTop: 56, paddingBottom: 24 }}
         >
-          <Animated.View entering={FadeInDown.duration(400).delay(100)} className="px-6 mb-6">
+          <View className="px-6 mb-6">
             <Text className="text-3xl font-bold" style={{ color: colors.text }}>
               Profile
             </Text>
-          </Animated.View>
+          </View>
 
           {/* Profile Image */}
-          <Animated.View entering={FadeIn.delay(200)} className="items-center">
+          <View className="items-center">
             <View className="relative">
               {/* Outer glow ring */}
               <View
@@ -267,7 +311,7 @@ export default function ProfileScreen() {
             <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
               {user.emailAddresses[0]?.emailAddress}
             </Text>
-          </Animated.View>
+          </View>
         </LinearGradient>
 
         <View className="px-6 pt-2">
@@ -443,6 +487,38 @@ export default function ProfileScreen() {
             </AnimatedCard>
           </View>
 
+          {/* Integrations Section */}
+          <View className="mb-6">
+            <Text className="text-xs font-bold mb-3 uppercase tracking-widest" style={{ color: colors.textTertiary }}>
+              Integrations
+            </Text>
+
+            <MenuItem
+              icon="calendar-outline"
+              title={userData?.googleAccessToken ? "Google Calendar Connected" : "Connect Google Calendar"}
+              onPress={() => {
+                if (!userData?.googleAccessToken) {
+                  Alert.alert(
+                    'Connect Google Calendar',
+                    'To sync your sessions with Google Calendar, please sign out and sign in with Google.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Sign Out', onPress: handleLogout },
+                    ]
+                  );
+                }
+              }}
+              rightElement={
+                userData?.googleAccessToken ? (
+                  <View className="flex-row items-center">
+                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                  </View>
+                ) : undefined
+              }
+              delay={425}
+            />
+          </View>
+
           {/* Account Section */}
           <View className="mb-6">
             <Text className="text-xs font-bold mb-3 uppercase tracking-widest" style={{ color: colors.textTertiary }}>
@@ -452,8 +528,94 @@ export default function ProfileScreen() {
             <MenuItem
               icon="lock-closed-outline"
               title="Change Password"
+              onPress={() => setShowChangePassword(!showChangePassword)}
               delay={450}
             />
+
+            {/* Change Password Form */}
+            {showChangePassword && (
+              <AnimatedCard
+                delay={0}
+                style={{ marginBottom: 10 }}
+                elevation="medium"
+                borderRadius="xlarge"
+              >
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
+                    Current Password
+                  </Text>
+                  <TextInput
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Enter current password"
+                    placeholderTextColor={colors.textTertiary}
+                    secureTextEntry
+                    className="px-4 py-3.5"
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      borderRadius: BorderRadius.medium,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      fontSize: 15,
+                    }}
+                  />
+                </View>
+
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
+                    New Password
+                  </Text>
+                  <TextInput
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="At least 8 characters"
+                    placeholderTextColor={colors.textTertiary}
+                    secureTextEntry
+                    className="px-4 py-3.5"
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      borderRadius: BorderRadius.medium,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      fontSize: 15,
+                    }}
+                  />
+                </View>
+
+                <View className="mb-5">
+                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
+                    Confirm New Password
+                  </Text>
+                  <TextInput
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm new password"
+                    placeholderTextColor={colors.textTertiary}
+                    secureTextEntry
+                    className="px-4 py-3.5"
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      borderRadius: BorderRadius.medium,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      fontSize: 15,
+                    }}
+                  />
+                </View>
+
+                <AnimatedButton
+                  onPress={handleChangePassword}
+                  disabled={changingPassword}
+                  loading={changingPassword}
+                  fullWidth
+                >
+                  Update Password
+                </AnimatedButton>
+              </AnimatedCard>
+            )}
 
             <MenuItem
               icon="log-out-outline"

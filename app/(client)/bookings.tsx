@@ -4,7 +4,6 @@ import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useQuery } from 'convex/react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
@@ -94,8 +93,7 @@ export default function BookingsScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       {/* Header */}
-      <Animated.View
-        entering={FadeInDown.duration(400)}
+      <View
         className="px-6 pb-5"
         style={{ backgroundColor: colors.surface, paddingTop: insets.top + 12 }}
       >
@@ -127,7 +125,7 @@ export default function BookingsScreen() {
             )}
           </TouchableOpacity>
         </View>
-      </Animated.View>
+      </View>
 
       {/* Tab Header */}
       <View
@@ -181,7 +179,7 @@ export default function BookingsScreen() {
         <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
           {/* My Trainers Section */}
           <View className="px-6 pt-2">
-            <Animated.View entering={FadeIn.delay(200)} className="flex-row items-center mb-4">
+            <View className="flex-row items-center mb-4">
               <View
                 className="w-8 h-8 rounded-lg items-center justify-center mr-3"
                 style={{ backgroundColor: `${colors.primary}15` }}
@@ -191,7 +189,7 @@ export default function BookingsScreen() {
               <Text className="text-lg font-bold" style={{ color: colors.text }}>
                 My Trainers
               </Text>
-            </Animated.View>
+            </View>
 
             {clientTrainers.length === 0 ? (
               <View
@@ -205,7 +203,7 @@ export default function BookingsScreen() {
               </View>
             ) : (
               clientTrainers.map((trainer: any, index: number) => (
-                <Animated.View key={trainer._id} entering={FadeInRight.delay(250 + index * 50)}>
+                <View key={trainer._id}>
                   <TouchableOpacity
                     className="rounded-2xl p-4 mb-3 flex-row items-center"
                     style={{ backgroundColor: colors.surface, ...shadows.small }}
@@ -234,7 +232,7 @@ export default function BookingsScreen() {
                       <Text className="text-white text-xs font-semibold">Book</Text>
                     </View>
                   </TouchableOpacity>
-                </Animated.View>
+                </View>
               ))
             )}
           </View>
@@ -252,7 +250,7 @@ export default function BookingsScreen() {
 
           {/* Upcoming Bookings */}
           <View className="px-6">
-            <Animated.View entering={FadeIn.delay(350)} className="flex-row items-center mb-4">
+            <View className="flex-row items-center mb-4">
               <View
                 className="w-8 h-8 rounded-lg items-center justify-center mr-3"
                 style={{ backgroundColor: `${colors.success}15` }}
@@ -267,7 +265,7 @@ export default function BookingsScreen() {
                   <Text className="text-xs font-bold" style={{ color: colors.primary }}>{currentBookings.length}</Text>
                 </View>
               )}
-            </Animated.View>
+            </View>
 
             {currentBookings.length === 0 ? (
               <View
@@ -281,9 +279,8 @@ export default function BookingsScreen() {
               </View>
             ) : (
               currentBookings.map((booking: any, index: number) => (
-                <Animated.View
+                <View
                   key={booking._id}
-                  entering={FadeInRight.delay(400 + index * 50)}
                   className="rounded-2xl p-4 mb-3 overflow-hidden"
                   style={{ backgroundColor: colors.surface, ...shadows.small }}
                 >
@@ -318,7 +315,7 @@ export default function BookingsScreen() {
                       </Text>
                     </View>
                   </View>
-                </Animated.View>
+                </View>
               ))
             )}
           </View>
@@ -326,7 +323,7 @@ export default function BookingsScreen() {
           {/* Past Sessions */}
           {pastBookings.length > 0 && (
             <View className="px-6 mt-6">
-              <Animated.View entering={FadeIn.delay(500)} className="flex-row items-center mb-4">
+              <View className="flex-row items-center mb-4">
                 <View
                   className="w-8 h-8 rounded-lg items-center justify-center mr-3"
                   style={{ backgroundColor: colors.surfaceSecondary }}
@@ -336,12 +333,11 @@ export default function BookingsScreen() {
                 <Text className="text-lg font-bold" style={{ color: colors.text }}>
                   Past Sessions
                 </Text>
-              </Animated.View>
+              </View>
 
               {pastBookings.slice(0, 3).map((booking: any, index: number) => (
-                <Animated.View
+                <View
                   key={booking._id}
-                  entering={FadeInRight.delay(550 + index * 50)}
                   className="rounded-2xl p-4 mb-3"
                   style={{ backgroundColor: colors.surface, opacity: 0.7, ...shadows.small }}
                 >
@@ -358,7 +354,7 @@ export default function BookingsScreen() {
                       Completed
                     </Text>
                   </View>
-                </Animated.View>
+                </View>
               ))}
             </View>
           )}

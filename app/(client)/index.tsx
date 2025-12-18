@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useQuery } from 'convex/react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows, BorderRadius } from '@/constants/colors';
@@ -68,8 +67,7 @@ export default function ClientHomeScreen() {
       <View className="px-5 pb-6" style={{ paddingTop: insets.top + 12 }}>
 
         {/* Header */}
-        <Animated.View
-          entering={FadeInDown.duration(400).delay(100)}
+        <View
           className="flex-row justify-between items-center mb-6"
         >
           <View>
@@ -102,7 +100,7 @@ export default function ClientHomeScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </Animated.View>
+        </View>
 
         {/* Fitness Stats Card */}
         {bookings && bookings.length > 0 && (
@@ -151,12 +149,11 @@ export default function ClientHomeScreen() {
         {/* My Goals */}
         {goals && goals.length > 0 && (
           <View className="mb-6">
-            <Animated.View
-              entering={FadeIn.delay(250)}
+            <View
               className="flex-row justify-between items-center mb-4"
             >
               <Text className="text-lg font-bold" style={{ color: colors.text }}>My Goals</Text>
-            </Animated.View>
+            </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View className="flex-row gap-4">
@@ -213,8 +210,7 @@ export default function ClientHomeScreen() {
 
         {/* My Trainers */}
         <View>
-          <Animated.View
-            entering={FadeIn.delay(350)}
+          <View
             className="flex-row justify-between items-center mb-4"
           >
             <Text className="text-lg font-bold" style={{ color: colors.text }}>My Trainers</Text>
@@ -223,7 +219,7 @@ export default function ClientHomeScreen() {
                 <Text className="text-sm font-semibold" style={{ color: colors.primary }}>See all</Text>
               </TouchableOpacity>
             )}
-          </Animated.View>
+          </View>
 
           {!clientTrainers ? (
             <View className="items-center py-8">

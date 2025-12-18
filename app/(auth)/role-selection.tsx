@@ -65,7 +65,7 @@ export default function RoleSelectionScreen() {
 
     setLoading(true);
     try {
-      // Sync user data to Convex first
+      // Sync user data to Convex
       const phoneNumber =
         (user.unsafeMetadata?.phoneNumber as string | undefined) ||
         user.primaryPhoneNumber?.phoneNumber;

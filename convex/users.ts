@@ -296,14 +296,18 @@ export const savePushToken = mutation({
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
+    // If user doesn't exist yet, silently return - they'll get the token saved when they complete registration
     if (!user) {
-      throw new Error("User not found");
+      console.log("User not found for push token, will be saved later");
+      return null;
     }
 
     await ctx.db.patch(user._id, {
       expoPushToken: args.expoPushToken,
       updatedAt: Date.now(),
     });
+    
+    return user._id;
   },
 });
 

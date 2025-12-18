@@ -14,7 +14,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useSignIn } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import GoogleOAuthButton from '@/components/GoogleOAuthButton';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { showToast } from '@/utils/toast';
@@ -187,7 +186,7 @@ export default function SignInScreen() {
           <TouchableOpacity
             onPress={handleSignIn}
             disabled={loading}
-            className="py-4 rounded-xl mb-4"
+            className="py-4 rounded-xl mb-6"
             style={{ backgroundColor: colors.primary, ...shadows.medium }}
           >
             {loading ? (
@@ -199,26 +198,8 @@ export default function SignInScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Divider */}
-          <View className="flex-row items-center my-6">
-            <View
-              className="flex-1 h-px"
-              style={{ backgroundColor: colors.border }}
-            />
-            <Text className="mx-4 text-sm" style={{ color: colors.textSecondary }}>
-              Or continue with
-            </Text>
-            <View
-              className="flex-1 h-px"
-              style={{ backgroundColor: colors.border }}
-            />
-          </View>
-
-          {/* Google Sign In */}
-          <GoogleOAuthButton mode="signin" />
-
           {/* Sign Up Link */}
-          <View className="flex-row justify-center mt-6">
+          <View className="flex-row justify-center">
             <Text className="text-base" style={{ color: colors.textSecondary }}>
               Don't have an account?{' '}
             </Text>
