@@ -4,11 +4,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
+import { showToast } from '@/utils/toast';
 
 export default function RoleSelectionScreen() {
   const router = useRouter();
@@ -17,67 +18,121 @@ export default function RoleSelectionScreen() {
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
-  const [selectedRole, setSelectedRole] = useState<'trainer' | 'client' | null>(null);
+  const [selectedRole, setSelectedRole] = useState<'trainer' | 'client' | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
+  const [checkingRole, setCheckingRole] = useState(true);
+
   const createUser = useMutation(api.users.createUser);
+
+  // Check if user already exists in Convex with a role
+  const convexUser = useQuery(
+    api.users.getUserByClerkId,
+    user?.id ? { clerkId: user.id } : 'skip'
+  );
 
   // Check if user already has a role and redirect accordingly
   useEffect(() => {
     if (!isLoaded || !user) return;
 
-    const existingRole = user.unsafeMetadata?.role as string | undefined;
+    // Wait for Convex query
+    if (convexUser === undefined) return;
+
+    setCheckingRole(false);
+
+    // Check Convex first, then Clerk metadata
+    const existingRole =
+      convexUser?.role || (user.unsafeMetadata?.role as string | undefined);
 
     if (existingRole === 'trainer') {
-      router.replace('/(trainer)');
+      const hasUsername = convexUser?.username || user.unsafeMetadata?.username;
+      const hasSpecialty =
+        convexUser?.specialty || user.unsafeMetadata?.specialty;
+
+      if (!hasUsername || !hasSpecialty) {
+        router.replace('/(auth)/trainer-setup');
+      } else {
+        router.replace('/(trainer)');
+      }
     } else if (existingRole === 'client') {
       router.replace('/(client)');
     }
-  }, [isLoaded, user, router]);
+  }, [isLoaded, user, convexUser, router]);
 
   const handleRoleSelection = async (role: 'trainer' | 'client') => {
     if (!user) return;
 
     setLoading(true);
     try {
-      // Update user's metadata with selected role
-      await user.update({
-        unsafeMetadata: {
-          role: role,
-        },
-      });
-
-      // Sync user data to Convex
-      const phoneNumber = user.unsafeMetadata?.phoneNumber as string | undefined || user.primaryPhoneNumber?.phoneNumber;
+      // Sync user data to Convex first
+      const phoneNumber =
+        (user.unsafeMetadata?.phoneNumber as string | undefined) ||
+        user.primaryPhoneNumber?.phoneNumber;
 
       await createUser({
         clerkId: user.id,
         email: user.primaryEmailAddress?.emailAddress || '',
-        fullName: user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        fullName:
+          user.fullName ||
+          `${user.firstName || ''} ${user.lastName || ''}`.trim(),
         phoneNumber: phoneNumber,
         role: role,
       });
 
+      // Update user's metadata with selected role
+      await user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          role: role,
+        },
+      });
+
+      showToast.success('Role saved successfully!');
+
       // Navigate to appropriate screen based on role
       if (role === 'trainer') {
-        router.replace('/(trainer)');
+        router.replace('/(auth)/trainer-setup');
       } else {
         router.replace('/(client)');
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to save role');
+      console.error('Error saving role:', err);
+      showToast.error(err.message || 'Failed to save role');
       setLoading(false);
     }
   };
 
+  // Show loading while checking existing role
+  if (checkingRole) {
+    return (
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: colors.background }}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
-    <View className="flex-1 px-6 justify-center" style={{ backgroundColor: colors.background, paddingTop: insets.top }}>
+    <View
+      className="flex-1 px-6 justify-center"
+      style={{ backgroundColor: colors.background, paddingTop: insets.top }}
+    >
       <StatusBar style="auto" />
 
       <View className="items-center mb-12">
-        <Text className="text-3xl font-bold mb-3" style={{ color: colors.text }}>
+        <Text
+          className="text-3xl font-bold mb-3"
+          style={{ color: colors.text }}
+        >
           Choose Your Role
         </Text>
-        <Text className="text-base text-center px-4" style={{ color: colors.textSecondary }}>
+        <Text
+          className="text-base text-center px-4"
+          style={{ color: colors.textSecondary }}
+        >
           Select how you want to use the app
         </Text>
       </View>
@@ -89,8 +144,10 @@ export default function RoleSelectionScreen() {
           disabled={loading}
           className="p-6 rounded-2xl border-2"
           style={{
-            backgroundColor: selectedRole === 'trainer' ? colors.primary : colors.surface,
-            borderColor: selectedRole === 'trainer' ? colors.primary : colors.border,
+            backgroundColor:
+              selectedRole === 'trainer' ? colors.primary : colors.surface,
+            borderColor:
+              selectedRole === 'trainer' ? colors.primary : colors.border,
             ...shadows.medium,
           }}
         >
@@ -99,7 +156,10 @@ export default function RoleSelectionScreen() {
               <View
                 className="w-16 h-16 rounded-full items-center justify-center mr-4"
                 style={{
-                  backgroundColor: selectedRole === 'trainer' ? 'rgba(255,255,255,0.2)' : `${colors.primary}15`,
+                  backgroundColor:
+                    selectedRole === 'trainer'
+                      ? 'rgba(255,255,255,0.2)'
+                      : `${colors.primary}15`,
                 }}
               >
                 <Ionicons
@@ -111,13 +171,20 @@ export default function RoleSelectionScreen() {
               <View className="flex-1">
                 <Text
                   className="text-xl font-bold mb-1"
-                  style={{ color: selectedRole === 'trainer' ? '#FFF' : colors.text }}
+                  style={{
+                    color: selectedRole === 'trainer' ? '#FFF' : colors.text,
+                  }}
                 >
                   I'm a Trainer
                 </Text>
                 <Text
                   className="text-sm"
-                  style={{ color: selectedRole === 'trainer' ? 'rgba(255,255,255,0.8)' : colors.textSecondary }}
+                  style={{
+                    color:
+                      selectedRole === 'trainer'
+                        ? 'rgba(255,255,255,0.8)'
+                        : colors.textSecondary,
+                  }}
                 >
                   Manage clients and create workout plans
                 </Text>
@@ -135,8 +202,10 @@ export default function RoleSelectionScreen() {
           disabled={loading}
           className="p-6 rounded-2xl border-2"
           style={{
-            backgroundColor: selectedRole === 'client' ? colors.primary : colors.surface,
-            borderColor: selectedRole === 'client' ? colors.primary : colors.border,
+            backgroundColor:
+              selectedRole === 'client' ? colors.primary : colors.surface,
+            borderColor:
+              selectedRole === 'client' ? colors.primary : colors.border,
             ...shadows.medium,
           }}
         >
@@ -145,7 +214,10 @@ export default function RoleSelectionScreen() {
               <View
                 className="w-16 h-16 rounded-full items-center justify-center mr-4"
                 style={{
-                  backgroundColor: selectedRole === 'client' ? 'rgba(255,255,255,0.2)' : `${colors.primary}15`,
+                  backgroundColor:
+                    selectedRole === 'client'
+                      ? 'rgba(255,255,255,0.2)'
+                      : `${colors.primary}15`,
                 }}
               >
                 <Ionicons
@@ -157,13 +229,20 @@ export default function RoleSelectionScreen() {
               <View className="flex-1">
                 <Text
                   className="text-xl font-bold mb-1"
-                  style={{ color: selectedRole === 'client' ? '#FFF' : colors.text }}
+                  style={{
+                    color: selectedRole === 'client' ? '#FFF' : colors.text,
+                  }}
                 >
                   I'm a Client
                 </Text>
                 <Text
                   className="text-sm"
-                  style={{ color: selectedRole === 'client' ? 'rgba(255,255,255,0.8)' : colors.textSecondary }}
+                  style={{
+                    color:
+                      selectedRole === 'client'
+                        ? 'rgba(255,255,255,0.8)'
+                        : colors.textSecondary,
+                  }}
                 >
                   Track workouts and follow training plans
                 </Text>
@@ -182,7 +261,8 @@ export default function RoleSelectionScreen() {
         disabled={!selectedRole || loading}
         className="py-4 rounded-xl"
         style={{
-          backgroundColor: selectedRole && !loading ? colors.primary : colors.border,
+          backgroundColor:
+            selectedRole && !loading ? colors.primary : colors.border,
           ...shadows.medium,
         }}
       >

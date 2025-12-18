@@ -31,24 +31,10 @@ export default function TrainerHomeScreen() {
   );
 
   useEffect(() => {
-    if (!isLoaded) return;
-    const role = user?.unsafeMetadata?.role;
-    const hasUsername = user?.unsafeMetadata?.username;
-    const hasSpecialty = user?.unsafeMetadata?.specialty;
-    const profileCompleted = user?.unsafeMetadata?.profileCompleted;
-
-    if (!user) {
-      router.replace('/(auth)/welcome');
-    } else if (!role) {
-      router.replace('/(auth)/role-selection');
-    } else if (role !== 'trainer') {
-      router.replace('/(client)');
-    } else if (!hasUsername || !hasSpecialty || !profileCompleted) {
-      router.replace('/(auth)/trainer-setup');
-    } else {
+    if (isLoaded) {
       setLoading(false);
     }
-  }, [isLoaded, user]);
+  }, [isLoaded]);
 
   if (loading || !isLoaded) {
     return (

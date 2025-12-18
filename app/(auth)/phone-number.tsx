@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -31,12 +30,12 @@ export default function PhoneNumberScreen() {
   useEffect(() => {
     if (isLoaded && user) {
       const existingPhone =
-        user.unsafeMetadata?.phoneNumber as string | undefined ||
+        (user.unsafeMetadata?.phoneNumber as string | undefined) ||
         user.primaryPhoneNumber?.phoneNumber;
 
       if (existingPhone) {
-        // User already has phone number, skip to role selection
-        router.replace('/(auth)/role-selection');
+        // User already has phone number, go to main routing
+        router.replace('/');
       }
     }
   }, [isLoaded, user, router]);
@@ -59,9 +58,10 @@ export default function PhoneNumberScreen() {
         },
       });
 
-      // Navigate to role selection
       showToast.success('Phone number saved successfully');
-      router.replace('/(auth)/role-selection');
+      
+      // Navigate to main index for role-based routing
+      router.replace('/');
     } catch (err: any) {
       console.error('Error saving phone number:', err);
       showToast.error(err.message || 'Failed to save phone number');
@@ -71,7 +71,7 @@ export default function PhoneNumberScreen() {
   };
 
   const handleSkip = () => {
-    router.replace('/(auth)/role-selection');
+    router.replace('/');
   };
 
   return (
@@ -90,24 +90,41 @@ export default function PhoneNumberScreen() {
           >
             <Ionicons name="call" size={40} color={colors.primary} />
           </View>
-          <Text className="text-2xl font-bold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-2xl font-bold mb-2"
+            style={{ color: colors.text }}
+          >
             Add Phone Number
           </Text>
-          <Text className="text-center text-base" style={{ color: colors.textSecondary }}>
+          <Text
+            className="text-center text-base"
+            style={{ color: colors.textSecondary }}
+          >
             Help trainers and clients reach you easily
           </Text>
         </View>
 
         {/* Phone Number Input */}
         <View className="mb-6">
-          <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-medium mb-2"
+            style={{ color: colors.text }}
+          >
             Phone Number
           </Text>
           <View
             className="flex-row items-center px-4 py-3 rounded-xl"
-            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+            style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
           >
-            <Ionicons name="call-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="call-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               value={phoneNumber}
               onChangeText={setPhoneNumber}

@@ -42,14 +42,10 @@ export default function ClientHomeScreen() {
   );
 
   useEffect(() => {
-    if (!isLoaded) return;
-    const role = user?.unsafeMetadata?.role;
-
-    if (!user) router.replace('/(auth)/welcome');
-    else if (!role) router.replace('/(auth)/role-selection');
-    else if (role !== 'client') router.replace('/(trainer)' as any);
-    else setLoading(false);
-  }, [isLoaded, user]);
+    if (isLoaded) {
+      setLoading(false);
+    }
+  }, [isLoaded]);
 
   if (loading || !isLoaded) {
     return (
