@@ -137,6 +137,12 @@ export default function TabLayout() {
             href: null,
           }}
         />
+        <Tabs.Screen
+          name="session-history"
+          options={{
+            href: null,
+          }}
+        />
       </Tabs>
     </View>
   );

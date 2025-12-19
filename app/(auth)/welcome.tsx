@@ -6,12 +6,64 @@ import GoogleOAuthButton from '@/components/GoogleOAuthButton';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, BorderRadius } from '@/constants/colors';
 import { AnimatedButton } from '@/components/AnimatedButton';
+import { useAuth, useUser } from '@clerk/clerk-expo';
+import { useEffect } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const insets = useSafeAreaInsets();
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
+
+  // Query Convex for user data
+  const convexUser = useQuery(
+    api.users.getUserByClerkId,
+    user?.id ? { clerkId: user.id } : 'skip'
+  );
+
+  // Check if user is already signed in and redirect accordingly
+  useEffect(() => {
+    if (!isAuthLoaded || !isUserLoaded) return;
+
+    if (isSignedIn && user) {
+      // Wait for Convex query to complete
+      if (convexUser === undefined) return;
+
+      // Get role from Convex first, fallback to Clerk metadata
+      const convexRole = convexUser?.role;
+      const clerkRole = user.unsafeMetadata?.role as string | undefined;
+      const role = convexRole || clerkRole;
+
+      // If user doesn't have a role yet, redirect to role selection
+      if (!role) {
+        router.replace('/(auth)/role-selection');
+        return;
+      }
+
+      // Redirect based on role
+      if (role === 'trainer') {
+        // Check if trainer has completed profile setup
+        const hasUsername = convexUser?.username || user.unsafeMetadata?.username;
+        const hasSpecialty = convexUser?.specialty || user.unsafeMetadata?.specialty;
+
+        if (!hasUsername || !hasSpecialty) {
+          router.replace('/(auth)/trainer-setup');
+        } else {
+          router.replace('/(trainer)');
+        }
+      } else if (role === 'client') {
+        router.replace('/(client)');
+      } else {
+        // If role is invalid, redirect to role selection
+        router.replace('/(auth)/role-selection');
+      }
+    }
+  }, [isAuthLoaded, isUserLoaded, isSignedIn, user, convexUser, router]);
+     
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>

@@ -9,7 +9,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import CalendarView from '@/components/CalendarView';
 import { Ionicons } from '@expo/vector-icons';
-import GoogleCalendarConnect from '@/components/GoogleCalendarConnect';
+import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
+import GoogleTokenStatus from '@/components/GoogleTokenStatus';
 import Svg, { Path } from 'react-native-svg';
 
 // Google Calendar SVG Icon
@@ -91,25 +92,8 @@ export default function BookingsScreen() {
             </Text>
           </View>
 
-          {/* Google Calendar Button */}
-          <TouchableOpacity
-            className="flex-row items-center px-3 py-2.5 rounded-xl"
-            style={{
-              backgroundColor: isCalendarConnected ? `${colors.success}15` : colors.surfaceSecondary,
-            }}
-            onPress={() => !isCalendarConnected && setShowCalendarModal(true)}
-          >
-            <GoogleCalendarIcon size={18} />
-            <Text
-              className="text-sm font-medium ml-2"
-              style={{ color: isCalendarConnected ? colors.success : colors.text }}
-            >
-              {isCalendarConnected ? 'Connected' : 'Connect'}
-            </Text>
-            {isCalendarConnected && (
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} style={{ marginLeft: 4 }} />
-            )}
-          </TouchableOpacity>
+          {/* Google Calendar Status */}
+          <GoogleTokenStatus onConnect={() => setShowCalendarModal(true)} />
         </View>
       </View>
 
@@ -352,7 +336,7 @@ export default function BookingsScreen() {
       >
         <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <View className="mx-6 w-full max-w-md">
-            <GoogleCalendarConnect
+            <GoogleCalendarAuth
               onConnected={() => setShowCalendarModal(false)}
               onSkip={() => setShowCalendarModal(false)}
             />

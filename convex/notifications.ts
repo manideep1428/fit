@@ -80,3 +80,20 @@ export const markAllAsRead = mutation({
     );
   },
 });
+
+// Delete all notifications for a user
+export const deleteAllNotifications = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    await Promise.all(
+      notifications.map((notification) =>
+        ctx.db.delete(notification._id)
+      )
+    );
+  },
+});

@@ -3,7 +3,7 @@ import { useUser } from '@clerk/clerk-expo';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import * as Notifications from 'expo-notifications';
-import { registerForPushNotificationsAsync } from '@/utils/notifications';
+import { registerForPushNotificationsAsync } from '@/utils/pushNotifications';
 
 export function useNotifications() {
   const { user } = useUser();

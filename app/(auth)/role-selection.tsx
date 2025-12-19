@@ -58,6 +58,7 @@ export default function RoleSelectionScreen() {
     } else if (existingRole === 'client') {
       router.replace('/(client)');
     }
+    // If no role exists, user can select one (this page will show)
   }, [isLoaded, user, convexUser, router]);
 
   const handleRoleSelection = async (role: 'trainer' | 'client') => {

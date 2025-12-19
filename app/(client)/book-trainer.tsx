@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import GoogleCalendarConnect from '@/components/GoogleCalendarConnect';
+import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
 import { useGoogleCalendar, formatBookingForCalendar } from '@/utils/googleCalendar';
 import { Id } from '@/convex/_generated/dataModel';
 
@@ -366,7 +366,7 @@ export default function BookTrainerScreen() {
       >
         <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <View className="mx-6 w-full max-w-md">
-            <GoogleCalendarConnect
+            <GoogleCalendarAuth
               onConnected={handleCalendarConnected}
               onSkip={handleSkipCalendar}
             />

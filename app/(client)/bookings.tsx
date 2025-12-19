@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, ActivityIndicator, TouchableOpacity, Text, ScrollView, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ActivityIndicator, TouchableOpacity, Text, ScrollView, Modal, RefreshControl } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useQuery } from 'convex/react';
@@ -9,8 +9,10 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import CalendarView from '@/components/CalendarView';
 import { Ionicons } from '@expo/vector-icons';
-import GoogleCalendarConnect from '@/components/GoogleCalendarConnect';
+import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
+import GoogleTokenStatus from '@/components/GoogleTokenStatus';
 import Svg, { Path } from 'react-native-svg';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Google Calendar SVG Icon
 const GoogleCalendarIcon = ({ size = 20 }: { size?: number }) => (
@@ -31,6 +33,7 @@ export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'schedule' | 'bookings'>('bookings');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const currentUser = useQuery(
     api.users.getUserByClerkId,
@@ -65,8 +68,17 @@ export default function BookingsScreen() {
   });
 
   const now = new Date();
-  const currentBookings = enrichedBookings.filter((b: any) => new Date(b.startTime) >= now);
-  const pastBookings = enrichedBookings.filter((b: any) => new Date(b.startTime) < now);
+  // Set time to start of current hour to avoid timezone issues
+  now.setMinutes(0, 0, 0);
+  
+  const currentBookings = enrichedBookings.filter((b: any) => {
+    const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
+    return sessionDateTime >= now;
+  });
+  const pastBookings = enrichedBookings.filter((b: any) => {
+    const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
+    return sessionDateTime < now;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -90,6 +102,20 @@ export default function BookingsScreen() {
 
   const isCalendarConnected = !!currentUser?.googleAccessToken;
 
+  // Refresh bookings when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Force refresh of queries when screen is focused
+      console.log('Bookings screen focused, refreshing data...');
+    }, [])
+  );
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // The queries will automatically refetch
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
+
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       {/* Header */}
@@ -105,25 +131,8 @@ export default function BookingsScreen() {
             </Text>
           </View>
 
-          {/* Google Calendar Button */}
-          <TouchableOpacity
-            className="flex-row items-center px-3 py-2.5 rounded-xl"
-            style={{
-              backgroundColor: isCalendarConnected ? `${colors.success}15` : colors.surfaceSecondary,
-            }}
-            onPress={() => !isCalendarConnected && setShowCalendarModal(true)}
-          >
-            <GoogleCalendarIcon size={18} />
-            <Text
-              className="text-sm font-medium ml-2"
-              style={{ color: isCalendarConnected ? colors.success : colors.text }}
-            >
-              {isCalendarConnected ? 'Connected' : 'Connect'}
-            </Text>
-            {isCalendarConnected && (
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} style={{ marginLeft: 4 }} />
-            )}
-          </TouchableOpacity>
+          {/* Google Calendar Status */}
+          <GoogleTokenStatus onConnect={() => setShowCalendarModal(true)} />
         </View>
       </View>
 
@@ -176,7 +185,18 @@ export default function BookingsScreen() {
 
       {/* Tab Content */}
       {activeTab === 'bookings' ? (
-        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          className="flex-1" 
+          contentContainerStyle={{ paddingBottom: 100 }} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        >
           {/* My Trainers Section */}
           <View className="px-6 pt-2">
             <View className="flex-row items-center mb-4">
@@ -309,9 +329,27 @@ export default function BookingsScreen() {
                       </Text>
                     </View>
                     <View className="flex-row items-center mt-1.5">
+                      <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                      <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
+                        {new Date(booking.date).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center mt-1">
                       <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
                       <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
-                        {new Date(booking.startTime).toLocaleString()}
+                        {new Date(`2000-01-01T${booking.startTime}`).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true,
+                        })} - {new Date(`2000-01-01T${booking.endTime}`).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true,
+                        })}
                       </Text>
                     </View>
                   </View>
@@ -347,7 +385,7 @@ export default function BookingsScreen() {
                         {booking.trainerName}
                       </Text>
                       <Text className="text-sm mt-1" style={{ color: colors.textTertiary }}>
-                        {new Date(booking.startTime).toLocaleDateString()}
+                        {new Date(booking.date).toLocaleDateString()}
                       </Text>
                     </View>
                     <Text className="text-xs font-medium uppercase" style={{ color: colors.textTertiary }}>
@@ -372,7 +410,7 @@ export default function BookingsScreen() {
       >
         <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <View className="mx-6 w-full max-w-md">
-            <GoogleCalendarConnect
+            <GoogleCalendarAuth
               onConnected={() => setShowCalendarModal(false)}
               onSkip={() => setShowCalendarModal(false)}
             />

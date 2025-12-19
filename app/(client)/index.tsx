@@ -11,11 +11,13 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows, BorderRadius } from '@/constants/colors';
 import { AnimatedCard } from '@/components/AnimatedCard';
 import { AnimatedButton } from '@/components/AnimatedButton';
+import NotificationHistory from '@/components/NotificationHistory';
 
 export default function ClientHomeScreen() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
@@ -39,6 +41,19 @@ export default function ClientHomeScreen() {
     api.goals.getActiveClientGoals,
     user?.id ? { clientId: user.id } : 'skip'
   );
+
+  // Fetch unread notification count
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    user?.id ? { userId: user.id } : 'skip'
+  );
+
+  // Debug logging
+  useEffect(() => {
+    if (unreadCount !== undefined) {
+      console.log('Unread count:', unreadCount, typeof unreadCount);
+    }
+  }, [unreadCount]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -79,11 +94,21 @@ export default function ClientHomeScreen() {
 
           <View className="flex-row gap-3">
             <TouchableOpacity
-              className="w-12 h-12 rounded-full items-center justify-center"
+              className="w-12 h-12 rounded-full items-center justify-center relative"
               style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...shadows.small }}
-              onPress={() => router.push('/(client)/notification-settings' as any)}
+              onPress={() => setShowNotifications(true)}
             >
               <Ionicons name="notifications-outline" size={22} color={colors.text} />
+              {unreadCount && typeof unreadCount === 'number' && unreadCount > 0 && (
+                <View
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center"
+                  style={{ backgroundColor: colors.error }}
+                >
+                  <Text className="text-white text-xs font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount.toString()}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -109,6 +134,7 @@ export default function ClientHomeScreen() {
             style={{ marginBottom: 24 }}
             elevation="large"
             borderRadius="xlarge"
+            onPress={() => router.push('/(client)/session-history' as any)}
           >
             <View className="flex-row justify-between items-start">
               <View className="flex-1">
@@ -116,10 +142,10 @@ export default function ClientHomeScreen() {
                   Your Progress
                 </Text>
                 <Text className="text-xs mb-4" style={{ color: colors.textTertiary }}>
-                  Completed Sessions
+                  Completed Sessions • Tap to view history
                 </Text>
                 <Text className="font-bold" style={{ fontSize: 36, color: colors.text, letterSpacing: -1 }}>
-                  {bookings.filter((b: any) => b.status === 'confirmed' && new Date(b.date) < new Date()).length}
+                  {bookings.filter((b: any) => b.status === 'confirmed' && new Date(`${b.date}T${b.startTime}:00`) < new Date()).length}
                 </Text>
               </View>
 
@@ -145,6 +171,141 @@ export default function ClientHomeScreen() {
             </View>
           </AnimatedCard>
         )}
+
+        {/* Manage Schedule Section */}
+        <View className="mb-6">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-lg font-bold" style={{ color: colors.text }}>Schedule</Text>
+            <TouchableOpacity onPress={() => router.push('/(client)/bookings' as any)}>
+              <Text className="text-sm font-semibold" style={{ color: colors.primary }}>Manage</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Upcoming Sessions */}
+          {bookings && (() => {
+            const now = new Date();
+            now.setMinutes(0, 0, 0);
+            const upcomingSessions = bookings
+              .filter((b: any) => {
+                const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
+                return sessionDateTime >= now;
+              })
+              .sort((a: any, b: any) => {
+                const dateA = new Date(`${a.date}T${a.startTime}:00`);
+                const dateB = new Date(`${b.date}T${b.startTime}:00`);
+                return dateA.getTime() - dateB.getTime();
+              })
+              .slice(0, 2); // Show only next 2 sessions
+
+            const enrichedUpcoming = upcomingSessions.map((booking: any) => {
+              const trainer = clientTrainers?.find((t: any) => t.clerkId === booking.trainerId);
+              return {
+                ...booking,
+                trainerName: trainer?.fullName || 'Trainer',
+              };
+            });
+
+            return upcomingSessions.length === 0 ? (
+              <AnimatedCard
+                delay={200}
+                style={{ alignItems: 'center', paddingVertical: 32 }}
+                elevation="medium"
+                borderRadius="xlarge"
+                onPress={() => router.push('/(client)/bookings' as any)}
+              >
+                <View
+                  className="w-16 h-16 rounded-full items-center justify-center mb-3"
+                  style={{ backgroundColor: `${colors.primary}10` }}
+                >
+                  <Ionicons name="calendar-outline" size={28} color={colors.primary} />
+                </View>
+                <Text className="font-semibold text-base mb-1" style={{ color: colors.text }}>
+                  No upcoming sessions
+                </Text>
+                <Text className="text-sm text-center mb-4 px-6" style={{ color: colors.textSecondary }}>
+                  Book a session with your trainers
+                </Text>
+                <View
+                  className="px-4 py-2 rounded-full"
+                  style={{ backgroundColor: colors.primary }}
+                >
+                  <Text className="text-white text-xs font-semibold">Book Session</Text>
+                </View>
+              </AnimatedCard>
+            ) : (
+              <View>
+                {enrichedUpcoming.map((session: any, index: number) => (
+                  <AnimatedCard
+                    key={session._id}
+                    delay={200 + index * 100}
+                    style={{ marginBottom: 12 }}
+                    elevation="medium"
+                    borderRadius="xlarge"
+                    onPress={() => router.push('/(client)/bookings' as any)}
+                  >
+                    <View className="flex-row items-center">
+                      <View
+                        className="w-12 h-12 rounded-full items-center justify-center mr-3"
+                        style={{ backgroundColor: colors.primary }}
+                      >
+                        <Text className="text-white text-lg font-bold">
+                          {session.trainerName?.[0] || 'T'}
+                        </Text>
+                      </View>
+                      
+                      <View className="flex-1">
+                        <Text className="font-bold text-base" style={{ color: colors.text }}>
+                          {session.trainerName}
+                        </Text>
+                        <View className="flex-row items-center mt-1">
+                          <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                          <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
+                            {new Date(session.date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </Text>
+                          <Ionicons name="time-outline" size={14} color={colors.textSecondary} style={{ marginLeft: 12 }} />
+                          <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
+                            {new Date(`2000-01-01T${session.startTime}`).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true,
+                            })}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View
+                        className="px-3 py-1.5 rounded-lg"
+                        style={{ backgroundColor: `${colors.success}15` }}
+                      >
+                        <Text className="text-xs font-bold uppercase" style={{ color: colors.success }}>
+                          {session.status}
+                        </Text>
+                      </View>
+                    </View>
+                  </AnimatedCard>
+                ))}
+                
+                {upcomingSessions.length > 0 && (
+                  <TouchableOpacity
+                    className="items-center py-3"
+                    onPress={() => router.push('/(client)/bookings' as any)}
+                  >
+                    <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
+                      View all sessions ({bookings.filter((b: any) => {
+                        const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
+                        return sessionDateTime >= now;
+                      }).length})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })()}
+        </View>
 
         {/* My Goals */}
         {goals && goals.length > 0 && (
@@ -215,7 +376,7 @@ export default function ClientHomeScreen() {
           >
             <Text className="text-lg font-bold" style={{ color: colors.text }}>My Trainers</Text>
             {clientTrainers && clientTrainers.length > 0 && (
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/(client)/bookings' as any)}>
                 <Text className="text-sm font-semibold" style={{ color: colors.primary }}>See all</Text>
               </TouchableOpacity>
             )}
@@ -261,7 +422,14 @@ export default function ClientHomeScreen() {
                     style={{ width: 150, alignItems: 'center', paddingVertical: 24 }}
                     elevation="medium"
                     borderRadius="xlarge"
-                    onPress={() => router.push('/(client)/book-trainer' as any)}
+                    onPress={() => router.push({
+                      pathname: '/(client)/book-trainer',
+                      params: {
+                        trainerId: trainer.clerkId,
+                        trainerName: trainer.fullName,
+                        trainerSpecialty: trainer.specialty || 'Personal Trainer',
+                      },
+                    } as any)}
                   >
                     <View
                       className="w-20 h-20 rounded-full mb-3 overflow-hidden items-center justify-center"
@@ -322,6 +490,14 @@ export default function ClientHomeScreen() {
           )}
         </View>
       </View>
+
+      {/* Notification History Modal */}
+      {showNotifications && (
+        <NotificationHistory
+          visible={showNotifications}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
     </ScrollView>
   );
 }

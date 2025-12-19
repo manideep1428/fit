@@ -11,12 +11,14 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Spacing, BorderRadius, Shadows } from '@/constants/colors';
 import { AnimatedCard } from '@/components/AnimatedCard';
 import { GlassCard } from '@/components/GlassCard';
+import NotificationHistory from '@/components/NotificationHistory';
 
 export default function TrainerHomeScreen() {
   const { user, isLoaded } = useUser();
   const { signOut } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
@@ -27,6 +29,12 @@ export default function TrainerHomeScreen() {
   const bookings = useQuery(
     api.bookings.getTrainerBookings,
     user?.id ? { trainerId: user.id } : 'skip'
+  );
+
+  // Fetch unread notification count
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    user?.id ? { userId: user.id } : 'skip'
   );
 
   useEffect(() => {
@@ -83,11 +91,21 @@ export default function TrainerHomeScreen() {
 
           {/* Notifications */}
           <TouchableOpacity
-            className="w-12 h-12 rounded-full justify-center items-center"
+            className="w-12 h-12 rounded-full justify-center items-center relative"
             style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...shadows.small }}
-            onPress={() => router.push('/(trainer)/notification-settings' as any)}
+            onPress={() => setShowNotifications(true)}
           >
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
+            {unreadCount && typeof unreadCount === 'number' && unreadCount > 0 && (
+              <View
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.error }}
+              >
+                <Text className="text-white text-xs font-bold">
+                  {unreadCount > 9 ? '9+' : String(unreadCount)}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -251,6 +269,14 @@ export default function TrainerHomeScreen() {
           )}
         </View>
       </View>
+
+      {/* Notification History Modal */}
+      {showNotifications && (
+        <NotificationHistory
+          visible={showNotifications}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
     </ScrollView>
   );
 }

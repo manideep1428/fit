@@ -416,6 +416,20 @@ export default function ProfileScreen() {
             )}
           </View>
 
+          {/* Activity Section */}
+          <View className="mb-6">
+            <Text className="text-xs font-bold mb-3 uppercase tracking-widest" style={{ color: colors.textTertiary }}>
+              Activity
+            </Text>
+
+            <MenuItem
+              icon="time-outline"
+              title="Session History"
+              onPress={() => router.push('/(client)/session-history')}
+              delay={325}
+            />
+          </View>
+
           {/* Preferences Section */}
           <View className="mb-6">
             <Text className="text-xs font-bold mb-3 uppercase tracking-widest" style={{ color: colors.textTertiary }}>

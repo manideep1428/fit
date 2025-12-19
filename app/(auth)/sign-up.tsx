@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { showToast } from '@/utils/toast';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -30,6 +32,7 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState<'trainer' | 'client' | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
@@ -37,11 +40,13 @@ export default function SignUpScreen() {
   const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  const createUser = useMutation(api.users.createUser);
+
   const handleSignUp = async () => {
     if (!isLoaded || !signUp) return;
 
-    if (!fullName || !email || !password || !phoneNumber) {
-      showToast.error('Please fill in all fields');
+    if (!fullName || !email || !password || !phoneNumber || !selectedRole) {
+      showToast.error('Please fill in all fields and select a role');
       return;
     }
 
@@ -59,6 +64,7 @@ export default function SignUpScreen() {
         lastName: fullName.split(' ').slice(1).join(' ') || undefined,
         unsafeMetadata: {
           phoneNumber: phoneNumber,
+          role: selectedRole,
         },
       });
 
@@ -105,8 +111,33 @@ export default function SignUpScreen() {
         // Give Clerk time to fully initialize the session
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Navigate to role selection for new users
-        router.replace('/(auth)/role-selection');
+        // Create user in Convex with the selected role
+        try {
+          await createUser({
+            clerkId: result.createdUserId!,
+            email: email,
+            fullName: fullName,
+            phoneNumber: phoneNumber,
+            role: selectedRole!,
+          });
+
+          showToast.success('Account created successfully!');
+
+          // Navigate based on role
+          if (selectedRole === 'trainer') {
+            router.replace('/(auth)/trainer-setup');
+          } else {
+            router.replace('/(client)');
+          }
+        } catch (convexErr: any) {
+          console.error('Convex user creation error:', convexErr);
+          // Still navigate even if Convex fails - user can be created later
+          if (selectedRole === 'trainer') {
+            router.replace('/(auth)/trainer-setup');
+          } else {
+            router.replace('/(client)');
+          }
+        }
       }
     } catch (err: any) {
       console.error('Verification error:', err);
@@ -429,14 +460,138 @@ export default function SignUpScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Role Selection */}
+            <View>
+              <Text
+                className="text-sm font-medium mb-3"
+                style={{ color: colors.text }}
+              >
+                I am a
+              </Text>
+              <View className="gap-3">
+                {/* Trainer Option */}
+                <TouchableOpacity
+                  onPress={() => setSelectedRole('trainer')}
+                  disabled={loading}
+                  className="p-4 rounded-xl border-2"
+                  style={{
+                    backgroundColor:
+                      selectedRole === 'trainer' ? colors.primary : colors.surface,
+                    borderColor:
+                      selectedRole === 'trainer' ? colors.primary : colors.border,
+                  }}
+                >
+                  <View className="flex-row items-center">
+                    <View
+                      className="w-12 h-12 rounded-full items-center justify-center mr-3"
+                      style={{
+                        backgroundColor:
+                          selectedRole === 'trainer'
+                            ? 'rgba(255,255,255,0.2)'
+                            : `${colors.primary}15`,
+                      }}
+                    >
+                      <Ionicons
+                        name="barbell-outline"
+                        size={24}
+                        color={selectedRole === 'trainer' ? '#FFF' : colors.primary}
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text
+                        className="text-lg font-semibold mb-1"
+                        style={{
+                          color: selectedRole === 'trainer' ? '#FFF' : colors.text,
+                        }}
+                      >
+                        Trainer
+                      </Text>
+                      <Text
+                        className="text-sm"
+                        style={{
+                          color:
+                            selectedRole === 'trainer'
+                              ? 'rgba(255,255,255,0.8)'
+                              : colors.textSecondary,
+                        }}
+                      >
+                        Manage clients and create workout plans
+                      </Text>
+                    </View>
+                    {selectedRole === 'trainer' && (
+                      <Ionicons name="checkmark-circle" size={24} color="white" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+
+                {/* Client Option */}
+                <TouchableOpacity
+                  onPress={() => setSelectedRole('client')}
+                  disabled={loading}
+                  className="p-4 rounded-xl border-2"
+                  style={{
+                    backgroundColor:
+                      selectedRole === 'client' ? colors.primary : colors.surface,
+                    borderColor:
+                      selectedRole === 'client' ? colors.primary : colors.border,
+                  }}
+                >
+                  <View className="flex-row items-center">
+                    <View
+                      className="w-12 h-12 rounded-full items-center justify-center mr-3"
+                      style={{
+                        backgroundColor:
+                          selectedRole === 'client'
+                            ? 'rgba(255,255,255,0.2)'
+                            : `${colors.primary}15`,
+                      }}
+                    >
+                      <Ionicons
+                        name="person-outline"
+                        size={24}
+                        color={selectedRole === 'client' ? '#FFF' : colors.primary}
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text
+                        className="text-lg font-semibold mb-1"
+                        style={{
+                          color: selectedRole === 'client' ? '#FFF' : colors.text,
+                        }}
+                      >
+                        Client
+                      </Text>
+                      <Text
+                        className="text-sm"
+                        style={{
+                          color:
+                            selectedRole === 'client'
+                              ? 'rgba(255,255,255,0.8)'
+                              : colors.textSecondary,
+                        }}
+                      >
+                        Track workouts and follow training plans
+                      </Text>
+                    </View>
+                    {selectedRole === 'client' && (
+                      <Ionicons name="checkmark-circle" size={24} color="white" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
           {/* Sign Up Button */}
           <TouchableOpacity
             onPress={handleSignUp}
-            disabled={loading}
+            disabled={loading || !selectedRole}
             className="py-4 rounded-xl mb-6"
-            style={{ backgroundColor: colors.primary, ...shadows.medium }}
+            style={{ 
+              backgroundColor: selectedRole && !loading ? colors.primary : colors.border, 
+              ...shadows.medium 
+            }}
           >
             {loading ? (
               <ActivityIndicator color="white" />

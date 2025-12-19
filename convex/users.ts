@@ -159,7 +159,35 @@ export const saveGoogleTokens = mutation({
       updatedAt: Date.now(),
     });
 
+    console.log(`Google Calendar token saved for user ${args.clerkId}`);
+    console.log(`Token expires at: ${tokenExpiry ? new Date(tokenExpiry).toISOString() : 'never'}`);
+
     return user._id;
+  },
+});
+
+// Get Google Calendar token status
+export const getGoogleTokenStatus = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      return { connected: false, expired: false };
+    }
+
+    const hasToken = !!user.googleAccessToken;
+    const isExpired = user.googleTokenExpiry ? Date.now() > user.googleTokenExpiry : false;
+
+    return {
+      connected: hasToken,
+      expired: isExpired,
+      expiresAt: user.googleTokenExpiry,
+      hasRefreshToken: !!user.googleRefreshToken,
+    };
   },
 });
 
