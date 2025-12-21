@@ -32,7 +32,6 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'trainer' | 'client' | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
@@ -45,8 +44,8 @@ export default function SignUpScreen() {
   const handleSignUp = async () => {
     if (!isLoaded || !signUp) return;
 
-    if (!fullName || !email || !password || !phoneNumber || !selectedRole) {
-      showToast.error('Please fill in all fields and select a role');
+    if (!fullName || !email || !password || !phoneNumber) {
+      showToast.error('Please fill in all fields');
       return;
     }
 
@@ -64,7 +63,7 @@ export default function SignUpScreen() {
         lastName: fullName.split(' ').slice(1).join(' ') || undefined,
         unsafeMetadata: {
           phoneNumber: phoneNumber,
-          role: selectedRole,
+          role: 'trainer', // Always trainer for signup
         },
       });
 
@@ -111,32 +110,21 @@ export default function SignUpScreen() {
         // Give Clerk time to fully initialize the session
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Create user in Convex with the selected role
+        // Create user in Convex as trainer
         try {
           await createUser({
             clerkId: result.createdUserId!,
             email: email,
             fullName: fullName,
             phoneNumber: phoneNumber,
-            role: selectedRole!,
+            role: 'trainer',
           });
 
           showToast.success('Account created successfully!');
-
-          // Navigate based on role
-          if (selectedRole === 'trainer') {
-            router.replace('/(auth)/trainer-setup');
-          } else {
-            router.replace('/(client)');
-          }
+          router.replace('/(auth)/trainer-setup');
         } catch (convexErr: any) {
           console.error('Convex user creation error:', convexErr);
-          // Still navigate even if Convex fails - user can be created later
-          if (selectedRole === 'trainer') {
-            router.replace('/(auth)/trainer-setup');
-          } else {
-            router.replace('/(client)');
-          }
+          router.replace('/(auth)/trainer-setup');
         }
       }
     } catch (err: any) {
@@ -154,7 +142,7 @@ export default function SignUpScreen() {
     try {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       showToast.success('Verification code sent!');
-      setResendCooldown(60); // 60 second cooldown
+      setResendCooldown(60);
     } catch (err: any) {
       console.error('Resend error:', err);
       showToast.error(err.errors?.[0]?.message || 'Failed to resend code');
@@ -242,7 +230,6 @@ export default function SignUpScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Resend Code */}
           <View className="flex-row justify-center items-center py-3">
             <Text className="text-sm" style={{ color: colors.textSecondary }}>
               Didn't receive the code?{' '}
@@ -308,11 +295,32 @@ export default function SignUpScreen() {
               className="text-3xl font-bold mb-2"
               style={{ color: colors.text }}
             >
-              Create Account
+              Become a Trainer
             </Text>
             <Text className="text-base" style={{ color: colors.textSecondary }}>
-              Start your fitness journey today
+              Create your trainer account and start managing clients
             </Text>
+          </View>
+
+          {/* Trainer Badge */}
+          <View 
+            className="flex-row items-center p-4 rounded-xl mb-6"
+            style={{ backgroundColor: `${colors.primary}15` }}
+          >
+            <View
+              className="w-12 h-12 rounded-full items-center justify-center mr-3"
+              style={{ backgroundColor: colors.primary }}
+            >
+              <Ionicons name="barbell-outline" size={24} color="#FFF" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                Trainer Account
+              </Text>
+              <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                Manage clients, bookings & schedules
+              </Text>
+            </View>
           </View>
 
           {/* Form */}
@@ -460,136 +468,15 @@ export default function SignUpScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Role Selection */}
-            <View>
-              <Text
-                className="text-sm font-medium mb-3"
-                style={{ color: colors.text }}
-              >
-                I am a
-              </Text>
-              <View className="gap-3">
-                {/* Trainer Option */}
-                <TouchableOpacity
-                  onPress={() => setSelectedRole('trainer')}
-                  disabled={loading}
-                  className="p-4 rounded-xl border-2"
-                  style={{
-                    backgroundColor:
-                      selectedRole === 'trainer' ? colors.primary : colors.surface,
-                    borderColor:
-                      selectedRole === 'trainer' ? colors.primary : colors.border,
-                  }}
-                >
-                  <View className="flex-row items-center">
-                    <View
-                      className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                      style={{
-                        backgroundColor:
-                          selectedRole === 'trainer'
-                            ? 'rgba(255,255,255,0.2)'
-                            : `${colors.primary}15`,
-                      }}
-                    >
-                      <Ionicons
-                        name="barbell-outline"
-                        size={24}
-                        color={selectedRole === 'trainer' ? '#FFF' : colors.primary}
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text
-                        className="text-lg font-semibold mb-1"
-                        style={{
-                          color: selectedRole === 'trainer' ? '#FFF' : colors.text,
-                        }}
-                      >
-                        Trainer
-                      </Text>
-                      <Text
-                        className="text-sm"
-                        style={{
-                          color:
-                            selectedRole === 'trainer'
-                              ? 'rgba(255,255,255,0.8)'
-                              : colors.textSecondary,
-                        }}
-                      >
-                        Manage clients and create workout plans
-                      </Text>
-                    </View>
-                    {selectedRole === 'trainer' && (
-                      <Ionicons name="checkmark-circle" size={24} color="white" />
-                    )}
-                  </View>
-                </TouchableOpacity>
-
-                {/* Client Option */}
-                <TouchableOpacity
-                  onPress={() => setSelectedRole('client')}
-                  disabled={loading}
-                  className="p-4 rounded-xl border-2"
-                  style={{
-                    backgroundColor:
-                      selectedRole === 'client' ? colors.primary : colors.surface,
-                    borderColor:
-                      selectedRole === 'client' ? colors.primary : colors.border,
-                  }}
-                >
-                  <View className="flex-row items-center">
-                    <View
-                      className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                      style={{
-                        backgroundColor:
-                          selectedRole === 'client'
-                            ? 'rgba(255,255,255,0.2)'
-                            : `${colors.primary}15`,
-                      }}
-                    >
-                      <Ionicons
-                        name="person-outline"
-                        size={24}
-                        color={selectedRole === 'client' ? '#FFF' : colors.primary}
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text
-                        className="text-lg font-semibold mb-1"
-                        style={{
-                          color: selectedRole === 'client' ? '#FFF' : colors.text,
-                        }}
-                      >
-                        Client
-                      </Text>
-                      <Text
-                        className="text-sm"
-                        style={{
-                          color:
-                            selectedRole === 'client'
-                              ? 'rgba(255,255,255,0.8)'
-                              : colors.textSecondary,
-                        }}
-                      >
-                        Track workouts and follow training plans
-                      </Text>
-                    </View>
-                    {selectedRole === 'client' && (
-                      <Ionicons name="checkmark-circle" size={24} color="white" />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
           </View>
 
           {/* Sign Up Button */}
           <TouchableOpacity
             onPress={handleSignUp}
-            disabled={loading || !selectedRole}
+            disabled={loading}
             className="py-4 rounded-xl mb-6"
             style={{ 
-              backgroundColor: selectedRole && !loading ? colors.primary : colors.border, 
+              backgroundColor: !loading ? colors.primary : colors.border, 
               ...shadows.medium 
             }}
           >
@@ -597,7 +484,7 @@ export default function SignUpScreen() {
               <ActivityIndicator color="white" />
             ) : (
               <Text className="text-white text-center text-lg font-semibold">
-                Sign Up
+                Create Trainer Account
               </Text>
             )}
           </TouchableOpacity>
@@ -617,6 +504,22 @@ export default function SignUpScreen() {
                 Sign In
               </Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Client Info */}
+          <View 
+            className="mt-8 p-4 rounded-xl"
+            style={{ backgroundColor: colors.surfaceSecondary }}
+          >
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
+              <Text className="text-sm font-semibold ml-2" style={{ color: colors.text }}>
+                Are you a client?
+              </Text>
+            </View>
+            <Text className="text-sm" style={{ color: colors.textSecondary }}>
+              Clients can only sign in after being invited by their trainer. Ask your trainer to add you using your email address.
+            </Text>
           </View>
         </View>
       </ScrollView>

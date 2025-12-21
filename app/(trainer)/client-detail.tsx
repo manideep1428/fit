@@ -1,18 +1,25 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, TextInput, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
+import { useUser } from '@clerk/clerk-expo';
 
 export default function ClientDetailScreen() {
   const { clientId } = useLocalSearchParams();
   const router = useRouter();
+  const { user } = useUser();
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+
+  const [newQuestion, setNewQuestion] = useState('');
+  const [addingQuestion, setAddingQuestion] = useState(false);
+  const [showAddQuestion, setShowAddQuestion] = useState(false);
 
   // Fetch client data
   const client = useQuery(
@@ -32,8 +39,58 @@ export default function ClientDetailScreen() {
     clientId ? { clientId: clientId as string } : 'skip'
   );
 
+  // Fetch questions for this client
+  const questions = useQuery(
+    api.questions.getClientQuestions,
+    user?.id && clientId ? { trainerId: user.id, clientId: clientId as string } : 'skip'
+  );
+
+  const createQuestion = useMutation(api.questions.createQuestion);
+  const deleteQuestion = useMutation(api.questions.deleteQuestion);
+
   const daysConnected = client ? Math.floor((Date.now() - (client._creationTime || Date.now())) / (1000 * 60 * 60 * 24)) : 0;
   const sessionsCount = bookings?.filter((b: any) => b.status === 'completed' || b.status === 'confirmed').length || 0;
+
+  const handleAddQuestion = async () => {
+    if (!newQuestion.trim() || !user?.id || !clientId) return;
+
+    setAddingQuestion(true);
+    try {
+      await createQuestion({
+        trainerId: user.id,
+        clientId: clientId as string,
+        question: newQuestion.trim(),
+      });
+      setNewQuestion('');
+      setShowAddQuestion(false);
+    } catch (error) {
+      console.error('Error adding question:', error);
+      Alert.alert('Error', 'Failed to add question');
+    } finally {
+      setAddingQuestion(false);
+    }
+  };
+
+  const handleDeleteQuestion = (questionId: any) => {
+    Alert.alert(
+      'Delete Question',
+      'Are you sure you want to delete this question?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteQuestion({ questionId });
+            } catch (error) {
+              console.error('Error deleting question:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (!client) {
     return (
@@ -153,6 +210,140 @@ export default function ClientDetailScreen() {
           <Text className="text-base leading-relaxed" style={{ color: colors.textSecondary }}>
             {client.bio || "No bio information provided by the client."}
           </Text>
+        </View>
+
+        {/* Questions Section */}
+        <View className="px-4 pt-5 pb-3">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-xl font-semibold" style={{ color: colors.text }}>
+              Questions for Client
+            </Text>
+            <TouchableOpacity onPress={() => setShowAddQuestion(!showAddQuestion)}>
+              <View className="flex-row items-center">
+                <Ionicons name={showAddQuestion ? "close" : "add-circle"} size={20} color={colors.primary} />
+                <Text className="text-sm font-semibold ml-1" style={{ color: colors.primary }}>
+                  {showAddQuestion ? 'Cancel' : 'Add'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Add Question Form */}
+          {showAddQuestion && (
+            <View
+              className="rounded-xl p-4 mb-3"
+              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+            >
+              <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+                Ask a question
+              </Text>
+              <TextInput
+                value={newQuestion}
+                onChangeText={setNewQuestion}
+                placeholder="e.g., What are your fitness goals?"
+                placeholderTextColor={colors.textTertiary}
+                multiline
+                numberOfLines={3}
+                className="px-4 py-3 mb-3"
+                style={{
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  textAlignVertical: 'top',
+                  minHeight: 80,
+                }}
+              />
+              <TouchableOpacity
+                onPress={handleAddQuestion}
+                disabled={addingQuestion || !newQuestion.trim()}
+                className="rounded-xl py-3 items-center"
+                style={{
+                  backgroundColor: newQuestion.trim() && !addingQuestion ? colors.primary : colors.border,
+                }}
+              >
+                {addingQuestion ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text className="text-white font-semibold">Send Question</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Questions List */}
+          {!questions ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : questions.length === 0 ? (
+            <View
+              className="rounded-xl p-4"
+              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+            >
+              <View className="items-center py-6">
+                <Ionicons name="help-circle-outline" size={48} color={colors.textTertiary} />
+                <Text className="mt-3 font-semibold" style={{ color: colors.textSecondary }}>
+                  No questions yet
+                </Text>
+                <Text className="mt-1 text-sm text-center" style={{ color: colors.textTertiary }}>
+                  Ask questions to learn more about your client
+                </Text>
+              </View>
+            </View>
+          ) : (
+            questions.map((q: any) => (
+              <View
+                key={q._id}
+                className="rounded-xl p-4 mb-3"
+                style={{ backgroundColor: colors.surface, ...shadows.small }}
+              >
+                <View className="flex-row items-start justify-between mb-2">
+                  <View className="flex-1 mr-2">
+                    <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                      {q.question}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleDeleteQuestion(q._id)}>
+                    <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                </View>
+
+                {q.answer ? (
+                  <View
+                    className="rounded-lg p-3 mt-2"
+                    style={{ backgroundColor: `${colors.success}10` }}
+                  >
+                    <View className="flex-row items-center mb-1">
+                      <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                      <Text className="text-xs font-semibold ml-1" style={{ color: colors.success }}>
+                        Answered
+                      </Text>
+                    </View>
+                    <Text className="text-sm" style={{ color: colors.text }}>
+                      {q.answer}
+                    </Text>
+                    {q.answeredAt && (
+                      <Text className="text-xs mt-2" style={{ color: colors.textTertiary }}>
+                        {new Date(q.answeredAt).toLocaleDateString()}
+                      </Text>
+                    )}
+                  </View>
+                ) : (
+                  <View
+                    className="rounded-lg p-3 mt-2"
+                    style={{ backgroundColor: `${colors.warning}10` }}
+                  >
+                    <View className="flex-row items-center">
+                      <Ionicons name="time-outline" size={14} color={colors.warning} />
+                      <Text className="text-xs font-semibold ml-1" style={{ color: colors.warning }}>
+                        Waiting for answer
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            ))
+          )}
         </View>
 
         {/* Goals Section */}

@@ -3,16 +3,15 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   Image,
   Switch,
   Alert,
 } from 'react-native';
 import { useUser, useAuth } from '@clerk/clerk-expo';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -34,56 +33,12 @@ export default function ProfileScreen() {
     api.users.getUserByClerkId,
     user?.id ? { clerkId: user.id } : 'skip'
   );
-  const updateProfile = useMutation(api.users.updateUserProfile);
   const profileImageUrl = useQuery(
     api.users.getProfileImageUrl,
     userData?.profileImageId ? { storageId: userData.profileImageId } : 'skip'
   );
 
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [bio, setBio] = useState('');
-  const [specialty, setSpecialty] = useState('');
   const [notifications, setNotifications] = useState(true);
-  
-  // Change password states
-  const [showChangePassword, setShowChangePassword] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
-
-  useEffect(() => {
-    if (userData) {
-      setFullName(userData.fullName || '');
-      setPhoneNumber(userData.phoneNumber || '');
-      setBio(userData.bio || '');
-      setSpecialty(userData.specialty || '');
-    }
-  }, [userData]);
-
-  const handleSave = async () => {
-    if (!user?.id) return;
-    setSaving(true);
-    try {
-      await updateProfile({
-        clerkId: user.id,
-        fullName,
-        phoneNumber,
-        bio,
-        specialty,
-      });
-      setEditing(false);
-      Alert.alert('Success', 'Profile updated successfully');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -101,44 +56,6 @@ export default function ProfileScreen() {
         },
       ]
     );
-  };
-
-  const handleChangePassword = async () => {
-    if (!user) return;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all password fields');
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      Alert.alert('Error', 'New password must be at least 8 characters');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'New passwords do not match');
-      return;
-    }
-
-    setChangingPassword(true);
-    try {
-      await user.updatePassword({
-        currentPassword,
-        newPassword,
-      });
-      
-      Alert.alert('Success', 'Password changed successfully');
-      setShowChangePassword(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error: any) {
-      console.error('Error changing password:', error);
-      Alert.alert('Error', error.errors?.[0]?.message || 'Failed to change password. Please check your current password.');
-    } finally {
-      setChangingPassword(false);
-    }
   };
 
   if (!user) {
@@ -185,17 +102,17 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
             <Text className="text-xl font-bold mt-4" style={{ color: colors.text }}>
-              {fullName || user.firstName || 'Trainer'}
+              {userData?.fullName || user.firstName || 'Trainer'}
             </Text>
             <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
               {user.emailAddresses[0]?.emailAddress}
             </Text>
-            {specialty && (
+            {userData?.specialty && (
               <View
                 className="px-4 py-2 rounded-full mt-2"
                 style={{ backgroundColor: colors.primary }}
               >
-                <Text className="text-white text-xs font-semibold">{specialty}</Text>
+                <Text className="text-white text-xs font-semibold">{userData.specialty}</Text>
               </View>
             )}
           </View>
@@ -228,7 +145,7 @@ export default function ProfileScreen() {
 
             {/* Edit Profile */}
             <TouchableOpacity
-              onPress={() => setEditing(!editing)}
+              onPress={() => router.push('/edit-profile' as any)}
               className="rounded-2xl p-5 mb-3 flex-row items-center justify-between"
               style={{ backgroundColor: colors.surface, ...shadows.small }}
             >
@@ -245,86 +162,6 @@ export default function ProfileScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
             </TouchableOpacity>
-
-            {/* Edit Form */}
-            {editing && (
-              <View
-                className="rounded-2xl p-5 mb-3"
-                style={{ backgroundColor: colors.surface, ...shadows.medium }}
-              >
-                <View className="mb-4">
-                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
-                    Full Name
-                  </Text>
-                  <TextInput
-                    value={fullName}
-                    onChangeText={setFullName}
-                    placeholder="Enter your name"
-                    placeholderTextColor={colors.textTertiary}
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text }}
-                  />
-                </View>
-
-                <View className="mb-4">
-                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
-                    Specialty
-                  </Text>
-                  <TextInput
-                    value={specialty}
-                    onChangeText={setSpecialty}
-                    placeholder="e.g., Weightlifting, Yoga, HIIT"
-                    placeholderTextColor={colors.textTertiary}
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text }}
-                  />
-                </View>
-
-                <View className="mb-4">
-                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
-                    Phone Number
-                  </Text>
-                  <TextInput
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    placeholder="Enter your phone"
-                    placeholderTextColor={colors.textTertiary}
-                    keyboardType="phone-pad"
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text }}
-                  />
-                </View>
-
-                <View className="mb-4">
-                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
-                    Bio
-                  </Text>
-                  <TextInput
-                    value={bio}
-                    onChangeText={setBio}
-                    placeholder="Tell clients about your experience and approach"
-                    placeholderTextColor={colors.textTertiary}
-                    multiline
-                    numberOfLines={4}
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text, textAlignVertical: 'top' }}
-                  />
-                </View>
-
-                <TouchableOpacity
-                  onPress={handleSave}
-                  disabled={saving}
-                  className="rounded-xl py-3 items-center"
-                  style={{ backgroundColor: colors.primary }}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Text className="text-white font-bold">Save Changes</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
 
           {/* Preferences Section */}
@@ -392,12 +229,15 @@ export default function ProfileScreen() {
             <TouchableOpacity
               onPress={() => {
                 if (!userData?.googleAccessToken) {
+                  // Navigate to bookings page where they can connect
+                  router.push('/(trainer)/bookings' as any);
+                } else {
                   Alert.alert(
-                    'Connect Google Calendar',
-                    'To sync your sessions with Google Calendar, please sign out and sign in with Google.',
+                    'Google Calendar Connected',
+                    'Your Google Calendar is already connected. You can manage your calendar sync from the bookings page.',
                     [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Sign Out', onPress: handleLogout },
+                      { text: 'OK', style: 'default' },
+                      { text: 'Go to Bookings', onPress: () => router.push('/(trainer)/bookings' as any) },
                     ]
                   );
                 }
@@ -417,7 +257,7 @@ export default function ProfileScreen() {
                     Google Calendar
                   </Text>
                   <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
-                    {userData?.googleAccessToken ? 'Connected' : 'Not connected'}
+                    {userData?.googleAccessToken ? 'Connected - Tap to manage' : 'Tap to connect'}
                   </Text>
                 </View>
               </View>
@@ -437,7 +277,7 @@ export default function ProfileScreen() {
 
             {/* Change Password */}
             <TouchableOpacity
-              onPress={() => setShowChangePassword(!showChangePassword)}
+              onPress={() => router.push('/change-password' as any)}
               className="rounded-2xl p-5 mb-3 flex-row items-center justify-between"
               style={{ backgroundColor: colors.surface, ...shadows.small }}
             >
@@ -454,72 +294,6 @@ export default function ProfileScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
             </TouchableOpacity>
-
-            {/* Change Password Form */}
-            {showChangePassword && (
-              <View
-                className="rounded-2xl p-5 mb-3"
-                style={{ backgroundColor: colors.surface, ...shadows.medium }}
-              >
-                <View className="mb-4">
-                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
-                    Current Password
-                  </Text>
-                  <TextInput
-                    value={currentPassword}
-                    onChangeText={setCurrentPassword}
-                    placeholder="Enter current password"
-                    placeholderTextColor={colors.textTertiary}
-                    secureTextEntry
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text }}
-                  />
-                </View>
-
-                <View className="mb-4">
-                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
-                    New Password
-                  </Text>
-                  <TextInput
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    placeholder="At least 8 characters"
-                    placeholderTextColor={colors.textTertiary}
-                    secureTextEntry
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text }}
-                  />
-                </View>
-
-                <View className="mb-4">
-                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
-                    Confirm New Password
-                  </Text>
-                  <TextInput
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    placeholder="Confirm new password"
-                    placeholderTextColor={colors.textTertiary}
-                    secureTextEntry
-                    className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: colors.background, color: colors.text }}
-                  />
-                </View>
-
-                <TouchableOpacity
-                  onPress={handleChangePassword}
-                  disabled={changingPassword}
-                  className="rounded-xl py-3 items-center"
-                  style={{ backgroundColor: colors.primary }}
-                >
-                  {changingPassword ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Text className="text-white font-bold">Update Password</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
 
             {/* Logout */}
             <TouchableOpacity

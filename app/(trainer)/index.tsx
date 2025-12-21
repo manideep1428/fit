@@ -157,7 +157,7 @@ export default function TrainerHomeScreen() {
             delay={350}
             elevation="medium"
             borderRadius="xlarge"
-            onPress={() => { }}
+            onPress={() => router.push('/(trainer)/availability' as any)}
           >
             <View className="flex-row items-center">
               <View

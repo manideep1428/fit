@@ -11,17 +11,7 @@ import CalendarView from '@/components/CalendarView';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
 import GoogleTokenStatus from '@/components/GoogleTokenStatus';
-import Svg, { Path } from 'react-native-svg';
 
-// Google Calendar SVG Icon
-const GoogleCalendarIcon = ({ size = 20 }: { size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24">
-    <Path fill="#4285F4" d="M22 6c0-1.1-.9-2-2-2h-3V2h-2v2H9V2H7v2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 14H4V9h16v11z" />
-    <Path fill="#34A853" d="M10 17h4v-4h-4v4z" />
-    <Path fill="#EA4335" d="M16 11.5h2v2h-2z" />
-    <Path fill="#FBBC05" d="M6 11.5h2v2H6z" />
-  </Svg>
-);
 
 export default function BookingsScreen() {
   const { user } = useUser();
@@ -74,8 +64,6 @@ export default function BookingsScreen() {
       default: return colors.primary;
     }
   };
-
-  const isCalendarConnected = !!currentUser?.googleAccessToken;
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -190,7 +178,7 @@ export default function BookingsScreen() {
                 </Text>
               </View>
             ) : (
-              currentBookings.map((booking: any, index: number) => (
+              currentBookings.map((booking: any) => (
                 <View
                   key={booking._id}
                   className="rounded-2xl p-4 mb-3 overflow-hidden"
@@ -276,7 +264,7 @@ export default function BookingsScreen() {
               </View>
             ) : (
               <>
-                {pastBookings.slice(0, 3).map((booking: any, index: number) => (
+                {pastBookings.slice(0, 3).map((booking: any) => (
                   <View
                     key={booking._id}
                     className="rounded-2xl p-4 mb-3"
@@ -331,11 +319,11 @@ export default function BookingsScreen() {
       <Modal
         visible={showCalendarModal}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowCalendarModal(false)}
       >
-        <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View className="mx-6 w-full max-w-md">
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View className="mx-4 mb-8">
             <GoogleCalendarAuth
               onConnected={() => setShowCalendarModal(false)}
               onSkip={() => setShowCalendarModal(false)}

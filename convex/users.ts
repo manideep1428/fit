@@ -9,6 +9,7 @@ export const createUser = mutation({
     fullName: v.string(),
     phoneNumber: v.optional(v.string()),
     role: v.union(v.literal("trainer"), v.literal("client")),
+    invitedByTrainerId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Check if user already exists
@@ -37,11 +38,201 @@ export const createUser = mutation({
         fullName: args.fullName,
         phoneNumber: args.phoneNumber,
         role: args.role,
+        invitedByTrainerId: args.invitedByTrainerId,
         createdAt: now,
         updatedAt: now,
       });
       return userId;
     }
+  },
+});
+
+// Invite client by email (trainer creates a pending client)
+export const inviteClientByEmail = mutation({
+  args: {
+    trainerId: v.string(),
+    email: v.string(),
+    fullName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Check if client already exists with this email
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (existingUser) {
+      // If user exists, just add the trainer-client relationship
+      const existingRelation = await ctx.db
+        .query("clientTrainers")
+        .withIndex("by_client_trainer", (q) =>
+          q.eq("clientId", existingUser.clerkId).eq("trainerId", args.trainerId)
+        )
+        .first();
+
+      if (!existingRelation) {
+        await ctx.db.insert("clientTrainers", {
+          clientId: existingUser.clerkId,
+          trainerId: args.trainerId,
+          addedAt: Date.now(),
+        });
+      }
+
+      return { status: "existing", userId: existingUser._id };
+    }
+
+    // Create a pending client (without clerkId - will be set when they sign up)
+    const now = Date.now();
+    const pendingClientId = await ctx.db.insert("users", {
+      clerkId: `pending_${args.email}_${now}`, // Temporary ID until they sign up
+      email: args.email,
+      fullName: args.fullName,
+      role: "client",
+      invitedByTrainerId: args.trainerId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Create the trainer-client relationship
+    await ctx.db.insert("clientTrainers", {
+      clientId: `pending_${args.email}_${now}`,
+      trainerId: args.trainerId,
+      addedAt: now,
+    });
+
+    return { status: "invited", userId: pendingClientId };
+  },
+});
+
+// Check if email is invited (for client login)
+export const checkInvitedEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (!user) {
+      return { invited: false, message: "Email not found. Please contact your trainer to get invited." };
+    }
+
+    if (user.role !== "client") {
+      return { invited: true, isTrainer: true };
+    }
+
+    return { 
+      invited: true, 
+      isTrainer: false,
+      isPending: user.clerkId.startsWith("pending_"),
+      fullName: user.fullName,
+    };
+  },
+});
+
+// Activate pending client (when they complete signup)
+export const activatePendingClient = mutation({
+  args: {
+    email: v.string(),
+    clerkId: v.string(),
+    fullName: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Find the pending user by email
+    const pendingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (!pendingUser) {
+      throw new Error("No invitation found for this email");
+    }
+
+    const oldClerkId = pendingUser.clerkId;
+
+    // Update the user with the real Clerk ID
+    await ctx.db.patch(pendingUser._id, {
+      clerkId: args.clerkId,
+      fullName: args.fullName || pendingUser.fullName,
+      phoneNumber: args.phoneNumber,
+      updatedAt: Date.now(),
+    });
+
+    // Update all clientTrainers relationships with the new clerkId
+    const relationships = await ctx.db
+      .query("clientTrainers")
+      .withIndex("by_client", (q) => q.eq("clientId", oldClerkId))
+      .collect();
+
+    for (const rel of relationships) {
+      await ctx.db.patch(rel._id, {
+        clientId: args.clerkId,
+      });
+    }
+
+    return pendingUser._id;
+  },
+});
+
+// Clear all users (admin function)
+export const clearAllUsers = mutation({
+  handler: async (ctx) => {
+    // Delete all users
+    const users = await ctx.db.query("users").collect();
+    for (const user of users) {
+      await ctx.db.delete(user._id);
+    }
+
+    // Delete all clientTrainers relationships
+    const relationships = await ctx.db.query("clientTrainers").collect();
+    for (const rel of relationships) {
+      await ctx.db.delete(rel._id);
+    }
+
+    // Delete all bookings
+    const bookings = await ctx.db.query("bookings").collect();
+    for (const booking of bookings) {
+      await ctx.db.delete(booking._id);
+    }
+
+    // Delete all notifications
+    const notifications = await ctx.db.query("notifications").collect();
+    for (const notification of notifications) {
+      await ctx.db.delete(notification._id);
+    }
+
+    // Delete all goals
+    const goals = await ctx.db.query("goals").collect();
+    for (const goal of goals) {
+      await ctx.db.delete(goal._id);
+    }
+
+    // Delete all progress logs
+    const progressLogs = await ctx.db.query("progressLogs").collect();
+    for (const log of progressLogs) {
+      await ctx.db.delete(log._id);
+    }
+
+    // Delete all availability
+    const availability = await ctx.db.query("availability").collect();
+    for (const avail of availability) {
+      await ctx.db.delete(avail._id);
+    }
+
+    // Delete all payment requests
+    const paymentRequests = await ctx.db.query("paymentRequests").collect();
+    for (const req of paymentRequests) {
+      await ctx.db.delete(req._id);
+    }
+
+    // Delete all packages
+    const packages = await ctx.db.query("packages").collect();
+    for (const pkg of packages) {
+      await ctx.db.delete(pkg._id);
+    }
+
+    return { deleted: users.length };
   },
 });
 

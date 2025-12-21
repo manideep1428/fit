@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useSignIn, useSignUp } from '@clerk/clerk-expo';
+import { useSignUp } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -20,73 +20,85 @@ import { showToast } from '@/utils/toast';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
-export default function SignInScreen() {
+export default function ClientSignUpScreen() {
   const router = useRouter();
-  const { signIn, setActive, isLoaded } = useSignIn();
-  const { signUp, setActive: setSignUpActive, isLoaded: isSignUpLoaded } = useSignUp();
+  const { signUp, setActive, isLoaded } = useSignUp();
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
 
+  // Step 1: Check email
   const [email, setEmail] = useState('');
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailChecked, setEmailChecked] = useState(false);
+  const [invitationData, setInvitationData] = useState<any>(null);
+
+  // Step 2: Create password
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
-  // For new client signup flow
-  const [isNewClient, setIsNewClient] = useState(false);
-  const [clientName, setClientName] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
+
+  // Step 3: Verify email
   const [pendingVerification, setPendingVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
 
+  const checkInvitedEmail = useQuery(
+    api.users.checkInvitedEmail,
+    email && checkingEmail ? { email: email.toLowerCase() } : 'skip'
+  );
   const activatePendingClient = useMutation(api.users.activatePendingClient);
 
-  const handleSignIn = async () => {
-    if (!isLoaded || !signIn) return;
+  // Handle email check result
+  useEffect(() => {
+    if (checkInvitedEmail && checkingEmail) {
+      setCheckingEmail(false);
+      
+      if (!checkInvitedEmail.invited) {
+        showToast.error('Email not invited. Please contact your trainer.');
+        return;
+      }
 
-    if (!email || !password) {
-      showToast.error('Please fill in all fields');
+      if (checkInvitedEmail.isTrainer) {
+        showToast.error('This email is registered as a trainer. Please use sign in.');
+        return;
+      }
+
+      if (!checkInvitedEmail.isPending) {
+        showToast.error('Account already exists. Please sign in instead.');
+        return;
+      }
+
+      // Email is invited and pending - proceed to password creation
+      setInvitationData(checkInvitedEmail);
+      setEmailChecked(true);
+      showToast.success(`Welcome ${checkInvitedEmail.fullName}! Create your password.`);
+    }
+  }, [checkInvitedEmail, checkingEmail]);
+
+  const handleCheckEmail = () => {
+    if (!email) {
+      showToast.error('Please enter your email');
       return;
     }
 
-    setLoading(true);
-    try {
-      const result = await signIn.create({
-        identifier: email,
-        password,
-      });
-
-      if (result.status === 'complete') {
-        await setActive({ session: result.createdSessionId });
-
-        // Give Clerk time to fully initialize the session
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Navigate to main index which handles role-based routing
-        router.replace('/');
-      }
-    } catch (err: any) {
-      console.error('Sign in error:', err);
-      
-      // Check if user doesn't exist - might be an invited client
-      if (err.errors?.[0]?.code === 'form_identifier_not_found') {
-        // Show option to create account as invited client
-        setIsNewClient(true);
-        showToast.info('Account not found. If you were invited by a trainer, create your account below.');
-      } else {
-        showToast.error(err.errors?.[0]?.message || 'Failed to sign in');
-      }
-    } finally {
-      setLoading(false);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showToast.error('Please enter a valid email address');
+      return;
     }
+
+    setCheckingEmail(true);
   };
 
-  const handleClientSignUp = async () => {
-    if (!isSignUpLoaded || !signUp) return;
+  const handleCreateAccount = async () => {
+    if (!isLoaded || !signUp) return;
 
-    if (!email || !password || !clientName) {
-      showToast.error('Please fill in all fields');
+    if (!password || !confirmPassword) {
+      showToast.error('Please fill in all password fields');
       return;
     }
 
@@ -95,13 +107,18 @@ export default function SignInScreen() {
       return;
     }
 
-    setLoading(true);
+    if (password !== confirmPassword) {
+      showToast.error('Passwords do not match');
+      return;
+    }
+
+    setCreatingAccount(true);
     try {
       await signUp.create({
-        emailAddress: email,
+        emailAddress: email.toLowerCase(),
         password,
-        firstName: clientName.split(' ')[0],
-        lastName: clientName.split(' ').slice(1).join(' ') || undefined,
+        firstName: invitationData.fullName.split(' ')[0],
+        lastName: invitationData.fullName.split(' ').slice(1).join(' ') || undefined,
         unsafeMetadata: {
           role: 'client',
         },
@@ -110,30 +127,31 @@ export default function SignInScreen() {
       // Send verification email
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setPendingVerification(true);
+      showToast.success('Verification code sent to your email');
     } catch (err: any) {
-      console.error('Client sign up error:', err);
+      console.error('Sign up error:', err);
       showToast.error(err.errors?.[0]?.message || 'Failed to create account');
     } finally {
-      setLoading(false);
+      setCreatingAccount(false);
     }
   };
 
   const handleVerifyEmail = async () => {
-    if (!isSignUpLoaded || !signUp) return;
+    if (!isLoaded || !signUp) return;
 
     if (!verificationCode) {
       showToast.error('Please enter the verification code');
       return;
     }
 
-    setLoading(true);
+    setVerifying(true);
     try {
       const result = await signUp.attemptEmailAddressVerification({
         code: verificationCode,
       });
 
       if (result.status === 'complete') {
-        await setSignUpActive({ session: result.createdSessionId });
+        await setActive({ session: result.createdSessionId });
 
         // Give Clerk time to fully initialize the session
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -143,11 +161,10 @@ export default function SignInScreen() {
           await activatePendingClient({
             email: email.toLowerCase(),
             clerkId: result.createdUserId!,
-            fullName: clientName,
+            fullName: invitationData.fullName,
           });
         } catch (convexErr) {
           console.error('Error activating client:', convexErr);
-          // Continue anyway - user can still use the app
         }
 
         showToast.success('Account created successfully!');
@@ -157,11 +174,11 @@ export default function SignInScreen() {
       console.error('Verification error:', err);
       showToast.error(err.errors?.[0]?.message || 'Failed to verify email');
     } finally {
-      setLoading(false);
+      setVerifying(false);
     }
   };
 
-  // Verification screen for new clients
+  // Step 3: Verification Screen
   if (pendingVerification) {
     return (
       <View
@@ -215,15 +232,15 @@ export default function SignInScreen() {
 
           <TouchableOpacity
             onPress={handleVerifyEmail}
-            disabled={loading}
+            disabled={verifying}
             className="py-4 rounded-xl"
             style={{ backgroundColor: colors.primary, ...shadows.medium }}
           >
-            {loading ? (
+            {verifying ? (
               <ActivityIndicator color="white" />
             ) : (
               <Text className="text-white text-center text-lg font-semibold">
-                Verify Email
+                Verify & Complete
               </Text>
             )}
           </TouchableOpacity>
@@ -241,8 +258,8 @@ export default function SignInScreen() {
     );
   }
 
-  // New client signup form
-  if (isNewClient) {
+  // Step 2: Create Password Screen
+  if (emailChecked && invitationData) {
     return (
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -257,7 +274,12 @@ export default function SignInScreen() {
         >
           <View className="flex-1 px-6 pb-8" style={{ paddingTop: insets.top + 12 }}>
             <TouchableOpacity
-              onPress={() => setIsNewClient(false)}
+              onPress={() => {
+                setEmailChecked(false);
+                setInvitationData(null);
+                setPassword('');
+                setConfirmPassword('');
+              }}
               className="mb-8"
               style={{ alignSelf: 'flex-start' }}
             >
@@ -266,15 +288,15 @@ export default function SignInScreen() {
 
             <View className="mb-8">
               <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
-                Complete Your Account
+                Create Your Password
               </Text>
               <Text className="text-base" style={{ color: colors.textSecondary }}>
-                Your trainer has invited you. Create your password to get started.
+                You're invited! Set up your account to get started.
               </Text>
             </View>
 
-            {/* Client Badge */}
-            <View 
+            {/* Invitation Info */}
+            <View
               className="flex-row items-center p-4 rounded-xl mb-6"
               style={{ backgroundColor: `${colors.success}15` }}
             >
@@ -286,7 +308,7 @@ export default function SignInScreen() {
               </View>
               <View className="flex-1">
                 <Text className="text-base font-semibold" style={{ color: colors.text }}>
-                  Invited Client
+                  Welcome, {invitationData.fullName}!
                 </Text>
                 <Text className="text-sm" style={{ color: colors.textSecondary }}>
                   {email}
@@ -295,31 +317,7 @@ export default function SignInScreen() {
             </View>
 
             <View className="gap-4 mb-6">
-              <View>
-                <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
-                  Your Name
-                </Text>
-                <View
-                  className="flex-row items-center px-4 py-3 rounded-xl"
-                  style={{
-                    backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}
-                >
-                  <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
-                  <TextInput
-                    value={clientName}
-                    onChangeText={setClientName}
-                    placeholder="Enter your name"
-                    placeholderTextColor={colors.textSecondary}
-                    autoCapitalize="words"
-                    className="flex-1 ml-3 text-base"
-                    style={{ color: colors.text }}
-                  />
-                </View>
-              </View>
-
+              {/* Password */}
               <View>
                 <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
                   Create Password
@@ -352,15 +350,49 @@ export default function SignInScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
+
+              {/* Confirm Password */}
+              <View>
+                <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
+                  Confirm Password
+                </Text>
+                <View
+                  className="flex-row items-center px-4 py-3 rounded-xl"
+                  style={{
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+                  <TextInput
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Re-enter password"
+                    placeholderTextColor={colors.textSecondary}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    className="flex-1 ml-3 text-base"
+                    style={{ color: colors.text }}
+                  />
+                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    <Ionicons
+                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
 
             <TouchableOpacity
-              onPress={handleClientSignUp}
-              disabled={loading}
+              onPress={handleCreateAccount}
+              disabled={creatingAccount}
               className="py-4 rounded-xl mb-6"
               style={{ backgroundColor: colors.primary, ...shadows.medium }}
             >
-              {loading ? (
+              {creatingAccount ? (
                 <ActivityIndicator color="white" />
               ) : (
                 <Text className="text-white text-center text-lg font-semibold">
@@ -374,6 +406,7 @@ export default function SignInScreen() {
     );
   }
 
+  // Step 1: Email Check Screen
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -386,11 +419,7 @@ export default function SignInScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View
-          className="flex-1 px-6 pb-8"
-          style={{ paddingTop: insets.top + 12 }}
-        >
-          {/* Back Button */}
+        <View className="flex-1 px-6 pb-8" style={{ paddingTop: insets.top + 12 }}>
           <TouchableOpacity
             onPress={() => router.back()}
             className="mb-8"
@@ -399,28 +428,35 @@ export default function SignInScreen() {
             <Ionicons name="arrow-back" size={28} color={colors.text} />
           </TouchableOpacity>
 
-          {/* Header */}
           <View className="mb-8">
-            <Text
-              className="text-3xl font-bold mb-2"
-              style={{ color: colors.text }}
-            >
-              Welcome Back
+            <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
+              Client Sign Up
             </Text>
             <Text className="text-base" style={{ color: colors.textSecondary }}>
-              Sign in to continue your fitness journey
+              Enter the email your trainer used to invite you
             </Text>
           </View>
 
-          {/* Form */}
+          {/* Info Card */}
+          <View
+            className="p-4 rounded-xl mb-6"
+            style={{ backgroundColor: `${colors.primary}15` }}
+          >
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="information-circle" size={20} color={colors.primary} />
+              <Text className="text-sm font-semibold ml-2" style={{ color: colors.text }}>
+                Invitation Required
+              </Text>
+            </View>
+            <Text className="text-sm" style={{ color: colors.textSecondary }}>
+              You can only sign up if your trainer has invited you. Make sure to use the exact email address they provided.
+            </Text>
+          </View>
+
           <View className="gap-4 mb-6">
-            {/* Email Input */}
             <View>
-              <Text
-                className="text-sm font-medium mb-2"
-                style={{ color: colors.text }}
-              >
-                Email
+              <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
+                Email Address
               </Text>
               <View
                 className="flex-row items-center px-4 py-3 rounded-xl"
@@ -430,11 +466,7 @@ export default function SignInScreen() {
                   borderColor: colors.border,
                 }}
               >
-                <Ionicons
-                  name="mail-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
+                <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
                 <TextInput
                   value={email}
                   onChangeText={setEmail}
@@ -448,80 +480,31 @@ export default function SignInScreen() {
                 />
               </View>
             </View>
-
-            {/* Password Input */}
-            <View>
-              <Text
-                className="text-sm font-medium mb-2"
-                style={{ color: colors.text }}
-              >
-                Password
-              </Text>
-              <View
-                className="flex-row items-center px-4 py-3 rounded-xl"
-                style={{
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Enter your password"
-                  placeholderTextColor={colors.textSecondary}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  className="flex-1 ml-3 text-base"
-                  style={{ color: colors.text }}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
           </View>
 
-          {/* Sign In Button */}
           <TouchableOpacity
-            onPress={handleSignIn}
-            disabled={loading}
+            onPress={handleCheckEmail}
+            disabled={checkingEmail}
             className="py-4 rounded-xl mb-6"
             style={{ backgroundColor: colors.primary, ...shadows.medium }}
           >
-            {loading ? (
+            {checkingEmail ? (
               <ActivityIndicator color="white" />
             ) : (
               <Text className="text-white text-center text-lg font-semibold">
-                Sign In
+                Continue
               </Text>
             )}
           </TouchableOpacity>
 
-          {/* Sign Up Link */}
+          {/* Sign In Link */}
           <View className="flex-row justify-center">
             <Text className="text-base" style={{ color: colors.textSecondary }}>
-              Don't have an account?{' '}
+              Already have an account?{' '}
             </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/(auth)/sign-up' as any)}
-            >
-              <Text
-                className="text-base font-semibold"
-                style={{ color: colors.primary }}
-              >
-                Sign Up
+            <TouchableOpacity onPress={() => router.push('/(auth)/sign-in' as any)}>
+              <Text className="text-base font-semibold" style={{ color: colors.primary }}>
+                Sign In
               </Text>
             </TouchableOpacity>
           </View>

@@ -132,18 +132,20 @@ export default function ClientsScreen() {
             clients.map((client: any) => {
               const bookingCount = getClientBookingCount(client.clerkId);
               const lastBooking = getLastBookingDate(client.clerkId);
+              const isPending = client.clerkId?.startsWith('pending_');
 
               return (
                 <TouchableOpacity
                   key={client._id}
                   className="rounded-2xl p-5 mb-3"
                   style={{ backgroundColor: colors.surface, ...shadows.medium }}
-                  onPress={() => router.push(`/(trainer)/client-detail?clientId=${client.clerkId}` as any)}
+                  onPress={() => !isPending && router.push(`/(trainer)/client-detail?clientId=${client.clerkId}` as any)}
+                  disabled={isPending}
                 >
                   <View className="flex-row items-center">
                     <View
                       className="w-16 h-16 rounded-full items-center justify-center mr-4"
-                      style={{ backgroundColor: colors.primary }}
+                      style={{ backgroundColor: isPending ? colors.textTertiary : colors.primary }}
                     >
                       {client.profileImageId ? (
                         <Image
@@ -158,38 +160,58 @@ export default function ClientsScreen() {
                     </View>
 
                     <View className="flex-1">
-                      <Text className="font-bold text-base mb-1" style={{ color: colors.text }}>
-                        {client.fullName}
-                      </Text>
+                      <View className="flex-row items-center">
+                        <Text className="font-bold text-base mb-1" style={{ color: colors.text }}>
+                          {client.fullName}
+                        </Text>
+                        {isPending && (
+                          <View 
+                            className="ml-2 px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: `${colors.warning}20` }}
+                          >
+                            <Text className="text-xs font-medium" style={{ color: colors.warning }}>
+                              Pending
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                       {client.email && (
                         <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>
                           {client.email}
                         </Text>
                       )}
-                      <View className="flex-row items-center gap-3">
-                        <View className="flex-row items-center">
-                          <Ionicons name="calendar-outline" size={14} color={colors.textTertiary} />
-                          <Text className="ml-1 text-xs" style={{ color: colors.textSecondary }}>
-                            {bookingCount} {bookingCount === 1 ? 'session' : 'sessions'}
-                          </Text>
-                        </View>
-                        {lastBooking && (
+                      {isPending ? (
+                        <Text className="text-xs" style={{ color: colors.textTertiary }}>
+                          Waiting for client to sign in
+                        </Text>
+                      ) : (
+                        <View className="flex-row items-center gap-3">
                           <View className="flex-row items-center">
-                            <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
+                            <Ionicons name="calendar-outline" size={14} color={colors.textTertiary} />
                             <Text className="ml-1 text-xs" style={{ color: colors.textSecondary }}>
-                              Last: {new Date(lastBooking).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              {bookingCount} {bookingCount === 1 ? 'session' : 'sessions'}
                             </Text>
                           </View>
-                        )}
-                      </View>
+                          {lastBooking && (
+                            <View className="flex-row items-center">
+                              <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
+                              <Text className="ml-1 text-xs" style={{ color: colors.textSecondary }}>
+                                Last: {new Date(lastBooking).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
                     </View>
 
-                    <View
-                      className="w-10 h-10 rounded-full items-center justify-center"
-                      style={{ backgroundColor: colors.background }}
-                    >
-                      <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-                    </View>
+                    {!isPending && (
+                      <View
+                        className="w-10 h-10 rounded-full items-center justify-center"
+                        style={{ backgroundColor: colors.background }}
+                      >
+                        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                      </View>
+                    )}
                   </View>
                 </TouchableOpacity>
               );

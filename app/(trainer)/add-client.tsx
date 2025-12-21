@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
+import { showToast } from '@/utils/toast';
 
 export default function AddClientScreen() {
   const { user } = useUser();
@@ -16,58 +17,71 @@ export default function AddClientScreen() {
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientName, setClientName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
 
-  const addClientToTrainer = useMutation(api.users.addClientToTrainer);
+  const inviteClient = useMutation(api.users.inviteClientByEmail);
   const createNotification = useMutation(api.notifications.createNotification);
 
-  // Fetch all clients upfront (limited to first 20)
-  const allClients = useQuery(api.users.getAllClients);
+  // Get existing clients for this trainer
+  const existingClients = useQuery(
+    api.users.getTrainerClients,
+    user?.id ? { trainerId: user.id } : 'skip'
+  );
 
-  // Filter clients based on search query (client-side filtering)
-  const displayedClients = useMemo(() => {
-    if (!allClients) return [];
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-    // Limit to 20 clients
-    const limitedClients = allClients.slice(0, 20);
+  const handleInviteClient = async () => {
+    if (!user?.id) return;
 
-    if (searchQuery.length < 2) {
-      return limitedClients;
+    if (!clientEmail.trim()) {
+      showToast.error('Please enter client email');
+      return;
     }
 
-    const query = searchQuery.toLowerCase();
-    return limitedClients.filter((client: any) =>
-      client.fullName?.toLowerCase().includes(query) ||
-      client.email?.toLowerCase().includes(query)
-    );
-  }, [allClients, searchQuery]);
+    if (!validateEmail(clientEmail.trim())) {
+      showToast.error('Please enter a valid email address');
+      return;
+    }
 
-  const handleAddClient = async () => {
-    if (!selectedClient || !user?.id) return;
+    if (!clientName.trim()) {
+      showToast.error('Please enter client name');
+      return;
+    }
+
+    // Check if client already exists in trainer's list
+    const alreadyAdded = existingClients?.some(
+      (client: any) => client?.email?.toLowerCase() === clientEmail.trim().toLowerCase()
+    );
+
+    if (alreadyAdded) {
+      showToast.error('This client is already in your list');
+      return;
+    }
 
     setIsAdding(true);
     try {
-      // Add client to trainer's list
-      await addClientToTrainer({
+      const result = await inviteClient({
         trainerId: user.id,
-        clientId: selectedClient.clerkId,
+        email: clientEmail.trim().toLowerCase(),
+        fullName: clientName.trim(),
       });
 
-      // Send notification to client
-      await createNotification({
-        userId: selectedClient.clerkId,
-        type: 'trainer_added',
-        title: 'New Trainer Added',
-        message: `${user.firstName || 'A trainer'} has added you as their client. You can now book sessions with them!`,
-        read: false,
-      });
+      if (result.status === 'existing') {
+        showToast.success('Client added to your list!');
+      } else {
+        showToast.success('Client invited! They can now sign in with this email.');
+      }
 
-      // Navigate back
-      router.back();
-    } catch (error) {
-      console.error('Error adding client:', error);
+      // Navigate back to clients screen
+      router.replace('/(trainer)/clients' as any);
+    } catch (error: any) {
+      console.error('Error inviting client:', error);
+      showToast.error(error.message || 'Failed to invite client');
     } finally {
       setIsAdding(false);
     }
@@ -91,119 +105,151 @@ export default function AddClientScreen() {
         <View className="w-12" />
       </View>
 
-      <View className="flex-1 px-4">
-        {/* Search Input */}
+      <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
+        {/* Info Card */}
+        <View 
+          className="p-4 rounded-xl mb-6"
+          style={{ backgroundColor: `${colors.primary}15` }}
+        >
+          <View className="flex-row items-center mb-2">
+            <Ionicons name="information-circle" size={20} color={colors.primary} />
+            <Text className="text-sm font-semibold ml-2" style={{ color: colors.text }}>
+              How it works
+            </Text>
+          </View>
+          <Text className="text-sm" style={{ color: colors.textSecondary }}>
+            Enter your client's email and name. They will be able to sign in using this email address. If they don't have an account yet, one will be created for them.
+          </Text>
+        </View>
+
+        {/* Client Email Input */}
         <View className="mb-4">
-          <View className="relative">
-            <Ionicons
-              name="search"
-              size={20}
-              color={colors.textSecondary}
-              style={{ position: 'absolute', left: 16, top: 14, zIndex: 1 }}
-            />
+          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+            Client Email *
+          </Text>
+          <View
+            className="flex-row items-center px-4 py-3.5 rounded-xl"
+            style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
             <TextInput
-              className="rounded-xl py-3.5 pl-12 pr-4 text-base"
-              style={{
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-                color: colors.text,
-              }}
-              placeholder="Search by name or email"
+              className="flex-1 ml-3 text-base"
+              style={{ color: colors.text }}
+              placeholder="client@example.com"
               placeholderTextColor={colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={clientEmail}
+              onChangeText={setClientEmail}
               autoCapitalize="none"
+              keyboardType="email-address"
+              autoCorrect={false}
             />
           </View>
         </View>
 
-        {/* Client List */}
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          {!allClients ? (
-            <View className="items-center py-12">
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : displayedClients.length === 0 ? (
-            <View className="items-center py-12">
-              <Ionicons name="person-outline" size={48} color={colors.textTertiary} />
-              <Text className="mt-4 text-base" style={{ color: colors.textSecondary }}>
-                No clients found
-              </Text>
-            </View>
-          ) : (
-            displayedClients.map((client: any) => (
-              <TouchableOpacity
-                key={client._id}
-                className="rounded-xl p-4 mb-3"
-                style={{
-                  backgroundColor: colors.surface,
-                  borderWidth: 2,
-                  borderColor: selectedClient?._id === client._id ? colors.primary : colors.border,
-                  ...shadows.small,
-                }}
-                onPress={() => setSelectedClient(client)}
-              >
-                <View className="flex-row items-center">
-                  <View
-                    className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                    style={{ backgroundColor: colors.primary }}
-                  >
-                    <Text className="text-white text-lg font-bold">
-                      {client.fullName?.[0] || 'C'}
-                    </Text>
-                  </View>
-
-                  <View className="flex-1">
-                    <Text className="font-semibold text-base" style={{ color: colors.text }}>
-                      {client.fullName || 'Client'}
-                    </Text>
-                    <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                      {client.email}
-                    </Text>
-                  </View>
-
-                  {selectedClient?._id === client._id && (
-                    <View
-                      className="w-7 h-7 rounded-full items-center justify-center"
-                      style={{ backgroundColor: colors.primary }}
-                    >
-                      <Ionicons name="checkmark" size={18} color="#FFF" />
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
-      </View>
-
-      {/* Add Button */}
-      {selectedClient && (
-        <View
-          className="px-4 py-4"
-          style={{
-            backgroundColor: colors.background,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-          }}
-        >
-          <TouchableOpacity
-            className="rounded-xl py-4 items-center"
-            style={{ backgroundColor: colors.primary }}
-            onPress={handleAddClient}
-            disabled={isAdding}
+        {/* Client Name Input */}
+        <View className="mb-6">
+          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+            Client Name *
+          </Text>
+          <View
+            className="flex-row items-center px-4 py-3.5 rounded-xl"
+            style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
           >
-            {isAdding ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text className="text-base font-semibold text-white">
-                Add {selectedClient.fullName}
-              </Text>
-            )}
-          </TouchableOpacity>
+            <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
+            <TextInput
+              className="flex-1 ml-3 text-base"
+              style={{ color: colors.text }}
+              placeholder="John Doe"
+              placeholderTextColor={colors.textSecondary}
+              value={clientName}
+              onChangeText={setClientName}
+              autoCapitalize="words"
+            />
+          </View>
         </View>
-      )}
+
+        {/* Add Button */}
+        <TouchableOpacity
+          className="rounded-xl py-4 items-center mb-6"
+          style={{ 
+            backgroundColor: clientEmail && clientName ? colors.primary : colors.border,
+          }}
+          onPress={handleInviteClient}
+          disabled={isAdding || !clientEmail || !clientName}
+        >
+          {isAdding ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <View className="flex-row items-center">
+              <Ionicons name="person-add-outline" size={20} color="#FFF" />
+              <Text className="text-base font-semibold text-white ml-2">
+                Add Client
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Existing Clients Section */}
+        {existingClients && existingClients.length > 0 && (
+          <View className="mt-4">
+            <Text className="text-sm font-semibold mb-3" style={{ color: colors.textSecondary }}>
+              Your Clients ({existingClients.length})
+            </Text>
+            {existingClients.slice(0, 5).map((client: any) => (
+              <View
+                key={client?._id}
+                className="flex-row items-center p-3 rounded-xl mb-2"
+                style={{ backgroundColor: colors.surface }}
+              >
+                <View
+                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                  style={{ backgroundColor: colors.primary }}
+                >
+                  <Text className="text-white font-bold">
+                    {client?.fullName?.[0] || 'C'}
+                  </Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="font-medium" style={{ color: colors.text }}>
+                    {client?.fullName || 'Client'}
+                  </Text>
+                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                    {client?.email}
+                  </Text>
+                </View>
+                {client?.clerkId?.startsWith('pending_') && (
+                  <View 
+                    className="px-2 py-1 rounded-full"
+                    style={{ backgroundColor: `${colors.warning}20` }}
+                  >
+                    <Text className="text-xs font-medium" style={{ color: colors.warning }}>
+                      Pending
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ))}
+            {existingClients.length > 5 && (
+              <TouchableOpacity
+                className="py-3 items-center"
+                onPress={() => router.push('/(trainer)/clients' as any)}
+              >
+                <Text className="text-sm font-medium" style={{ color: colors.primary }}>
+                  View all {existingClients.length} clients
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }

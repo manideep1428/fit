@@ -48,6 +48,8 @@ export default function GoogleOAuthButton({
   const { startSSOFlow } = useSSO();
 
   const onPress = useCallback(async () => {
+    if (loading) return; // Prevent multiple clicks
+    
     setLoading(true);
     try {
       const { createdSessionId, setActive, signIn } = await startSSOFlow({
@@ -64,7 +66,7 @@ export default function GoogleOAuthButton({
         await setActive!({ session: createdSessionId });
 
         // Give Clerk time to fully initialize the session
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         // Navigate to main index which handles role-based routing
         // The index.tsx will check user role and redirect appropriately
@@ -85,7 +87,7 @@ export default function GoogleOAuthButton({
     } finally {
       setLoading(false);
     }
-  }, [startSSOFlow, router, onError, mode]);
+  }, [startSSOFlow, router, onError, mode, loading]);
 
   return (
     <TouchableOpacity

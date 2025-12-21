@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, BorderRadius } from '@/constants/colors';
 import { AnimatedButton } from '@/components/AnimatedButton';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 
@@ -18,6 +18,7 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Query Convex for user data
   const convexUser = useQuery(
@@ -27,11 +28,13 @@ export default function WelcomeScreen() {
 
   // Check if user is already signed in and redirect accordingly
   useEffect(() => {
-    if (!isAuthLoaded || !isUserLoaded) return;
+    if (!isAuthLoaded || !isUserLoaded || isNavigating) return;
 
     if (isSignedIn && user) {
       // Wait for Convex query to complete
       if (convexUser === undefined) return;
+
+      setIsNavigating(true);
 
       // Get role from Convex first, fallback to Clerk metadata
       const convexRole = convexUser?.role;
@@ -62,7 +65,19 @@ export default function WelcomeScreen() {
         router.replace('/(auth)/role-selection');
       }
     }
-  }, [isAuthLoaded, isUserLoaded, isSignedIn, user, convexUser, router]);
+  }, [isAuthLoaded, isUserLoaded, isSignedIn, user, convexUser, router, isNavigating]);
+
+  // Show loading screen while checking authentication or navigating
+  if (!isAuthLoaded || !isUserLoaded || (isSignedIn && user && (convexUser === undefined || isNavigating))) {
+    return (
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text className="text-sm mt-4" style={{ color: colors.textSecondary }}>
+          {isNavigating ? 'Redirecting...' : 'Loading...'}
+        </Text>
+      </View>
+    );
+  }
      
 
   return (
@@ -94,10 +109,10 @@ export default function WelcomeScreen() {
       >
         <View className="items-center mb-8">
           <Text className="text-3xl font-bold mb-3" style={{ color: colors.text }}>
-            Welcome Back
+            Welcome
           </Text>
           <Text className="text-sm text-center leading-6 px-4" style={{ color: colors.textSecondary }}>
-            We're glad to see you. Pick up where you left off and enjoy a seamless experience designed just for you.
+            Choose your role to get started with your fitness journey
           </Text>
         </View>
 
@@ -109,7 +124,16 @@ export default function WelcomeScreen() {
             size="large"
             fullWidth
           >
-            Get Started
+            I'm a Trainer
+          </AnimatedButton>
+
+          <AnimatedButton
+            onPress={() => router.push('/(auth)/client-signup' as any)}
+            variant="secondary"
+            size="large"
+            fullWidth
+          >
+            I'm a Client
           </AnimatedButton>
 
           <AnimatedButton

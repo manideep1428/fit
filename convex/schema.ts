@@ -9,6 +9,7 @@ export default defineSchema({
     username: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
     role: v.union(v.literal("trainer"), v.literal("client")),
+    invitedByTrainerId: v.optional(v.string()), // For clients invited by trainers
     profileImageId: v.optional(v.id("_storage")),
     bio: v.optional(v.string()),
     specialty: v.optional(v.string()),
@@ -173,4 +174,17 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_trainer", ["trainerId"]),
+
+  // Client questionnaires - questions trainers ask clients
+  clientQuestions: defineTable({
+    trainerId: v.string(), // Clerk ID - trainer who created the question
+    clientId: v.string(), // Clerk ID - client the question is for
+    question: v.string(),
+    answer: v.optional(v.string()),
+    answeredAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_trainer", ["trainerId"])
+    .index("by_client", ["clientId"])
+    .index("by_trainer_client", ["trainerId", "clientId"]),
 });

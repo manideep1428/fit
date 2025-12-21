@@ -1,23 +1,26 @@
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Image, TextInput, Modal } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows, BorderRadius } from '@/constants/colors';
+import { getColors, Shadows } from '@/constants/colors';
 import { AnimatedCard } from '@/components/AnimatedCard';
-import { AnimatedButton } from '@/components/AnimatedButton';
 import NotificationHistory from '@/components/NotificationHistory';
+import { showToast } from '@/utils/toast';
 
 export default function ClientHomeScreen() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [answeringQuestion, setAnsweringQuestion] = useState<string | null>(null);
+  const [answerText, setAnswerText] = useState('');
+  const [submittingAnswer, setSubmittingAnswer] = useState(false);
 
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
@@ -48,12 +51,36 @@ export default function ClientHomeScreen() {
     user?.id ? { userId: user.id } : 'skip'
   );
 
-  // Debug logging
-  useEffect(() => {
-    if (unreadCount !== undefined) {
-      console.log('Unread count:', unreadCount, typeof unreadCount);
+  // Fetch questions for this client
+  const questions = useQuery(
+    api.questions.getQuestionsForClient,
+    user?.id ? { clientId: user.id } : 'skip'
+  );
+
+  const answerQuestion = useMutation(api.questions.answerQuestion);
+
+  // Get unanswered questions
+  const unansweredQuestions = questions?.filter((q: any) => !q.answer) || [];
+
+  const handleAnswerQuestion = async (questionId: string) => {
+    if (!answerText.trim()) return;
+
+    setSubmittingAnswer(true);
+    try {
+      await answerQuestion({
+        questionId: questionId as any,
+        answer: answerText.trim(),
+      });
+      setAnsweringQuestion(null);
+      setAnswerText('');
+      showToast.success('Answer submitted!');
+    } catch (error) {
+      console.error('Error answering question:', error);
+      showToast.error('Failed to submit answer');
+    } finally {
+      setSubmittingAnswer(false);
     }
-  }, [unreadCount]);
+  };
 
   useEffect(() => {
     if (isLoaded) {
@@ -78,17 +105,14 @@ export default function ClientHomeScreen() {
     >
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
 
-      {/* Body container */}
       <View className="px-5 pb-6" style={{ paddingTop: insets.top + 12 }}>
 
         {/* Header */}
-        <View
-          className="flex-row justify-between items-center mb-6"
-        >
+        <View className="flex-row justify-between items-center mb-6">
           <View>
             <Text className="text-xs font-medium" style={{ color: colors.textSecondary }}>Welcome back,</Text>
             <Text className="text-2xl mt-1 font-bold tracking-tight" style={{ color: colors.text }}>
-              {user?.firstName || 'Jessica'}
+              {user?.firstName || 'Client'}
             </Text>
           </View>
 
@@ -120,7 +144,7 @@ export default function ClientHomeScreen() {
                 <Image source={{ uri: user.imageUrl }} className="w-full h-full" />
               ) : (
                 <Text className="text-white font-bold text-lg">
-                  {user?.firstName?.[0] || 'J'}
+                  {user?.firstName?.[0] || 'C'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -195,7 +219,7 @@ export default function ClientHomeScreen() {
                 const dateB = new Date(`${b.date}T${b.startTime}:00`);
                 return dateA.getTime() - dateB.getTime();
               })
-              .slice(0, 2); // Show only next 2 sessions
+              .slice(0, 2);
 
             const enrichedUpcoming = upcomingSessions.map((booking: any) => {
               const trainer = clientTrainers?.find((t: any) => t.clerkId === booking.trainerId);
@@ -223,14 +247,16 @@ export default function ClientHomeScreen() {
                   No upcoming sessions
                 </Text>
                 <Text className="text-sm text-center mb-4 px-6" style={{ color: colors.textSecondary }}>
-                  Book a session with your trainers
+                  Book a session with your trainer
                 </Text>
-                <View
-                  className="px-4 py-2 rounded-full"
-                  style={{ backgroundColor: colors.primary }}
-                >
-                  <Text className="text-white text-xs font-semibold">Book Session</Text>
-                </View>
+                {clientTrainers && clientTrainers.length > 0 && (
+                  <View
+                    className="px-4 py-2 rounded-full"
+                    style={{ backgroundColor: colors.primary }}
+                  >
+                    <Text className="text-white text-xs font-semibold">Book Session</Text>
+                  </View>
+                )}
               </AnimatedCard>
             ) : (
               <View>
@@ -307,12 +333,68 @@ export default function ClientHomeScreen() {
           })()}
         </View>
 
+        {/* Trainer Questions Section */}
+        {unansweredQuestions.length > 0 && (
+          <View className="mb-6">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center">
+                <Text className="text-lg font-bold" style={{ color: colors.text }}>Questions from Trainer</Text>
+                <View
+                  className="ml-2 px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: colors.error }}
+                >
+                  <Text className="text-white text-xs font-bold">{unansweredQuestions.length}</Text>
+                </View>
+              </View>
+            </View>
+
+            {unansweredQuestions.slice(0, 3).map((question: any, index: number) => {
+              const trainer = clientTrainers?.find((t: any) => t.clerkId === question.trainerId);
+              
+              return (
+                <AnimatedCard
+                  key={question._id}
+                  delay={250 + index * 80}
+                  style={{ marginBottom: 12 }}
+                  elevation="medium"
+                  borderRadius="xlarge"
+                  onPress={() => {
+                    setAnsweringQuestion(question._id);
+                    setAnswerText('');
+                  }}
+                >
+                  <View className="flex-row items-start">
+                    <View
+                      className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                      style={{ backgroundColor: `${colors.primary}15` }}
+                    >
+                      <Ionicons name="help-circle" size={20} color={colors.primary} />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-xs font-medium mb-1" style={{ color: colors.textSecondary }}>
+                        From {trainer?.fullName || 'Your Trainer'}
+                      </Text>
+                      <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                        {question.question}
+                      </Text>
+                      <View className="flex-row items-center mt-2">
+                        <Ionicons name="create-outline" size={14} color={colors.primary} />
+                        <Text className="text-xs font-semibold ml-1" style={{ color: colors.primary }}>
+                          Tap to answer
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </AnimatedCard>
+              );
+            })}
+          </View>
+        )}
+
         {/* My Goals */}
         {goals && goals.length > 0 && (
           <View className="mb-6">
-            <View
-              className="flex-row justify-between items-center mb-4"
-            >
+            <View className="flex-row justify-between items-center mb-4">
               <Text className="text-lg font-bold" style={{ color: colors.text }}>My Goals</Text>
             </View>
 
@@ -371,9 +453,7 @@ export default function ClientHomeScreen() {
 
         {/* My Trainers */}
         <View>
-          <View
-            className="flex-row justify-between items-center mb-4"
-          >
+          <View className="flex-row justify-between items-center mb-4">
             <Text className="text-lg font-bold" style={{ color: colors.text }}>My Trainers</Text>
             {clientTrainers && clientTrainers.length > 0 && (
               <TouchableOpacity onPress={() => router.push('/(client)/bookings' as any)}>
@@ -397,20 +477,14 @@ export default function ClientHomeScreen() {
                 className="w-20 h-20 rounded-full items-center justify-center mb-4"
                 style={{ backgroundColor: `${colors.primary}10` }}
               >
-                <Ionicons name="person-add-outline" size={36} color={colors.primary} />
+                <Ionicons name="person-outline" size={36} color={colors.primary} />
               </View>
               <Text className="font-semibold text-base mb-2" style={{ color: colors.text }}>
-                No trainers added yet
+                No trainers yet
               </Text>
-              <Text className="text-sm text-center mb-5 px-6" style={{ color: colors.textSecondary }}>
-                Find and add trainers to start booking sessions
+              <Text className="text-sm text-center px-6" style={{ color: colors.textSecondary }}>
+                Your trainer will add you to their client list. Contact your trainer to get started.
               </Text>
-              <AnimatedButton
-                variant="primary"
-                onPress={() => router.push('/(client)/find-trainers' as any)}
-              >
-                Find Trainers
-              </AnimatedButton>
             </AnimatedCard>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -450,7 +524,7 @@ export default function ClientHomeScreen() {
                       {trainer.fullName || 'Trainer'}
                     </Text>
                     <Text className="text-xs mb-3 text-center" style={{ color: colors.textSecondary }}>
-                      {trainer.username || 'Personal Trainer'}
+                      {trainer.specialty || 'Personal Trainer'}
                     </Text>
                     <View
                       className="px-4 py-2 rounded-full"
@@ -460,31 +534,6 @@ export default function ClientHomeScreen() {
                     </View>
                   </AnimatedCard>
                 ))}
-
-                {/* Add New Trainer Card */}
-                <AnimatedCard
-                  delay={450 + clientTrainers.length * 80}
-                  style={{
-                    width: 150,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingVertical: 24,
-                    borderStyle: 'dashed',
-                  }}
-                  elevation="none"
-                  borderRadius="xlarge"
-                  onPress={() => router.push('/(client)/find-trainers' as any)}
-                >
-                  <View
-                    className="w-20 h-20 rounded-full mb-3 items-center justify-center"
-                    style={{ backgroundColor: colors.surfaceSecondary }}
-                  >
-                    <Ionicons name="add" size={36} color={colors.textTertiary} />
-                  </View>
-                  <Text className="font-semibold text-sm text-center" style={{ color: colors.textSecondary }}>
-                    Find Trainer
-                  </Text>
-                </AnimatedCard>
               </View>
             </ScrollView>
           )}
@@ -498,6 +547,88 @@ export default function ClientHomeScreen() {
           onClose={() => setShowNotifications(false)}
         />
       )}
+
+      {/* Answer Question Modal */}
+      <Modal
+        visible={!!answeringQuestion}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAnsweringQuestion(null)}
+      >
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View
+            className="rounded-t-3xl p-6"
+            style={{ backgroundColor: colors.surface }}
+          >
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold" style={{ color: colors.text }}>
+                Answer Question
+              </Text>
+              <TouchableOpacity onPress={() => setAnsweringQuestion(null)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {answeringQuestion && (() => {
+              const question = questions?.find((q: any) => q._id === answeringQuestion);
+              const trainer = clientTrainers?.find((t: any) => t.clerkId === question?.trainerId);
+              
+              return (
+                <>
+                  <View
+                    className="rounded-xl p-4 mb-4"
+                    style={{ backgroundColor: `${colors.primary}10` }}
+                  >
+                    <Text className="text-xs font-medium mb-1" style={{ color: colors.textSecondary }}>
+                      {trainer?.fullName || 'Your Trainer'} asks:
+                    </Text>
+                    <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                      {question?.question}
+                    </Text>
+                  </View>
+
+                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+                    Your Answer
+                  </Text>
+                  <TextInput
+                    value={answerText}
+                    onChangeText={setAnswerText}
+                    placeholder="Type your answer here..."
+                    placeholderTextColor={colors.textTertiary}
+                    multiline
+                    numberOfLines={4}
+                    className="px-4 py-3 mb-4"
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      textAlignVertical: 'top',
+                      minHeight: 120,
+                    }}
+                  />
+
+                  <TouchableOpacity
+                    onPress={() => handleAnswerQuestion(answeringQuestion)}
+                    disabled={submittingAnswer || !answerText.trim()}
+                    className="rounded-xl py-4 items-center"
+                    style={{
+                      backgroundColor: answerText.trim() && !submittingAnswer ? colors.primary : colors.border,
+                    }}
+                  >
+                    {submittingAnswer ? (
+                      <ActivityIndicator color="#FFF" />
+                    ) : (
+                      <Text className="text-white font-semibold text-base">Submit Answer</Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }

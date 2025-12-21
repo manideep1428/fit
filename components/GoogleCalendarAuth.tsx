@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '@clerk/clerk-expo';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, BorderRadius } from '@/constants/colors';
+import { getColors } from '@/constants/colors';
 import { showToast } from '@/utils/toast';
 import * as WebBrowser from 'expo-web-browser';
 import Svg, { Path } from 'react-native-svg';
-import GoogleTokenHelper from './GoogleTokenHelper';
 
 // Google Calendar SVG Icon
 const GoogleCalendarIcon = ({ size = 24 }: { size?: number }) => (
@@ -37,9 +36,6 @@ export default function GoogleCalendarAuth({
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showManualInput, setShowManualInput] = useState(false);
-  const [showHelper, setShowHelper] = useState(false);
-  const [manualToken, setManualToken] = useState('');
   const saveGoogleTokens = useMutation(api.users.saveGoogleTokens);
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
@@ -81,23 +77,15 @@ export default function GoogleCalendarAuth({
           return;
         }
         
-        // For now, show manual input since we can't easily capture the redirect
-        setShowManualInput(true);
-        setError('Please copy the authorization code from the browser and paste it below.');
+        // In a real app, you would handle the OAuth callback here
+        // For now, show that the feature is coming soon
+        Alert.alert(
+          'Coming Soon',
+          'Google Calendar integration is being set up. This feature will be available soon!',
+          [{ text: 'OK', onPress: () => onSkip?.() }]
+        );
       } else {
-        // Demo mode - create a test token
-        const demoToken = `demo_google_token_${user.id}_${Date.now()}`;
-        
-        await saveGoogleTokens({
-          clerkId: user.id,
-          accessToken: demoToken,
-          refreshToken: `refresh_${demoToken}`,
-          expiresIn: 3600,
-        });
-
-        console.log('Demo Google Calendar token saved:', demoToken);
-        showToast.success('Google Calendar connected (Demo Mode)');
-        if (onConnected) onConnected();
+        setError('Google Calendar integration is not configured. Please contact support.');
       }
     } catch (err: any) {
       console.error('Error connecting Google Calendar:', err);
@@ -106,56 +94,6 @@ export default function GoogleCalendarAuth({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleManualTokenSubmit = async () => {
-    if (!user?.id || !manualToken.trim()) return;
-
-    setLoading(true);
-    try {
-      // In a real implementation, you would exchange this code for tokens
-      // For now, we'll just save it as a demo token
-      await saveGoogleTokens({
-        clerkId: user.id,
-        accessToken: manualToken.trim(),
-        refreshToken: `refresh_${manualToken.trim()}`,
-        expiresIn: 3600,
-      });
-
-      console.log('Manual Google Calendar token saved:', manualToken.trim());
-      showToast.success('Google Calendar connected successfully!');
-      if (onConnected) onConnected();
-    } catch (err: any) {
-      console.error('Error saving token:', err);
-      setError('Failed to save token');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGetToken = () => {
-    Alert.alert(
-      'Get Google Calendar Token',
-      'To get your Google Calendar token:\n\n1. Go to Google Cloud Console\n2. Create OAuth 2.0 credentials\n3. Enable Calendar API\n4. Use the OAuth playground to get tokens\n\nFor demo purposes, you can also just tap "Demo Mode" below.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Demo Mode', 
-          onPress: async () => {
-            const demoToken = `demo_google_token_${user?.id}_${Date.now()}`;
-            await saveGoogleTokens({
-              clerkId: user!.id,
-              accessToken: demoToken,
-              refreshToken: `refresh_${demoToken}`,
-              expiresIn: 3600,
-            });
-            showToast.success('Demo token created for testing');
-            if (onConnected) onConnected();
-          }
-        },
-        { text: 'Open Guide', onPress: () => setShowHelper(true) },
-      ]
-    );
   };
 
   return (
@@ -212,90 +150,25 @@ export default function GoogleCalendarAuth({
         </View>
       )}
 
-      {/* Manual Token Input */}
-      {showManualInput && (
-        <View className="mb-4">
-          <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
-            Authorization Code:
-          </Text>
-          <TextInput
-            value={manualToken}
-            onChangeText={setManualToken}
-            placeholder="Paste authorization code here"
-            placeholderTextColor={colors.textTertiary}
-            className="px-4 py-3 mb-3"
-            style={{
-              backgroundColor: colors.background,
-              color: colors.text,
-              borderRadius: BorderRadius.medium,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-            multiline
-          />
-          <TouchableOpacity
-            onPress={handleManualTokenSubmit}
-            disabled={loading || !manualToken.trim()}
-            className="rounded-xl py-3 items-center"
-            style={{ 
-              backgroundColor: loading || !manualToken.trim() ? colors.border : colors.success,
-            }}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text className="text-white font-semibold">Submit Code</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {!showManualInput && (
-        <>
-          <TouchableOpacity
-            onPress={handleConnect}
-            disabled={loading}
-            className="rounded-xl py-4 items-center mb-3"
-            style={{ 
-              backgroundColor: loading ? colors.border : colors.primary,
-            }}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <View className="flex-row items-center">
-                <Ionicons name="logo-google" size={20} color="#FFF" />
-                <Text className="text-white font-semibold text-base ml-2">
-                  {buttonText}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleGetToken}
-            className="rounded-xl py-3 items-center mb-3"
-            style={{ backgroundColor: colors.surfaceSecondary }}
-          >
-            <Text className="font-semibold" style={{ color: colors.text }}>
-              Get Token Manually
+      <TouchableOpacity
+        onPress={handleConnect}
+        disabled={loading}
+        className="rounded-xl py-4 items-center mb-3"
+        style={{ 
+          backgroundColor: loading ? colors.border : colors.primary,
+        }}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFF" />
+        ) : (
+          <View className="flex-row items-center">
+            <Ionicons name="logo-google" size={20} color="#FFF" />
+            <Text className="text-white font-semibold text-base ml-2">
+              {buttonText}
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setShowHelper(true)}
-            className="rounded-xl py-3 items-center mb-3"
-            style={{ backgroundColor: `${colors.primary}15` }}
-          >
-            <View className="flex-row items-center">
-              <Ionicons name="help-circle-outline" size={18} color={colors.primary} />
-              <Text className="font-semibold ml-2" style={{ color: colors.primary }}>
-                Setup Guide
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </>
-      )}
+          </View>
+        )}
+      </TouchableOpacity>
 
       {showSkip && onSkip && (
         <TouchableOpacity onPress={onSkip} className="py-3 items-center">
@@ -304,15 +177,6 @@ export default function GoogleCalendarAuth({
           </Text>
         </TouchableOpacity>
       )}
-
-      {/* Helper Modal */}
-      <Modal
-        visible={showHelper}
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        <GoogleTokenHelper onClose={() => setShowHelper(false)} />
-      </Modal>
     </View>
   );
 }
