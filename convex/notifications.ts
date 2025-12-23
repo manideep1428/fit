@@ -15,8 +15,20 @@ export const createNotification = mutation({
     message: v.string(),
     bookingId: v.optional(v.id("bookings")),
     read: v.optional(v.boolean()),
+    filter: v.optional(v.union(
+      v.literal("bookings"),
+      v.literal("trainers")
+    )),
   },
   handler: async (ctx, args) => {
+    // Determine filter based on type
+    let filter: "bookings" | "trainers" | undefined;
+    if (args.type === "booking_created" || args.type === "booking_cancelled" || args.type === "booking_reminder") {
+      filter = "bookings";
+    } else if (args.type === "trainer_added") {
+      filter = "trainers";
+    }
+
     return await ctx.db.insert("notifications", {
       userId: args.userId,
       type: args.type,
@@ -24,6 +36,7 @@ export const createNotification = mutation({
       message: args.message,
       bookingId: args.bookingId,
       read: args.read ?? false,
+      filter: args.filter ?? filter,
       createdAt: Date.now(),
     });
   },

@@ -53,6 +53,7 @@ export const inviteClientByEmail = mutation({
     trainerId: v.string(),
     email: v.string(),
     fullName: v.string(),
+    phoneNumber: v.string(),
   },
   handler: async (ctx, args) => {
     // Check if client already exists with this email
@@ -87,6 +88,7 @@ export const inviteClientByEmail = mutation({
       clerkId: `pending_${args.email}_${now}`, // Temporary ID until they sign up
       email: args.email,
       fullName: args.fullName,
+      phoneNumber: args.phoneNumber,
       role: "client",
       invitedByTrainerId: args.trainerId,
       createdAt: now,

@@ -3,73 +3,51 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   Image,
+  Switch,
   Alert,
 } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { showToast } from '@/utils/toast';
+import { useTheme } from '@/contexts/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
 
-export default function EditProfileScreen() {
+export default function ProfileScreen() {
   const { user } = useUser();
   const router = useRouter();
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const { isDark, toggleTheme } = useTheme();
 
   const userData = useQuery(
     api.users.getUserByClerkId,
     user?.id ? { clerkId: user.id } : 'skip'
   );
-  const updateProfile = useMutation(api.users.updateUserProfile);
   const profileImageUrl = useQuery(
     api.users.getProfileImageUrl,
     userData?.profileImageId ? { storageId: userData.profileImageId } : 'skip'
   );
 
-  const [saving, setSaving] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [bio, setBio] = useState('');
-  const [specialty, setSpecialty] = useState('');
-
-  useEffect(() => {
-    if (userData) {
-      setFullName(userData.fullName || '');
-      setPhoneNumber(userData.phoneNumber || '');
-      setBio(userData.bio || '');
-      setSpecialty(userData.specialty || '');
-    }
-  }, [userData]);
-
-  const handleSave = async () => {
-    if (!user?.id) return;
-    setSaving(true);
-    try {
-      await updateProfile({
-        clerkId: user.id,
-        fullName,
-        phoneNumber,
-        bio,
-        specialty,
-      });
-      showToast.success('Profile updated successfully');
-      router.back();
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      showToast.error('Failed to update profile');
-    } finally {
-      setSaving(false);
-    }
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: () => {
+          // Handle logout
+          router.replace('/');
+        }},
+      ]
+    );
   };
 
   if (!user) {
@@ -84,37 +62,51 @@ export default function EditProfileScreen() {
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
 
-      {/* Header */}
-      <View className="px-4 pt-16 pb-4 flex-row items-center justify-between border-b" style={{ borderBottomColor: colors.border }}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="w-10 h-10 items-center justify-center"
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text className="text-xl font-semibold flex-1 text-center" style={{ color: colors.text }}>
-          Edit Profile
-        </Text>
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={saving}
-          className="w-10 h-10 items-center justify-center"
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Ionicons name="checkmark" size={24} color={colors.primary} />
-          )}
-        </TouchableOpacity>
-      </View>
+      {/* Gradient Background Overlay */}
+      <LinearGradient
+        colors={[`${colors.primary}33`, `${colors.primary}0D`, 'transparent']}
+        className="absolute top-0 left-0 right-0 h-80"
+        pointerEvents="none"
+      />
 
-      <ScrollView className="flex-1 px-4 py-6" showsVerticalScrollIndicator={false}>
-        {/* Profile Image */}
-        <View className="items-center mb-8">
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View className="px-4 pt-16 pb-4 flex-row items-center justify-between">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 items-center justify-center rounded-full"
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text className="text-lg font-bold" style={{ color: colors.text }}>
+            Profile
+          </Text>
+          <View className="w-10" />
+        </View>
+
+        {/* Profile Header */}
+        <View className="items-center mt-2 mb-8">
           <View className="relative">
+            {/* Glow Ring */}
             <View
-              className="w-28 h-28 rounded-full overflow-hidden items-center justify-center"
-              style={{ backgroundColor: colors.primary, ...shadows.large }}
+              className="absolute -inset-1 rounded-full opacity-40"
+              style={{
+                backgroundColor: colors.primary,
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.6,
+                shadowRadius: 20,
+              }}
+            />
+            
+            {/* Avatar */}
+            <View
+              className="w-32 h-32 rounded-full overflow-hidden items-center justify-center"
+              style={{
+                backgroundColor: colors.primary,
+                borderWidth: 4,
+                borderColor: colors.background,
+              }}
             >
               {profileImageUrl ? (
                 <Image source={{ uri: profileImageUrl }} className="w-full h-full" />
@@ -126,130 +118,217 @@ export default function EditProfileScreen() {
                 </Text>
               )}
             </View>
+
+            {/* Camera Button */}
             <TouchableOpacity
-              className="absolute bottom-0 right-0 w-10 h-10 rounded-full items-center justify-center"
-              style={{ backgroundColor: colors.primary, ...shadows.medium }}
+              className="absolute bottom-1 right-1 w-10 h-10 rounded-full items-center justify-center"
+              style={{
+                backgroundColor: colors.primary,
+                borderWidth: 2,
+                borderColor: colors.background,
+                ...shadows.medium,
+              }}
             >
-              <Ionicons name="camera" size={20} color="#FFF" />
+              <Ionicons name="camera" size={18} color="#FFF" />
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Full Name */}
-        <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
-            Full Name
-          </Text>
-          <View
-            className="flex-row items-center px-4 py-3.5 rounded-xl"
-            style={{
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
-            <TextInput
-              className="flex-1 ml-3 text-base"
-              style={{ color: colors.text }}
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="Enter your name"
-              placeholderTextColor={colors.textSecondary}
-            />
+          <View className="mt-4 items-center">
+            <Text className="text-2xl font-bold" style={{ color: colors.text }}>
+              {userData?.fullName || user.firstName || 'User'}
+            </Text>
+            <Text className="text-sm font-medium mt-1" style={{ color: colors.textSecondary }}>
+              {user.emailAddresses[0]?.emailAddress}
+            </Text>
           </View>
         </View>
 
-        {/* Specialty */}
-        <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
-            Specialty
-          </Text>
-          <View
-            className="flex-row items-center px-4 py-3.5 rounded-xl"
-            style={{
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Ionicons name="barbell-outline" size={20} color={colors.textSecondary} />
-            <TextInput
-              className="flex-1 ml-3 text-base"
-              style={{ color: colors.text }}
-              value={specialty}
-              onChangeText={setSpecialty}
-              placeholder="e.g., Weightlifting, Yoga, HIIT"
-              placeholderTextColor={colors.textSecondary}
-            />
+        {/* Content Sections */}
+        <View className="px-4 pb-8">
+          {/* PROFILE Section */}
+          <View className="mb-6">
+            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
+              Profile
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/edit-profile-form')}
+              className="rounded-xl p-4 flex-row items-center justify-between"
+              style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+            >
+              <View className="flex-row items-center gap-4">
+                <View
+                  className="w-10 h-10 rounded-full items-center justify-center"
+                  style={{ backgroundColor: `${colors.primary}1A` }}
+                >
+                  <Ionicons name="create-outline" size={20} color={colors.primary} />
+                </View>
+                <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  Edit Profile
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* ACTIVITY Section */}
+          <View className="mb-6">
+            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
+              Activity
+            </Text>
+            <TouchableOpacity
+              className="rounded-xl p-4 flex-row items-center justify-between"
+              style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+            >
+              <View className="flex-row items-center gap-4">
+                <View
+                  className="w-10 h-10 rounded-full items-center justify-center"
+                  style={{ backgroundColor: '#F9731620' }}
+                >
+                  <Ionicons name="time-outline" size={20} color="#F97316" />
+                </View>
+                <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  Session History
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* PREFERENCES Section */}
+          <View className="mb-6">
+            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
+              Preferences
+            </Text>
+            <View className="gap-2">
+              {/* Dark Mode */}
+              <View
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: '#A855F720' }}
+                  >
+                    <Ionicons name="moon-outline" size={20} color="#A855F7" />
+                  </View>
+                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                    Dark Mode
+                  </Text>
+                </View>
+                <Switch
+                  value={isDark}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#FFF"
+                />
+              </View>
+
+              {/* Notifications */}
+              <View
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: '#EF444420' }}
+                  >
+                    <Ionicons name="notifications-outline" size={20} color="#EF4444" />
+                  </View>
+                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                    Notifications
+                  </Text>
+                </View>
+                <Switch
+                  value={true}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#FFF"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* INTEGRATIONS Section */}
+          <View className="mb-6">
+            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
+              Integrations
+            </Text>
+            <TouchableOpacity
+              className="rounded-xl p-4 flex-row items-center justify-between"
+              style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+            >
+              <View className="flex-row items-center gap-4">
+                <View
+                  className="w-10 h-10 rounded-full items-center justify-center"
+                  style={{ backgroundColor: '#10B98120' }}
+                >
+                  <Ionicons name="calendar-outline" size={20} color="#10B981" />
+                </View>
+                <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  Google Calendar
+                </Text>
+              </View>
+              <Text className="text-sm font-medium" style={{ color: colors.primary }}>
+                Connected
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ACCOUNT Section */}
+          <View className="mb-6">
+            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
+              Account
+            </Text>
+            <View className="gap-2">
+              {/* Change Password */}
+              <TouchableOpacity
+                onPress={() => router.push('/change-password')}
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: `${colors.textTertiary}20` }}
+                  >
+                    <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+                  </View>
+                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                    Change Password
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              {/* Logout */}
+              <TouchableOpacity
+                onPress={handleLogout}
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: '#EF444420' }}
+                  >
+                    <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                  </View>
+                  <Text className="font-medium text-base" style={{ color: '#EF4444' }}>
+                    Logout
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Version Info */}
+          <View className="py-6 items-center">
+            <Text className="text-xs" style={{ color: colors.textTertiary }}>
+              App Version 2.4.0 (Build 302)
+            </Text>
           </View>
         </View>
-
-        {/* Phone Number */}
-        <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
-            Phone Number
-          </Text>
-          <View
-            className="flex-row items-center px-4 py-3.5 rounded-xl"
-            style={{
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Ionicons name="call-outline" size={20} color={colors.textSecondary} />
-            <TextInput
-              className="flex-1 ml-3 text-base"
-              style={{ color: colors.text }}
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              placeholder="Enter your phone"
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="phone-pad"
-            />
-          </View>
-        </View>
-
-        {/* Bio */}
-        <View className="mb-6">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
-            Bio
-          </Text>
-          <View
-            className="px-4 py-3.5 rounded-xl"
-            style={{
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <TextInput
-              className="text-base min-h-[100px]"
-              style={{ color: colors.text, textAlignVertical: 'top' }}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Tell clients about your experience and approach"
-              placeholderTextColor={colors.textSecondary}
-              multiline
-              numberOfLines={4}
-            />
-          </View>
-        </View>
-
-        {/* Save Button */}
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={saving}
-          className="rounded-xl py-4 items-center mb-6"
-          style={{ backgroundColor: colors.primary, ...shadows.medium }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text className="text-white font-bold text-base">Save Changes</Text>
-          )}
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );

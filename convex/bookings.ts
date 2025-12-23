@@ -105,6 +105,7 @@ export const createBooking = mutation({
       duration: args.duration,
       status: "confirmed",
       notes: args.notes,
+      sessionDeducted: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -254,5 +255,164 @@ export const getBookingById = query({
   args: { bookingId: v.id("bookings") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.bookingId);
+  },
+});
+
+// Mark session as completed and deduct from subscription
+export const completeSession = mutation({
+  args: { 
+    bookingId: v.id("bookings"),
+  },
+  handler: async (ctx, args) => {
+    const booking = await ctx.db.get(args.bookingId);
+    
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    if (booking.status === "completed") {
+      throw new Error("Session already completed");
+    }
+
+    // Find active subscription for this client-trainer pair
+    const subscriptions = await ctx.db
+      .query("clientSubscriptions")
+      .withIndex("by_client_trainer", (q) => 
+        q.eq("clientId", booking.clientId).eq("trainerId", booking.trainerId)
+      )
+      .collect();
+
+    const activeSubscription = subscriptions.find(sub => 
+      sub.status === "active" && 
+      sub.remainingSessions > 0 &&
+      new Date(sub.endDate) >= new Date()
+    );
+
+    if (!activeSubscription) {
+      throw new Error("No active subscription found. Client needs to purchase a package.");
+    }
+
+    // Deduct session
+    const newRemaining = activeSubscription.remainingSessions - 1;
+    const newStatus = newRemaining === 0 ? "expired" : activeSubscription.status;
+
+    await ctx.db.patch(activeSubscription._id, {
+      remainingSessions: newRemaining,
+      status: newStatus as any,
+      updatedAt: Date.now(),
+    });
+
+    // Update booking
+    await ctx.db.patch(args.bookingId, {
+      status: "completed",
+      subscriptionId: activeSubscription._id,
+      sessionDeducted: true,
+      updatedAt: Date.now(),
+    });
+
+    // Create notification for client
+    const client = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", booking.clientId))
+      .first();
+
+    await ctx.db.insert("notifications", {
+      userId: booking.clientId,
+      type: "booking_created",
+      title: "Session Completed",
+      message: `Session completed! ${newRemaining} sessions remaining in your package.`,
+      bookingId: args.bookingId,
+      read: false,
+      createdAt: Date.now(),
+    });
+
+    return {
+      remainingSessions: newRemaining,
+      subscriptionStatus: newStatus,
+    };
+  },
+});
+
+// Cancel booking
+export const cancelBooking = mutation({
+  args: { 
+    bookingId: v.id("bookings"),
+    cancelledBy: v.string(), // clerkId of who cancelled
+  },
+  handler: async (ctx, args) => {
+    const booking = await ctx.db.get(args.bookingId);
+    
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    if (booking.status === "cancelled") {
+      throw new Error("Booking already cancelled");
+    }
+
+    // If session was already deducted, refund it
+    if (booking.sessionDeducted && booking.subscriptionId) {
+      const subscription = await ctx.db.get(booking.subscriptionId);
+      if (subscription) {
+        await ctx.db.patch(booking.subscriptionId, {
+          remainingSessions: subscription.remainingSessions + 1,
+          status: "active",
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    await ctx.db.patch(args.bookingId, {
+      status: "cancelled",
+      updatedAt: Date.now(),
+    });
+
+    // Notify both parties
+    const trainer = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", booking.trainerId))
+      .first();
+
+    const client = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", booking.clientId))
+      .first();
+
+    const now = Date.now();
+
+    await ctx.db.insert("notifications", {
+      userId: booking.trainerId,
+      type: "booking_cancelled",
+      title: "Booking Cancelled",
+      message: `${client?.fullName || "Client"} cancelled the session on ${booking.date} at ${booking.startTime}`,
+      bookingId: args.bookingId,
+      read: false,
+      createdAt: now,
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: booking.clientId,
+      type: "booking_cancelled",
+      title: "Booking Cancelled",
+      message: `Your session with ${trainer?.fullName || "trainer"} on ${booking.date} at ${booking.startTime} has been cancelled`,
+      bookingId: args.bookingId,
+      read: false,
+      createdAt: now,
+    });
+  },
+});
+
+// Update booking to link with subscription
+export const linkBookingToSubscription = mutation({
+  args: {
+    bookingId: v.id("bookings"),
+    subscriptionId: v.id("clientSubscriptions"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.bookingId, {
+      subscriptionId: args.subscriptionId,
+      sessionDeducted: false,
+      updatedAt: Date.now(),
+    });
   },
 });

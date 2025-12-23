@@ -4,17 +4,16 @@ import { useRouter } from 'expo-router';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function SessionHistoryScreen() {
-    const { user } = useUser();
-    const router = useRouter();
-    const scheme = useColorScheme();
-    const colors = getColors(scheme === 'dark');
-    const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
-    const insets = useSafeAreaInsets();
+  const { user } = useUser();
+  const router = useRouter();
+  const scheme = useColorScheme();
+  const colors = getColors(scheme === 'dark');
+  const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
 
     const bookings = useQuery(
         api.bookings.getClientBookings,
@@ -61,198 +60,287 @@ export default function SessionHistoryScreen() {
     const totalSessions = pastSessions.length;
     const completedSessions = pastSessions.filter((s: any) => s.status === 'confirmed').length;
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'confirmed':
-                return colors.success;
-            case 'pending':
-                return colors.warning;
-            case 'cancelled':
-                return colors.error;
-            default:
-                return colors.primary;
-        }
-    };
+  // Group sessions by month
+  const groupedSessions: { [key: string]: any[] } = {};
+  pastSessions.forEach((session: any) => {
+    const date = new Date(session.date);
+    const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!groupedSessions[monthYear]) {
+      groupedSessions[monthYear] = [];
+    }
+    groupedSessions[monthYear].push(session);
+  });
 
-    return (
-        <View className="flex-1" style={{ backgroundColor: colors.background }}>
-            {/* Header */}
+  return (
+    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+      {/* Gradient Background Overlay */}
+      <LinearGradient
+        colors={[`${colors.primary}15`, `${colors.primary}05`, 'transparent']}
+        className="absolute top-0 left-0 right-0 h-64"
+        pointerEvents="none"
+      />
+
+      {/* Header */}
+      <View
+        className="px-4 py-3 flex-row items-center justify-between border-b"
+        style={{
+          paddingTop: 48,
+          backgroundColor: `${colors.background}F2`,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <TouchableOpacity
+          className="p-2 rounded-full"
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text className="text-lg font-bold tracking-tight" style={{ color: colors.text }}>
+          Session History
+        </Text>
+        <View className="w-10" />
+      </View>
+
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Summary Header */}
+        <View className="items-center gap-1 pt-6 pb-4">
+          <Text className="text-3xl font-bold" style={{ color: colors.text }}>
+            {totalSessions} Sessions
+          </Text>
+          <Text className="text-sm" style={{ color: colors.textSecondary }}>
+            Last 6 months
+          </Text>
+        </View>
+
+        {/* Stats Grid */}
+        <View className="px-4 pb-6">
+          <View className="flex-row gap-4">
+            {/* Total Sessions */}
             <View
-                className="px-6 pb-5 flex-row items-center"
-                style={{ backgroundColor: colors.surface, paddingTop: insets.top + 12 }}
+              className="flex-1 items-center justify-center gap-1 rounded-lg p-4"
+              style={{
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                ...shadows.small,
+              }}
             >
-                <TouchableOpacity
-                    className="w-10 h-10 rounded-full items-center justify-center mr-4"
-                    style={{ backgroundColor: colors.surfaceSecondary }}
-                    onPress={() => router.back()}
-                >
-                    <Ionicons name="arrow-back" size={20} color={colors.text} />
-                </TouchableOpacity>
-                <View className="flex-1">
-                    <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-                        Session History
-                    </Text>
-                    <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                        {totalSessions} total {totalSessions === 1 ? 'session' : 'sessions'}
-                    </Text>
-                </View>
+              <View
+                className="w-8 h-8 rounded-full items-center justify-center mb-1"
+                style={{ backgroundColor: `${colors.primary}20` }}
+              >
+                <Ionicons name="fitness" size={20} color={colors.primary} />
+              </View>
+              <Text className="text-2xl font-bold" style={{ color: colors.text }}>
+                {totalSessions}
+              </Text>
+              <Text
+                className="text-xs font-medium uppercase tracking-wide"
+                style={{ color: colors.textSecondary }}
+              >
+                Total
+              </Text>
             </View>
 
-            <ScrollView
-                className="flex-1"
-                contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-                showsVerticalScrollIndicator={false}
+            {/* Completed Sessions */}
+            <View
+              className="flex-1 items-center justify-center gap-1 rounded-lg p-4"
+              style={{
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                ...shadows.small,
+              }}
             >
-                {/* Stats Cards */}
-                <View className="px-6 pt-4">
-                    <View className="flex-row space-x-3 mb-6">
-                        <View
-                            className="flex-1 p-4 rounded-2xl"
-                            style={{ backgroundColor: colors.surface, ...shadows.small }}
-                        >
-                            <View
-                                className="w-10 h-10 rounded-full items-center justify-center mb-3"
-                                style={{ backgroundColor: `${colors.primary}15` }}
-                            >
-                                <Ionicons name="fitness-outline" size={20} color={colors.primary} />
-                            </View>
-                            <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-                                {totalSessions}
-                            </Text>
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                                Total Sessions
-                            </Text>
-                        </View>
-
-                        <View
-                            className="flex-1 p-4 rounded-2xl"
-                            style={{ backgroundColor: colors.surface, ...shadows.small }}
-                        >
-                            <View
-                                className="w-10 h-10 rounded-full items-center justify-center mb-3"
-                                style={{ backgroundColor: `${colors.success}15` }}
-                            >
-                                <Ionicons name="checkmark-circle-outline" size={20} color={colors.success} />
-                            </View>
-                            <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-                                {completedSessions}
-                            </Text>
-                            <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                                Completed
-                            </Text>
-                        </View>
-                    </View>
-
-                    {/* Session List */}
-                    {pastSessions.length === 0 ? (
-                        <View
-                            className="py-16 items-center rounded-2xl"
-                            style={{ backgroundColor: colors.surface, ...shadows.medium }}
-                        >
-                            <View
-                                className="w-20 h-20 rounded-2xl items-center justify-center mb-4"
-                                style={{ backgroundColor: colors.surfaceSecondary }}
-                            >
-                                <Ionicons name="time-outline" size={36} color={colors.textTertiary} />
-                            </View>
-                            <Text className="text-lg font-semibold" style={{ color: colors.textSecondary }}>
-                                No session history
-                            </Text>
-                            <Text className="text-sm mt-2 text-center px-8" style={{ color: colors.textTertiary }}>
-                                Your completed sessions will appear here
-                            </Text>
-                        </View>
-                    ) : (
-                        pastSessions.map((session: any, index: number) => (
-                            <View
-                                key={session._id}
-                                className="rounded-2xl p-4 mb-3 overflow-hidden"
-                                style={{
-                                    backgroundColor: colors.surface,
-                                    ...shadows.small,
-                                }}
-                            >
-                                {/* Status accent */}
-                                <View
-                                    className="absolute left-0 top-0 bottom-0 w-1"
-                                    style={{ backgroundColor: getStatusColor(session.status) }}
-                                />
-
-                                <View className="flex-row items-start pl-2">
-                                    <View
-                                        className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                                        style={{ backgroundColor: colors.primary }}
-                                    >
-                                        <Text className="text-white text-lg font-bold">
-                                            {session.trainerName?.[0] || 'T'}
-                                        </Text>
-                                    </View>
-
-                                    <View className="flex-1">
-                                        <View className="flex-row items-center justify-between">
-                                            <Text className="text-base font-bold" style={{ color: colors.text }}>
-                                                {session.trainerName}
-                                            </Text>
-                                            <View
-                                                className="px-2.5 py-1 rounded-lg"
-                                                style={{ backgroundColor: `${getStatusColor(session.status)}15` }}
-                                            >
-                                                <Text
-                                                    className="text-xs font-bold uppercase"
-                                                    style={{ color: getStatusColor(session.status) }}
-                                                >
-                                                    {session.status === 'confirmed' ? 'Completed' : session.status}
-                                                </Text>
-                                            </View>
-                                        </View>
-
-                                        <View className="flex-row items-center mt-2">
-                                            <Ionicons name="fitness-outline" size={14} color={colors.textSecondary} />
-                                            <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
-                                                {session.scheduleName}
-                                            </Text>
-                                        </View>
-
-                                        <View className="flex-row items-center mt-1.5">
-                                            <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                                            <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
-                                                {new Date(session.date).toLocaleDateString('en-US', {
-                                                    weekday: 'short',
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    year: 'numeric',
-                                                })}
-                                            </Text>
-                                        </View>
-
-                                        <View className="flex-row items-center mt-1">
-                                            <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
-                                            <Text className="text-sm ml-1.5" style={{ color: colors.textTertiary }}>
-                                                {new Date(`2000-01-01T${session.startTime}`).toLocaleTimeString('en-US', {
-                                                    hour: 'numeric',
-                                                    minute: '2-digit',
-                                                    hour12: true,
-                                                })} - {new Date(`2000-01-01T${session.endTime}`).toLocaleTimeString('en-US', {
-                                                    hour: 'numeric',
-                                                    minute: '2-digit',
-                                                    hour12: true,
-                                                })}
-                                            </Text>
-                                        </View>
-
-                                        <View className="flex-row items-center mt-1">
-                                            <Ionicons name="hourglass-outline" size={14} color={colors.textTertiary} />
-                                            <Text className="text-sm ml-1.5" style={{ color: colors.textTertiary }}>
-                                                {session.duration} minutes
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            </View>
-                        ))
-                    )}
-                </View>
-            </ScrollView>
+              <View
+                className="w-8 h-8 rounded-full items-center justify-center mb-1"
+                style={{ backgroundColor: `${colors.success}20` }}
+              >
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              </View>
+              <Text className="text-2xl font-bold" style={{ color: colors.text }}>
+                {completedSessions}
+              </Text>
+              <Text
+                className="text-xs font-medium uppercase tracking-wide"
+                style={{ color: colors.textSecondary }}
+              >
+                Completed
+              </Text>
+            </View>
+          </View>
         </View>
-    );
+
+        {/* Session List by Month */}
+        {pastSessions.length === 0 ? (
+          <View className="px-4">
+            <View
+              className="py-16 items-center rounded-2xl"
+              style={{
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                ...shadows.small,
+              }}
+            >
+              <Ionicons name="time-outline" size={48} color={colors.textTertiary} />
+              <Text className="text-lg font-semibold mt-3" style={{ color: colors.textSecondary }}>
+                No session history
+              </Text>
+              <Text className="text-sm mt-2 text-center px-8" style={{ color: colors.textTertiary }}>
+                Your completed sessions will appear here
+              </Text>
+            </View>
+          </View>
+        ) : (
+          Object.keys(groupedSessions).map((monthYear) => (
+            <View key={monthYear} className="px-4 mb-6">
+              <Text
+                className="text-sm font-bold uppercase tracking-wider mb-3 pl-1"
+                style={{ color: colors.textSecondary }}
+              >
+                {monthYear}
+              </Text>
+
+              <View className="gap-3">
+                {groupedSessions[monthYear].map((session: any) => {
+                  const statusColor =
+                    session.status === 'confirmed'
+                      ? colors.success
+                      : session.status === 'cancelled'
+                      ? colors.textTertiary
+                      : colors.error;
+
+                  const isCancelled = session.status === 'cancelled';
+
+                  return (
+                    <View
+                      key={session._id}
+                      className="relative flex-row items-start gap-4 rounded-lg p-4 overflow-hidden"
+                      style={{
+                        backgroundColor: colors.surface,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        ...shadows.small,
+                        opacity: isCancelled ? 0.75 : 1,
+                      }}
+                    >
+                      {/* Colored Accent Bar */}
+                      <View
+                        className="absolute left-0 top-0 bottom-0 w-1.5"
+                        style={{ backgroundColor: statusColor }}
+                      />
+
+                      {/* Avatar */}
+                      <View className="shrink-0">
+                        <View
+                          className="w-12 h-12 rounded-full items-center justify-center"
+                          style={{
+                            backgroundColor: isCancelled ? colors.surfaceSecondary : colors.primary,
+                          }}
+                        >
+                          <Text
+                            className="text-lg font-bold"
+                            style={{ color: isCancelled ? colors.textSecondary : '#FFF' }}
+                          >
+                            {session.trainerName?.[0] || 'T'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Content */}
+                      <View className="flex-1 min-w-0">
+                        <View className="flex-row justify-between items-start">
+                          <Text
+                            className="text-base font-bold truncate pr-2"
+                            style={{ color: colors.text }}
+                          >
+                            {session.trainerName}
+                          </Text>
+                          <View
+                            className="px-2 py-0.5 rounded"
+                            style={{
+                              backgroundColor: `${statusColor}${isCancelled ? '20' : '20'}`,
+                            }}
+                          >
+                            <Text
+                              className="text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
+                              style={{ color: statusColor }}
+                            >
+                              {session.status === 'confirmed'
+                                ? 'Completed'
+                                : session.status === 'cancelled'
+                                ? 'Canceled'
+                                : 'Missed'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text
+                          className="text-sm font-semibold mt-1"
+                          style={{
+                            color: isCancelled ? colors.textSecondary : colors.primary,
+                          }}
+                        >
+                          {session.scheduleName || 'Training Session'}
+                        </Text>
+
+                        <View className="flex-row items-center gap-1 mt-1">
+                          <Ionicons
+                            name="calendar-outline"
+                            size={14}
+                            color={colors.textSecondary}
+                          />
+                          <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                            {new Date(session.date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                            ,{' '}
+                            {new Date(`2000-01-01T${session.startTime}`).toLocaleTimeString(
+                              'en-US',
+                              {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                              }
+                            )}
+                          </Text>
+                          <Text className="mx-1" style={{ color: colors.textTertiary }}>
+                            •
+                          </Text>
+                          <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                          <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                            {session.duration} min
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ))
+        )}
+
+        <View className="h-20" />
+      </ScrollView>
+
+      {/* Floating Action Button */}
+      <View className="absolute bottom-6 right-6 z-30">
+        <TouchableOpacity
+          className="w-14 h-14 rounded-full items-center justify-center"
+          style={{
+            backgroundColor: colors.primary,
+            ...shadows.large,
+            shadowColor: colors.primary,
+            shadowOpacity: 0.3,
+          }}
+          onPress={() => router.push('/(client)/bookings' as any)}
+        >
+          <Ionicons name="add" size={28} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }

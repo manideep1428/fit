@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
-import { View, ActivityIndicator, TouchableOpacity, Text, ScrollView, Modal, RefreshControl } from 'react-native';
+import {
+  View,
+  ActivityIndicator,
+  TouchableOpacity,
+  Text,
+  ScrollView,
+  Modal,
+  RefreshControl,
+  Image,
+} from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useQuery } from 'convex/react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
@@ -12,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
 import GoogleTokenStatus from '@/components/GoogleTokenStatus';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function BookingsScreen() {
   const { user } = useUser();
@@ -19,47 +28,51 @@ export default function BookingsScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
-  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'schedule' | 'bookings'>('bookings');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const currentUser = useQuery(
     api.users.getUserByClerkId,
-    user?.id ? { clerkId: user.id } : 'skip'
+    user?.id ? { clerkId: user.id } : "skip"
   );
 
   const bookings = useQuery(
     api.bookings.getClientBookings,
-    user?.id ? { clientId: user.id } : 'skip'
+    user?.id ? { clientId: user.id } : "skip"
   );
 
   const clientTrainers = useQuery(
     api.users.getClientTrainers,
-    user?.id ? { clientId: user.id } : 'skip'
+    user?.id ? { clientId: user.id } : "skip"
   );
 
   if (!user || !bookings || !clientTrainers) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: colors.background }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   const enrichedBookings = bookings.map((booking: any) => {
-    const trainer = clientTrainers.find((t: any) => t.clerkId === booking.trainerId);
+    const trainer = clientTrainers.find(
+      (t: any) => t.clerkId === booking.trainerId
+    );
     return {
       ...booking,
-      trainerName: trainer?.fullName || 'Trainer',
-      scheduleName: booking.notes || 'Training Session',
+      trainerName: trainer?.fullName || "Trainer",
+      scheduleName: booking.notes || "Training Session",
     };
   });
 
   const now = new Date();
   // Set time to start of current hour to avoid timezone issues
   now.setMinutes(0, 0, 0);
-  
+
   const currentBookings = enrichedBookings.filter((b: any) => {
     const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
     return sessionDateTime >= now;
@@ -71,20 +84,24 @@ export default function BookingsScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'confirmed': return colors.success;
-      case 'pending': return colors.warning;
-      case 'cancelled': return colors.error;
-      default: return colors.primary;
+      case "confirmed":
+        return colors.success;
+      case "pending":
+        return colors.warning;
+      case "cancelled":
+        return colors.error;
+      default:
+        return colors.primary;
     }
   };
 
   const handleBookTrainer = (trainer: any) => {
     router.push({
-      pathname: '/(client)/book-trainer',
+      pathname: "/(client)/book-trainer",
       params: {
         trainerId: trainer.clerkId,
         trainerName: trainer.fullName,
-        trainerSpecialty: trainer.specialty || 'Personal Trainer',
+        trainerSpecialty: trainer.specialty || "Personal Trainer",
       },
     });
   };
@@ -93,7 +110,7 @@ export default function BookingsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       // Force refresh of queries when screen is focused
-      console.log('Bookings screen focused, refreshing data...');
+      console.log("Bookings screen focused, refreshing data...");
     }, [])
   );
 
@@ -105,288 +122,362 @@ export default function BookingsScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      {/* Header */}
-      <View
-        className="px-6 pb-5"
-        style={{ backgroundColor: colors.surface, paddingTop: insets.top + 12 }}
-      >
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-3xl font-bold" style={{ color: colors.text }}>Bookings</Text>
-            <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-              Manage your sessions
-            </Text>
-          </View>
+      {/* Gradient Background Overlay */}
+      <LinearGradient
+        colors={[`${colors.primary}15`, `${colors.primary}05`, 'transparent']}
+        className="absolute top-0 left-0 right-0 h-64"
+        pointerEvents="none"
+      />
 
-          {/* Google Calendar Status */}
-          <GoogleTokenStatus onConnect={() => setShowCalendarModal(true)} />
-        </View>
-      </View>
-
-      {/* Tab Header */}
-      <View
-        className="mx-6 my-4 p-1.5 rounded-2xl flex-row"
-        style={{ backgroundColor: colors.surfaceSecondary }}
-      >
-        <TouchableOpacity
-          className="flex-1 py-3 rounded-xl items-center flex-row justify-center"
-          style={{
-            backgroundColor: activeTab === 'bookings' ? colors.surface : 'transparent',
-            ...(activeTab === 'bookings' ? shadows.small : {}),
-          }}
-          onPress={() => setActiveTab('bookings')}
-        >
-          <Ionicons
-            name="list-outline"
-            size={18}
-            color={activeTab === 'bookings' ? colors.primary : colors.textSecondary}
-          />
-          <Text
-            className="text-sm font-semibold ml-2"
-            style={{ color: activeTab === 'bookings' ? colors.primary : colors.textSecondary }}
-          >
+      {/* Header Section */}
+      <View className="px-4 pt-16 pb-2">
+        <View className="flex-row items-center justify-between mb-1">
+          <Text className="text-3xl font-bold tracking-tight" style={{ color: colors.text }}>
             Bookings
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className="flex-1 py-3 rounded-xl items-center flex-row justify-center"
-          style={{
-            backgroundColor: activeTab === 'schedule' ? colors.surface : 'transparent',
-            ...(activeTab === 'schedule' ? shadows.small : {}),
-          }}
-          onPress={() => setActiveTab('schedule')}
+          <GoogleTokenStatus onConnect={() => setShowCalendarModal(true)} />
+        </View>
+        <Text className="text-sm font-medium" style={{ color: colors.textSecondary }}>
+          Manage your sessions
+        </Text>
+      </View>
+
+      {/* Segmented Control */}
+      <View className="px-4 py-4">
+        <View
+          className="flex-row p-1 rounded-full relative"
+          style={{ backgroundColor: colors.surfaceSecondary }}
         >
-          <Ionicons
-            name="calendar-outline"
-            size={18}
-            color={activeTab === 'schedule' ? colors.primary : colors.textSecondary}
+          {/* Active Indicator */}
+          <View
+            className="absolute h-full rounded-full z-0 transition-all"
+            style={{
+              width: '50%',
+              left: activeTab === 'bookings' ? 4 : '50%',
+              top: 4,
+              bottom: 4,
+              backgroundColor: colors.surface,
+              ...shadows.small,
+            }}
           />
-          <Text
-            className="text-sm font-semibold ml-2"
-            style={{ color: activeTab === 'schedule' ? colors.primary : colors.textSecondary }}
+          <TouchableOpacity
+            className="flex-1 relative z-10 py-2.5 items-center rounded-full"
+            onPress={() => setActiveTab('bookings')}
           >
-            Schedule
-          </Text>
-        </TouchableOpacity>
+            <Text
+              className="text-sm font-semibold"
+              style={{
+                color: activeTab === 'bookings' ? colors.text : colors.textSecondary,
+              }}
+            >
+              Bookings
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-1 relative z-10 py-2.5 items-center rounded-full"
+            onPress={() => setActiveTab('schedule')}
+          >
+            <Text
+              className="text-sm font-medium"
+              style={{
+                color: activeTab === 'schedule' ? colors.text : colors.textSecondary,
+              }}
+            >
+              Schedule
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tab Content */}
       {activeTab === 'bookings' ? (
-        <ScrollView 
-          className="flex-1" 
-          contentContainerStyle={{ paddingBottom: 100 }} 
+        <ScrollView
+          className="flex-1"
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
         >
           {/* My Trainers Section */}
-          <View className="px-6 pt-2">
-            <View className="flex-row items-center mb-4">
-              <View
-                className="w-8 h-8 rounded-lg items-center justify-center mr-3"
-                style={{ backgroundColor: `${colors.primary}15` }}
-              >
-                <Ionicons name="people" size={16} color={colors.primary} />
-              </View>
+          <View className="mb-8">
+            <View className="flex-row items-center justify-between px-4 mb-3">
               <Text className="text-lg font-bold" style={{ color: colors.text }}>
                 My Trainers
               </Text>
-            </View>
-
-            {clientTrainers.length === 0 ? (
-              <View
-                className="py-10 items-center rounded-2xl"
-                style={{ backgroundColor: colors.surface, ...shadows.small }}
-              >
-                <Ionicons name="people-outline" size={32} color={colors.textTertiary} />
-                <Text className="text-base font-semibold mt-3" style={{ color: colors.textSecondary }}>
-                  No trainers yet
-                </Text>
-              </View>
-            ) : (
-              clientTrainers.map((trainer: any, index: number) => (
-                <View key={trainer._id}>
-                  <TouchableOpacity
-                    className="rounded-2xl p-4 mb-3 flex-row items-center"
-                    style={{ backgroundColor: colors.surface, ...shadows.small }}
-                    onPress={() => handleBookTrainer(trainer)}
-                  >
-                    <View
-                      className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                      style={{ backgroundColor: colors.primary }}
-                    >
-                      <Text className="text-white text-lg font-bold">
-                        {trainer.fullName?.[0] || 'T'}
-                      </Text>
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-base font-semibold" style={{ color: colors.text }}>
-                        {trainer.fullName}
-                      </Text>
-                      <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                        {trainer.specialty || 'Personal Trainer'}
-                      </Text>
-                    </View>
-                    <View
-                      className="px-3 py-1.5 rounded-lg"
-                      style={{ backgroundColor: colors.primary }}
-                    >
-                      <Text className="text-white text-xs font-semibold">Book</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
-
-          {/* Divider */}
-          <View className="px-6 py-6">
-            <View className="flex-row items-center">
-              <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
-              <Text className="px-4 text-xs font-semibold uppercase" style={{ color: colors.textTertiary }}>
-                Sessions
-              </Text>
-              <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
-            </View>
-          </View>
-
-          {/* Upcoming Bookings */}
-          <View className="px-6">
-            <View className="flex-row items-center mb-4">
-              <View
-                className="w-8 h-8 rounded-lg items-center justify-center mr-3"
-                style={{ backgroundColor: `${colors.success}15` }}
-              >
-                <Ionicons name="calendar" size={16} color={colors.success} />
-              </View>
-              <Text className="text-lg font-bold" style={{ color: colors.text }}>
-                Upcoming
-              </Text>
-              {currentBookings.length > 0 && (
-                <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: `${colors.primary}15` }}>
-                  <Text className="text-xs font-bold" style={{ color: colors.primary }}>{currentBookings.length}</Text>
-                </View>
+              {clientTrainers.length > 0 && (
+                <TouchableOpacity>
+                  <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
+                    See All
+                  </Text>
+                </TouchableOpacity>
               )}
             </View>
 
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="px-4"
+              contentContainerStyle={{ gap: 16, paddingBottom: 8 }}
+            >
+              {clientTrainers.map((trainer: any) => (
+                <TouchableOpacity
+                  key={trainer._id}
+                  className="items-center"
+                  style={{ width: 72 }}
+                  onPress={() => handleBookTrainer(trainer)}
+                >
+                  <View
+                    className="w-[72px] h-[72px] rounded-full p-0.5"
+                    style={{
+                      backgroundColor: colors.surfaceSecondary,
+                    }}
+                  >
+                    <View
+                      className="w-full h-full rounded-full items-center justify-center"
+                      style={{
+                        backgroundColor: colors.primary,
+                        borderWidth: 2,
+                        borderColor: colors.background,
+                      }}
+                    >
+                      <Text className="text-white text-2xl font-bold">
+                        {trainer.fullName?.[0] || 'T'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text
+                    className="text-xs font-medium mt-2 text-center"
+                    numberOfLines={1}
+                    style={{ color: colors.text }}
+                  >
+                    {trainer.fullName?.split(' ')[0] || 'Trainer'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+
+              {/* Add New Trainer */}
+              <TouchableOpacity
+                className="items-center"
+                style={{ width: 72 }}
+                onPress={() => router.push('/(client)/find-trainers' as any)}
+              >
+                <View
+                  className="w-[72px] h-[72px] rounded-full items-center justify-center border-2 border-dashed"
+                  style={{
+                    backgroundColor: colors.surfaceSecondary,
+                    borderColor: `${colors.primary}50`,
+                  }}
+                >
+                  <Ionicons name="add" size={32} color={colors.primary} />
+                </View>
+                <Text
+                  className="text-xs font-medium mt-2 text-center"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Add New
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+
+          {/* Upcoming Section */}
+          <View className="mb-8 px-4">
+            <Text className="text-lg font-bold mb-4" style={{ color: colors.text }}>
+              Upcoming
+            </Text>
+
             {currentBookings.length === 0 ? (
               <View
-                className="py-10 items-center rounded-2xl"
-                style={{ backgroundColor: colors.surface, ...shadows.small }}
+                className="rounded-2xl p-8 items-center"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
-                <Ionicons name="calendar-outline" size={32} color={colors.textTertiary} />
+                <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
                 <Text className="text-base font-semibold mt-3" style={{ color: colors.textSecondary }}>
                   No upcoming sessions
                 </Text>
+                <Text className="text-sm mt-1 text-center" style={{ color: colors.textTertiary }}>
+                  Book a session with your trainer
+                </Text>
               </View>
             ) : (
-              currentBookings.map((booking: any, index: number) => (
-                <View
-                  key={booking._id}
-                  className="rounded-2xl p-4 mb-3 overflow-hidden"
-                  style={{ backgroundColor: colors.surface, ...shadows.small }}
-                >
+              currentBookings.map((booking: any) => {
+                const isToday = new Date(booking.date).toDateString() === new Date().toDateString();
+                const isTomorrow =
+                  new Date(booking.date).toDateString() ===
+                  new Date(Date.now() + 86400000).toDateString();
+
+                return (
                   <View
-                    className="absolute left-0 top-0 bottom-0 w-1"
-                    style={{ backgroundColor: getStatusColor(booking.status) }}
-                  />
-                  <View className="pl-2">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-lg font-bold" style={{ color: colors.text }}>
-                        {booking.trainerName}
-                      </Text>
+                    key={booking._id}
+                    className="rounded-2xl p-4 mb-4"
+                    style={{
+                      backgroundColor: colors.surface,
+                      ...shadows.small,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  >
+                    <View className="flex-row justify-between items-start mb-4">
+                      <View className="flex-row gap-3">
+                        <View
+                          className="w-12 h-12 rounded-full items-center justify-center"
+                          style={{ backgroundColor: colors.primary }}
+                        >
+                          <Text className="text-white text-lg font-bold">
+                            {booking.trainerName?.[0] || 'T'}
+                          </Text>
+                        </View>
+                        <View>
+                          <Text className="font-bold" style={{ color: colors.text }}>
+                            {booking.scheduleName || 'Training Session'}
+                          </Text>
+                          <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                            with {booking.trainerName}
+                          </Text>
+                        </View>
+                      </View>
                       <View
-                        className="px-2.5 py-1 rounded-lg"
-                        style={{ backgroundColor: `${getStatusColor(booking.status)}15` }}
+                        className="px-3 py-1 rounded-full"
+                        style={{
+                          backgroundColor: isTomorrow
+                            ? `${colors.primary}20`
+                            : isToday
+                            ? `${colors.success}20`
+                            : colors.surfaceSecondary,
+                        }}
                       >
-                        <Text className="text-xs font-bold uppercase" style={{ color: getStatusColor(booking.status) }}>
-                          {booking.status}
+                        <Text
+                          className="text-xs font-bold"
+                          style={{
+                            color: isTomorrow ? colors.primary : isToday ? colors.success : colors.text,
+                          }}
+                        >
+                          {isTomorrow ? 'Tomorrow' : isToday ? 'Today' : new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </Text>
                       </View>
                     </View>
-                    <View className="flex-row items-center mt-2">
-                      <Ionicons name="fitness-outline" size={14} color={colors.textSecondary} />
-                      <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
-                        {booking.scheduleName}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center mt-1.5">
-                      <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                      <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
-                        {new Date(booking.date).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center mt-1">
-                      <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-                      <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
-                        {new Date(`2000-01-01T${booking.startTime}`).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true,
-                        })} - {new Date(`2000-01-01T${booking.endTime}`).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true,
-                        })}
-                      </Text>
+
+                    <View className="gap-2 mb-4">
+                      <View className="flex-row items-center gap-2">
+                        <Ionicons name="time-outline" size={18} color={colors.primary} />
+                        <Text className="text-sm" style={{ color: colors.text }}>
+                          {new Date(`2000-01-01T${booking.startTime}`).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          })}{' '}
+                          -{' '}
+                          {new Date(`2000-01-01T${booking.endTime}`).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          })}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center gap-2">
+                        <Ionicons name="location-outline" size={18} color={colors.primary} />
+                        <Text className="text-sm" style={{ color: colors.text }}>
+                          {booking.location || 'Virtual Session'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              ))
+                );
+              })
             )}
           </View>
 
-          {/* Past Sessions */}
+          {/* Past Sessions Section */}
           {pastBookings.length > 0 && (
-            <View className="px-6 mt-6">
-              <View className="flex-row items-center mb-4">
-                <View
-                  className="w-8 h-8 rounded-lg items-center justify-center mr-3"
-                  style={{ backgroundColor: colors.surfaceSecondary }}
-                >
-                  <Ionicons name="time" size={16} color={colors.textTertiary} />
-                </View>
-                <Text className="text-lg font-bold" style={{ color: colors.text }}>
-                  Past Sessions
-                </Text>
-              </View>
+            <View className="px-4 pb-8">
+              <Text className="text-lg font-bold mb-4 opacity-80" style={{ color: colors.text }}>
+                Past Sessions
+              </Text>
 
-              {pastBookings.slice(0, 3).map((booking: any, index: number) => (
-                <View
-                  key={booking._id}
-                  className="rounded-2xl p-4 mb-3"
-                  style={{ backgroundColor: colors.surface, opacity: 0.7, ...shadows.small }}
-                >
-                  <View className="flex-row items-start">
-                    <View className="flex-1">
-                      <Text className="text-base font-semibold" style={{ color: colors.text }}>
-                        {booking.trainerName}
-                      </Text>
-                      <Text className="text-sm mt-1" style={{ color: colors.textTertiary }}>
-                        {new Date(booking.date).toLocaleDateString()}
-                      </Text>
+              <View className="gap-3">
+                {pastBookings.slice(0, 5).map((booking: any) => (
+                  <View
+                    key={booking._id}
+                    className="rounded-2xl p-4 opacity-70"
+                    style={{
+                      backgroundColor: `${colors.surface}99`,
+                      borderWidth: 1,
+                      borderColor: `${colors.border}80`,
+                    }}
+                  >
+                    <View className="flex-row justify-between items-center">
+                      <View className="flex-row gap-3 items-center flex-1">
+                        <View
+                          className="w-10 h-10 rounded-full items-center justify-center grayscale"
+                          style={{ backgroundColor: colors.surfaceSecondary }}
+                        >
+                          <Text className="text-sm font-bold" style={{ color: colors.textSecondary }}>
+                            {booking.trainerName?.[0] || 'T'}
+                          </Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="font-semibold text-sm" style={{ color: colors.text }}>
+                            {booking.scheduleName || 'Training Session'}
+                          </Text>
+                          <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                            {new Date(booking.date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}{' '}
+                            •{' '}
+                            {new Date(`2000-01-01T${booking.startTime}`).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true,
+                            })}
+                          </Text>
+                        </View>
+                      </View>
+                      <View
+                        className="px-2 py-1 rounded-md"
+                        style={{ backgroundColor: `${colors.success}20` }}
+                      >
+                        <Text className="text-xs font-medium" style={{ color: colors.success }}>
+                          Completed
+                        </Text>
+                      </View>
                     </View>
-                    <Text className="text-xs font-medium uppercase" style={{ color: colors.textTertiary }}>
-                      Completed
-                    </Text>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           )}
         </ScrollView>
       ) : (
         <CalendarView bookings={enrichedBookings} userRole="client" />
       )}
+
+      {/* Floating Action Button */}
+      <View className="absolute bottom-6 right-6 z-30">
+        <TouchableOpacity
+          className="w-14 h-14 rounded-full items-center justify-center"
+          style={{
+            backgroundColor: colors.primary,
+            ...shadows.large,
+            shadowColor: colors.primary,
+            shadowOpacity: 0.3,
+          }}
+          onPress={() => {
+            if (clientTrainers.length > 0) {
+              handleBookTrainer(clientTrainers[0]);
+            } else {
+              router.push('/(client)/find-trainers' as any);
+            }
+          }}
+        >
+          <Ionicons name="add" size={28} color="#FFF" />
+        </TouchableOpacity>
+      </View>
 
       {/* Google Calendar Connect Modal */}
       <Modal

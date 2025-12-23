@@ -19,6 +19,7 @@ export default function AddClientScreen() {
 
   const [clientEmail, setClientEmail] = useState('');
   const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
   const [isAdding, setIsAdding] = useState(false);
 
   const inviteClient = useMutation(api.users.inviteClientByEmail);
@@ -53,6 +54,11 @@ export default function AddClientScreen() {
       return;
     }
 
+    if (!clientPhone.trim()) {
+      showToast.error('Please enter client phone number');
+      return;
+    }
+
     // Check if client already exists in trainer's list
     const alreadyAdded = existingClients?.some(
       (client: any) => client?.email?.toLowerCase() === clientEmail.trim().toLowerCase()
@@ -69,6 +75,7 @@ export default function AddClientScreen() {
         trainerId: user.id,
         email: clientEmail.trim().toLowerCase(),
         fullName: clientName.trim(),
+        phoneNumber: clientPhone.trim(),
       });
 
       if (result.status === 'existing') {
@@ -77,8 +84,8 @@ export default function AddClientScreen() {
         showToast.success('Client invited! They can now sign in with this email.');
       }
 
-      // Navigate back to clients screen
-      router.replace('/(trainer)/clients' as any);
+      // Navigate back
+      router.push("/(trainer)/clients");
     } catch (error: any) {
       console.error('Error inviting client:', error);
       showToast.error(error.message || 'Failed to invite client');
@@ -118,7 +125,7 @@ export default function AddClientScreen() {
             </Text>
           </View>
           <Text className="text-sm" style={{ color: colors.textSecondary }}>
-            Enter your client's email and name. They will be able to sign in using this email address. If they don't have an account yet, one will be created for them.
+            Enter your client's email, name, and phone number. They will be able to sign in using this email address. If they don't have an account yet, one will be created for them.
           </Text>
         </View>
 
@@ -151,7 +158,7 @@ export default function AddClientScreen() {
         </View>
 
         {/* Client Name Input */}
-        <View className="mb-6">
+        <View className="mb-4">
           <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
             Client Name *
           </Text>
@@ -176,14 +183,40 @@ export default function AddClientScreen() {
           </View>
         </View>
 
+        {/* Client Phone Input */}
+        <View className="mb-6">
+          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+            Phone Number *
+          </Text>
+          <View
+            className="flex-row items-center px-4 py-3.5 rounded-xl"
+            style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <Ionicons name="call-outline" size={20} color={colors.textSecondary} />
+            <TextInput
+              className="flex-1 ml-3 text-base"
+              style={{ color: colors.text }}
+              placeholder="+1 234 567 8900"
+              placeholderTextColor={colors.textSecondary}
+              value={clientPhone}
+              onChangeText={setClientPhone}
+              keyboardType="phone-pad"
+            />
+          </View>
+        </View>
+
         {/* Add Button */}
         <TouchableOpacity
           className="rounded-xl py-4 items-center mb-6"
           style={{ 
-            backgroundColor: clientEmail && clientName ? colors.primary : colors.border,
+            backgroundColor: clientEmail && clientName && clientPhone ? colors.primary : colors.border,
           }}
           onPress={handleInviteClient}
-          disabled={isAdding || !clientEmail || !clientName}
+          disabled={isAdding || !clientEmail || !clientName || !clientPhone}
         >
           {isAdding ? (
             <ActivityIndicator color="#FFF" />
@@ -224,6 +257,11 @@ export default function AddClientScreen() {
                   <Text className="text-xs" style={{ color: colors.textSecondary }}>
                     {client?.email}
                   </Text>
+                  {client?.phoneNumber && (
+                    <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+                      {client.phoneNumber}
+                    </Text>
+                  )}
                 </View>
                 {client?.clerkId?.startsWith('pending_') && (
                   <View 

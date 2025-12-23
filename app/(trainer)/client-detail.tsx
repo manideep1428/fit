@@ -8,6 +8,7 @@ import { getColors, Shadows } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { useUser } from '@clerk/clerk-expo';
+import { showToast } from '@/utils/toast';
 
 export default function ClientDetailScreen() {
   const { clientId } = useLocalSearchParams();
@@ -38,6 +39,17 @@ export default function ClientDetailScreen() {
     api.bookings.getClientBookings,
     clientId ? { clientId: clientId as string } : 'skip'
   );
+
+  // Fetch active subscription
+  const activeSubscription = useQuery(
+    api.subscriptions.getActiveClientSubscription,
+    user?.id && clientId ? { 
+      clientId: clientId as string,
+      trainerId: user.id 
+    } : 'skip'
+  );
+
+  const completeSession = useMutation(api.bookings.completeSession);
 
   // Fetch questions for this client
   const questions = useQuery(
@@ -168,6 +180,47 @@ export default function ClientDetailScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Subscription Card */}
+        {activeSubscription && (
+          <View className="px-4 py-3">
+            <View
+              className="rounded-xl p-4"
+              style={{ backgroundColor: `${colors.primary}15`, ...shadows.medium }}
+            >
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-base font-bold" style={{ color: colors.text }}>
+                  Active Package
+                </Text>
+                <View
+                  className="px-3 py-1 rounded-full"
+                  style={{ backgroundColor: colors.success }}
+                >
+                  <Text className="text-xs font-bold text-white">ACTIVE</Text>
+                </View>
+              </View>
+              
+              <View className="flex-row gap-3">
+                <View className="flex-1 rounded-lg p-3" style={{ backgroundColor: colors.surface }}>
+                  <Text className="text-2xl font-bold" style={{ color: colors.primary }}>
+                    {activeSubscription.remainingSessions}
+                  </Text>
+                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                    Sessions Left
+                  </Text>
+                </View>
+                <View className="flex-1 rounded-lg p-3" style={{ backgroundColor: colors.surface }}>
+                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>
+                    {new Date(activeSubscription.endDate).toLocaleDateString()}
+                  </Text>
+                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                    Expires
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Stats Cards */}
         <View className="flex-row gap-3 px-4 py-3">
@@ -500,27 +553,101 @@ export default function ClientDetailScreen() {
             <Text className="text-xl font-semibold" style={{ color: colors.text }}>
               Recent Sessions
             </Text>
-            <TouchableOpacity>
-              <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
-                View All
-              </Text>
-            </TouchableOpacity>
           </View>
 
-          <View
-            className="rounded-xl p-4"
-            style={{ backgroundColor: colors.surface, ...shadows.medium }}
-          >
-            <View className="items-center py-6">
-              <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
-              <Text className="mt-3 font-semibold" style={{ color: colors.textSecondary }}>
-                No sessions yet
-              </Text>
-              <Text className="mt-1 text-sm text-center" style={{ color: colors.textTertiary }}>
-                Session history will appear here
-              </Text>
+          {bookings && bookings.length > 0 ? (
+            bookings
+              .filter((b: any) => b.status === 'confirmed' || b.status === 'completed')
+              .slice(0, 5)
+              .map((booking: any) => (
+                <View
+                  key={booking._id}
+                  className="rounded-xl p-4 mb-3"
+                  style={{ backgroundColor: colors.surface, ...shadows.medium }}
+                >
+                  <View className="flex-row justify-between items-start mb-2">
+                    <View className="flex-1">
+                      <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                        {new Date(booking.date).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </Text>
+                      <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+                        {booking.startTime} - {booking.endTime}
+                      </Text>
+                    </View>
+                    <View
+                      className="px-3 py-1 rounded-full"
+                      style={{ 
+                        backgroundColor: booking.status === 'completed' 
+                          ? `${colors.success}20` 
+                          : `${colors.primary}20` 
+                      }}
+                    >
+                      <Text 
+                        className="text-xs font-semibold uppercase" 
+                        style={{ 
+                          color: booking.status === 'completed' 
+                            ? colors.success 
+                            : colors.primary 
+                        }}
+                      >
+                        {booking.status}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {booking.status === 'confirmed' && (
+                    <TouchableOpacity
+                      onPress={async () => {
+                        Alert.alert(
+                          'Complete Session',
+                          'Mark this session as completed? This will deduct 1 session from the client\'s package.',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Complete',
+                              onPress: async () => {
+                                try {
+                                  await completeSession({ bookingId: booking._id });
+                                  showToast.success('Session completed!');
+                                } catch (error: any) {
+                                  showToast.error(error.message || 'Failed to complete session');
+                                }
+                              },
+                            },
+                          ]
+                        );
+                      }}
+                      className="rounded-lg py-2 mt-2 flex-row items-center justify-center"
+                      style={{ backgroundColor: colors.success }}
+                    >
+                      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                      <Text className="text-white font-semibold ml-2">
+                        Mark as Completed
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))
+          ) : (
+            <View
+              className="rounded-xl p-4"
+              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+            >
+              <View className="items-center py-6">
+                <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
+                <Text className="mt-3 font-semibold" style={{ color: colors.textSecondary }}>
+                  No sessions yet
+                </Text>
+                <Text className="mt-1 text-sm text-center" style={{ color: colors.textTertiary }}>
+                  Session history will appear here
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
       </ScrollView>
     </View>
