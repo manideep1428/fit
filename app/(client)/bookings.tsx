@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   ActivityIndicator,
@@ -8,29 +8,56 @@ import {
   Modal,
   RefreshControl,
   Image,
-} from 'react-native';
-import { useUser } from '@clerk/clerk-expo';
-import { useRouter } from 'expo-router';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows } from '@/constants/colors';
-import CalendarView from '@/components/CalendarView';
-import { Ionicons } from '@expo/vector-icons';
-import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
-import GoogleTokenStatus from '@/components/GoogleTokenStatus';
-import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
+  Alert,
+} from "react-native";
+import { useUser } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getColors, Shadows } from "@/constants/colors";
+import CalendarView from "@/components/CalendarView";
+import { Ionicons } from "@expo/vector-icons";
+import GoogleCalendarAuth from "@/components/GoogleCalendarAuth";
+import GoogleTokenStatus from "@/components/GoogleTokenStatus";
+import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
+import Toast from "react-native-toast-message";
+import { Id } from "@/convex/_generated/dataModel";
+
+// Format time from 24h format (HH:mm) to 12h format (h AM/PM)
+const formatTime = (time: string): string => {
+  const [hours, minutes] = time.split(":").map(Number);
+  
+  // Handle invalid times
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return time;
+  }
+  
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  
+  // Only show minutes if they're not :00
+  if (minutes === 0) {
+    return `${displayHours} ${period}`;
+  }
+  
+  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
+};
 
 export default function BookingsScreen() {
   const { user } = useUser();
   const router = useRouter();
   const scheme = useColorScheme();
-  const colors = getColors(scheme === 'dark');
-  const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
-  const [activeTab, setActiveTab] = useState<'schedule' | 'bookings'>('bookings');
+  const colors = getColors(scheme === "dark");
+  const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
+  const [activeTab, setActiveTab] = useState<"schedule" | "bookings">(
+    "bookings"
+  );
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const requestCancellation = useMutation(api.bookings.requestCancellation);
 
   const currentUser = useQuery(
     api.users.getUserByClerkId,
@@ -44,6 +71,11 @@ export default function BookingsScreen() {
 
   const clientTrainers = useQuery(
     api.users.getClientTrainers,
+    user?.id ? { clientId: user.id } : "skip"
+  );
+
+  const subscriptions = useQuery(
+    api.subscriptions.getClientSubscriptions,
     user?.id ? { clientId: user.id } : "skip"
   );
 
@@ -120,11 +152,48 @@ export default function BookingsScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
+  const handleCancelRequest = (bookingId: Id<"bookings">, bookingDate: string, bookingTime: string) => {
+    Alert.alert(
+      "Request Cancellation",
+      "Your trainer will need to approve this cancellation. If approved, 1 session will be returned to your package.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Request",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await requestCancellation({
+                bookingId,
+                requestedBy: user!.id,
+              });
+              Toast.show({
+                type: "success",
+                text1: "Cancellation Requested",
+                text2: "Waiting for trainer approval",
+                position: "top",
+                visibilityTime: 3000,
+              });
+            } catch (error: any) {
+              Toast.show({
+                type: "error",
+                text1: "Request Failed",
+                text2: error.message || "Unable to request cancellation",
+                position: "top",
+                visibilityTime: 3000,
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       {/* Gradient Background Overlay */}
       <LinearGradient
-        colors={[`${colors.primary}15`, `${colors.primary}05`, 'transparent']}
+        colors={[`${colors.primary}15`, `${colors.primary}05`, "transparent"]}
         className="absolute top-0 left-0 right-0 h-64"
         pointerEvents="none"
       />
@@ -132,15 +201,80 @@ export default function BookingsScreen() {
       {/* Header Section */}
       <View className="px-4 pt-16 pb-2">
         <View className="flex-row items-center justify-between mb-1">
-          <Text className="text-3xl font-bold tracking-tight" style={{ color: colors.text }}>
+          <Text
+            className="text-3xl font-bold tracking-tight"
+            style={{ color: colors.text }}
+          >
             Bookings
           </Text>
           <GoogleTokenStatus onConnect={() => setShowCalendarModal(true)} />
         </View>
-        <Text className="text-sm font-medium" style={{ color: colors.textSecondary }}>
+        <Text
+          className="text-sm font-medium"
+          style={{ color: colors.textSecondary }}
+        >
           Manage your sessions
         </Text>
       </View>
+
+      {/* Pending Subscriptions Banner */}
+      {subscriptions &&
+        subscriptions.filter((s: any) => s.paymentStatus === "pending").length >
+          0 && (
+          <View className="px-4 pb-2">
+            <TouchableOpacity
+              onPress={() => router.push("/(client)/my-subscriptions" as any)}
+              className="rounded-2xl p-4 flex-row items-center"
+              style={{
+                backgroundColor: `${colors.warning}15`,
+                borderWidth: 1,
+                borderColor: `${colors.warning}40`,
+                ...shadows.small,
+              }}
+            >
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.warning}30` }}
+              >
+                <Ionicons
+                  name="hourglass-outline"
+                  size={20}
+                  color={colors.warning}
+                />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="font-bold text-sm mb-0.5"
+                  style={{ color: colors.text }}
+                >
+                  {
+                    subscriptions.filter(
+                      (s: any) => s.paymentStatus === "pending"
+                    ).length
+                  }{" "}
+                  Subscription
+                  {subscriptions.filter(
+                    (s: any) => s.paymentStatus === "pending"
+                  ).length > 1
+                    ? "s"
+                    : ""}{" "}
+                  Pending
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Waiting for trainer approval
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.warning}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
 
       {/* Segmented Control */}
       <View className="px-4 py-4">
@@ -152,8 +286,8 @@ export default function BookingsScreen() {
           <View
             className="absolute h-full rounded-full z-0 transition-all"
             style={{
-              width: '50%',
-              left: activeTab === 'bookings' ? 4 : '50%',
+              width: "50%",
+              left: activeTab === "bookings" ? 4 : "50%",
               top: 4,
               bottom: 4,
               backgroundColor: colors.surface,
@@ -162,12 +296,13 @@ export default function BookingsScreen() {
           />
           <TouchableOpacity
             className="flex-1 relative z-10 py-2.5 items-center rounded-full"
-            onPress={() => setActiveTab('bookings')}
+            onPress={() => setActiveTab("bookings")}
           >
             <Text
               className="text-sm font-semibold"
               style={{
-                color: activeTab === 'bookings' ? colors.text : colors.textSecondary,
+                color:
+                  activeTab === "bookings" ? colors.text : colors.textSecondary,
               }}
             >
               Bookings
@@ -175,12 +310,13 @@ export default function BookingsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             className="flex-1 relative z-10 py-2.5 items-center rounded-full"
-            onPress={() => setActiveTab('schedule')}
+            onPress={() => setActiveTab("schedule")}
           >
             <Text
               className="text-sm font-medium"
               style={{
-                color: activeTab === 'schedule' ? colors.text : colors.textSecondary,
+                color:
+                  activeTab === "schedule" ? colors.text : colors.textSecondary,
               }}
             >
               Schedule
@@ -190,23 +326,33 @@ export default function BookingsScreen() {
       </View>
 
       {/* Tab Content */}
-      {activeTab === 'bookings' ? (
+      {activeTab === "bookings" ? (
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
           }
         >
           {/* My Trainers Section */}
           <View className="mb-8">
             <View className="flex-row items-center justify-between px-4 mb-3">
-              <Text className="text-lg font-bold" style={{ color: colors.text }}>
+              <Text
+                className="text-lg font-bold"
+                style={{ color: colors.text }}
+              >
                 My Trainers
               </Text>
               {clientTrainers.length > 0 && (
                 <TouchableOpacity>
-                  <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
+                  <Text
+                    className="text-sm font-semibold"
+                    style={{ color: colors.primary }}
+                  >
                     See All
                   </Text>
                 </TouchableOpacity>
@@ -241,7 +387,7 @@ export default function BookingsScreen() {
                       }}
                     >
                       <Text className="text-white text-2xl font-bold">
-                        {trainer.fullName?.[0] || 'T'}
+                        {trainer.fullName?.[0] || "T"}
                       </Text>
                     </View>
                   </View>
@@ -250,7 +396,7 @@ export default function BookingsScreen() {
                     numberOfLines={1}
                     style={{ color: colors.text }}
                   >
-                    {trainer.fullName?.split(' ')[0] || 'Trainer'}
+                    {trainer.fullName?.split(" ")[0] || "Trainer"}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -259,7 +405,7 @@ export default function BookingsScreen() {
               <TouchableOpacity
                 className="items-center"
                 style={{ width: 72 }}
-                onPress={() => router.push('/(client)/find-trainers' as any)}
+                onPress={() => router.push("/(client)/find-trainers" as any)}
               >
                 <View
                   className="w-[72px] h-[72px] rounded-full items-center justify-center border-2 border-dashed"
@@ -282,7 +428,10 @@ export default function BookingsScreen() {
 
           {/* Upcoming Section */}
           <View className="mb-8 px-4">
-            <Text className="text-lg font-bold mb-4" style={{ color: colors.text }}>
+            <Text
+              className="text-lg font-bold mb-4"
+              style={{ color: colors.text }}
+            >
               Upcoming
             </Text>
 
@@ -296,17 +445,29 @@ export default function BookingsScreen() {
                   borderColor: colors.border,
                 }}
               >
-                <Ionicons name="calendar-outline" size={48} color={colors.textTertiary} />
-                <Text className="text-base font-semibold mt-3" style={{ color: colors.textSecondary }}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={48}
+                  color={colors.textTertiary}
+                />
+                <Text
+                  className="text-base font-semibold mt-3"
+                  style={{ color: colors.textSecondary }}
+                >
                   No upcoming sessions
                 </Text>
-                <Text className="text-sm mt-1 text-center" style={{ color: colors.textTertiary }}>
+                <Text
+                  className="text-sm mt-1 text-center"
+                  style={{ color: colors.textTertiary }}
+                >
                   Book a session with your trainer
                 </Text>
               </View>
             ) : (
               currentBookings.map((booking: any) => {
-                const isToday = new Date(booking.date).toDateString() === new Date().toDateString();
+                const isToday =
+                  new Date(booking.date).toDateString() ===
+                  new Date().toDateString();
                 const isTomorrow =
                   new Date(booking.date).toDateString() ===
                   new Date(Date.now() + 86400000).toDateString();
@@ -329,14 +490,20 @@ export default function BookingsScreen() {
                           style={{ backgroundColor: colors.primary }}
                         >
                           <Text className="text-white text-lg font-bold">
-                            {booking.trainerName?.[0] || 'T'}
+                            {booking.trainerName?.[0] || "T"}
                           </Text>
                         </View>
                         <View>
-                          <Text className="font-bold" style={{ color: colors.text }}>
-                            {booking.scheduleName || 'Training Session'}
+                          <Text
+                            className="font-bold"
+                            style={{ color: colors.text }}
+                          >
+                            {booking.scheduleName || "Training Session"}
                           </Text>
-                          <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                          <Text
+                            className="text-sm"
+                            style={{ color: colors.textSecondary }}
+                          >
                             with {booking.trainerName}
                           </Text>
                         </View>
@@ -347,45 +514,107 @@ export default function BookingsScreen() {
                           backgroundColor: isTomorrow
                             ? `${colors.primary}20`
                             : isToday
-                            ? `${colors.success}20`
-                            : colors.surfaceSecondary,
+                              ? `${colors.success}20`
+                              : colors.surfaceSecondary,
                         }}
                       >
                         <Text
                           className="text-xs font-bold"
                           style={{
-                            color: isTomorrow ? colors.primary : isToday ? colors.success : colors.text,
+                            color: isTomorrow
+                              ? colors.primary
+                              : isToday
+                                ? colors.success
+                                : colors.text,
                           }}
                         >
-                          {isTomorrow ? 'Tomorrow' : isToday ? 'Today' : new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {isTomorrow
+                            ? "Tomorrow"
+                            : isToday
+                              ? "Today"
+                              : new Date(booking.date).toLocaleDateString(
+                                  "en-US",
+                                  { month: "short", day: "numeric" }
+                                )}
                         </Text>
                       </View>
                     </View>
 
                     <View className="gap-2 mb-4">
                       <View className="flex-row items-center gap-2">
-                        <Ionicons name="time-outline" size={18} color={colors.primary} />
-                        <Text className="text-sm" style={{ color: colors.text }}>
-                          {new Date(`2000-01-01T${booking.startTime}`).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true,
-                          })}{' '}
-                          -{' '}
-                          {new Date(`2000-01-01T${booking.endTime}`).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true,
-                          })}
+                        <Ionicons
+                          name="time-outline"
+                          size={18}
+                          color={colors.primary}
+                        />
+                        <Text
+                          className="text-sm"
+                          style={{ color: colors.text }}
+                        >
+                          {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                         </Text>
                       </View>
                       <View className="flex-row items-center gap-2">
-                        <Ionicons name="location-outline" size={18} color={colors.primary} />
-                        <Text className="text-sm" style={{ color: colors.text }}>
-                          {booking.location || 'Virtual Session'}
+                        <Ionicons
+                          name="location-outline"
+                          size={18}
+                          color={colors.primary}
+                        />
+                        <Text
+                          className="text-sm"
+                          style={{ color: colors.text }}
+                        >
+                          {booking.location || "Virtual Session"}
                         </Text>
                       </View>
                     </View>
+
+                    {/* Cancel Button or Status */}
+                    {booking.status === "cancellation_requested" ? (
+                      <View
+                        className="rounded-xl py-3 px-4 flex-row items-center justify-center"
+                        style={{
+                          backgroundColor: `${colors.warning}20`,
+                          borderWidth: 1,
+                          borderColor: colors.warning,
+                        }}
+                      >
+                        <Ionicons
+                          name="hourglass-outline"
+                          size={18}
+                          color={colors.warning}
+                        />
+                        <Text
+                          className="text-sm font-semibold ml-2"
+                          style={{ color: colors.warning }}
+                        >
+                          Cancellation Pending Approval
+                        </Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        className="rounded-xl py-3 items-center"
+                        style={{
+                          backgroundColor: `${colors.error}15`,
+                          borderWidth: 1,
+                          borderColor: colors.error,
+                        }}
+                        onPress={() =>
+                          handleCancelRequest(
+                            booking._id,
+                            booking.date,
+                            booking.startTime
+                          )
+                        }
+                      >
+                        <Text
+                          className="text-sm font-semibold"
+                          style={{ color: colors.error }}
+                        >
+                          Request Cancellation
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 );
               })
@@ -395,7 +624,10 @@ export default function BookingsScreen() {
           {/* Past Sessions Section */}
           {pastBookings.length > 0 && (
             <View className="px-4 pb-8">
-              <Text className="text-lg font-bold mb-4 opacity-80" style={{ color: colors.text }}>
+              <Text
+                className="text-lg font-bold mb-4 opacity-80"
+                style={{ color: colors.text }}
+              >
                 Past Sessions
               </Text>
 
@@ -416,25 +648,33 @@ export default function BookingsScreen() {
                           className="w-10 h-10 rounded-full items-center justify-center grayscale"
                           style={{ backgroundColor: colors.surfaceSecondary }}
                         >
-                          <Text className="text-sm font-bold" style={{ color: colors.textSecondary }}>
-                            {booking.trainerName?.[0] || 'T'}
+                          <Text
+                            className="text-sm font-bold"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {booking.trainerName?.[0] || "T"}
                           </Text>
                         </View>
                         <View className="flex-1">
-                          <Text className="font-semibold text-sm" style={{ color: colors.text }}>
-                            {booking.scheduleName || 'Training Session'}
+                          <Text
+                            className="font-semibold text-sm"
+                            style={{ color: colors.text }}
+                          >
+                            {booking.scheduleName || "Training Session"}
                           </Text>
-                          <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                            {new Date(booking.date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}{' '}
-                            •{' '}
-                            {new Date(`2000-01-01T${booking.startTime}`).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            })}
+                          <Text
+                            className="text-xs"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {new Date(booking.date).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}{" "}
+                            •{" "}
+                            {formatTime(booking.startTime)}
                           </Text>
                         </View>
                       </View>
@@ -442,7 +682,10 @@ export default function BookingsScreen() {
                         className="px-2 py-1 rounded-md"
                         style={{ backgroundColor: `${colors.success}20` }}
                       >
-                        <Text className="text-xs font-medium" style={{ color: colors.success }}>
+                        <Text
+                          className="text-xs font-medium"
+                          style={{ color: colors.success }}
+                        >
                           Completed
                         </Text>
                       </View>
@@ -471,7 +714,7 @@ export default function BookingsScreen() {
             if (clientTrainers.length > 0) {
               handleBookTrainer(clientTrainers[0]);
             } else {
-              router.push('/(client)/find-trainers' as any);
+              router.push("/(client)/find-trainers" as any);
             }
           }}
         >
@@ -486,7 +729,10 @@ export default function BookingsScreen() {
         animationType="slide"
         onRequestClose={() => setShowCalendarModal(false)}
       >
-        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <View
+          className="flex-1 justify-end"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
           <View className="mx-4 mb-8">
             <GoogleCalendarAuth
               onConnected={() => setShowCalendarModal(false)}

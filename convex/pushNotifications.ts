@@ -419,3 +419,85 @@ export const notifyPackageExpired = action({
     }
   },
 });
+
+// Send notification when discount is added
+export const notifyDiscountAdded = action({
+  args: {
+    clientId: v.string(),
+    trainerName: v.string(),
+    discountPercentage: v.number(),
+    description: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const client = await ctx.runQuery(api.users.getUserByClerkId, {
+      clerkId: args.clientId,
+    });
+
+    if (client?.notificationSettings?.newBookings !== false) {
+      await ctx.runAction(api.pushNotifications.sendPushNotification, {
+        userId: args.clientId,
+        title: "New Discount Applied! 🎉",
+        body: `${args.trainerName} added a ${args.discountPercentage}% discount for you - ${args.description}`,
+        data: { 
+          type: "discount_added",
+          discountPercentage: args.discountPercentage,
+        },
+      });
+    }
+  },
+});
+
+// Send notification when discount is updated
+export const notifyDiscountUpdated = action({
+  args: {
+    clientId: v.string(),
+    trainerName: v.string(),
+    oldDiscountPercentage: v.number(),
+    newDiscountPercentage: v.number(),
+    description: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const client = await ctx.runQuery(api.users.getUserByClerkId, {
+      clerkId: args.clientId,
+    });
+
+    if (client?.notificationSettings?.newBookings !== false) {
+      await ctx.runAction(api.pushNotifications.sendPushNotification, {
+        userId: args.clientId,
+        title: "Discount Updated! 💰",
+        body: `${args.trainerName} updated your discount from ${args.oldDiscountPercentage}% to ${args.newDiscountPercentage}% - ${args.description}`,
+        data: { 
+          type: "discount_updated",
+          oldDiscountPercentage: args.oldDiscountPercentage,
+          newDiscountPercentage: args.newDiscountPercentage,
+        },
+      });
+    }
+  },
+});
+
+// Send notification when discount is removed
+export const notifyDiscountRemoved = action({
+  args: {
+    clientId: v.string(),
+    trainerName: v.string(),
+    discountPercentage: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const client = await ctx.runQuery(api.users.getUserByClerkId, {
+      clerkId: args.clientId,
+    });
+
+    if (client?.notificationSettings?.newBookings !== false) {
+      await ctx.runAction(api.pushNotifications.sendPushNotification, {
+        userId: args.clientId,
+        title: "Discount Removed",
+        body: `${args.trainerName} removed your ${args.discountPercentage}% discount`,
+        data: { 
+          type: "discount_removed",
+          discountPercentage: args.discountPercentage,
+        },
+      });
+    }
+  },
+});

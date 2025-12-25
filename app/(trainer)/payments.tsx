@@ -88,8 +88,9 @@ export default function SubscriptionsScreen() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return `$${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number | undefined) => {
+    const safeAmount = amount || 0;
+    return `$${safeAmount.toLocaleString()}`;
   };
 
   const handleApprovePayment = (subscription: any) => {
@@ -218,49 +219,67 @@ export default function SubscriptionsScreen() {
             </View>
 
             {pendingPayments.map((sub: any) => (
-              <View
+              <TouchableOpacity
                 key={sub._id}
+                onPress={() =>
+                  router.push(`/(trainer)/payment-details?id=${sub._id}` as any)
+                }
                 className="rounded-xl p-4 mb-3"
                 style={{
-                  backgroundColor: `${colors.warning}15`,
-                  borderWidth: 2,
-                  borderColor: colors.warning,
+                  backgroundColor: colors.surface,
+                  ...shadows.medium,
+                  borderLeftWidth: 4,
+                  borderLeftColor: colors.warning,
                 }}
               >
-                <View className="flex-row justify-between items-start mb-3">
+                <View className="flex-row justify-between items-center">
                   <View className="flex-1">
                     <Text
-                      className="text-lg font-bold"
+                      className="text-lg font-bold mb-1"
                       style={{ color: colors.text }}
                     >
                       {getClientName(sub.clientId)}
                     </Text>
+                    <View
+                      className="px-2 py-0.5 rounded-full self-start"
+                      style={{ backgroundColor: `${colors.warning}20` }}
+                    >
+                      <Text
+                        className="text-xs font-semibold"
+                        style={{ color: colors.warning }}
+                      >
+                        Pending Approval
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="items-end">
                     <Text
-                      className="text-sm mt-1"
+                      className="text-2xl font-bold"
+                      style={{ color: colors.warning }}
+                    >
+                      {formatCurrency(sub.finalAmount)}
+                    </Text>
+                    <Text
+                      className="text-xs"
                       style={{ color: colors.textSecondary }}
                     >
                       {getPackageName(sub.packageId)}
                     </Text>
                   </View>
-                  <Text
-                    className="text-xl font-bold"
-                    style={{ color: colors.warning }}
-                  >
-                    {formatCurrency(sub.finalAmount)}
-                  </Text>
                 </View>
 
-                <TouchableOpacity
-                  onPress={() => handleApprovePayment(sub)}
-                  className="rounded-xl py-3 flex-row items-center justify-center"
-                  style={{ backgroundColor: colors.success }}
+                {/* Chevron indicator */}
+                <View
+                  className="absolute right-4 top-1/2"
+                  style={{ transform: [{ translateY: -12 }] }}
                 >
-                  <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                  <Text className="text-white font-semibold ml-2">
-                    Approve Offline Payment
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={24}
+                    color={colors.textTertiary}
+                  />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -281,37 +300,31 @@ export default function SubscriptionsScreen() {
             </Text>
           </View>
         ) : (
-          activeSubscriptions.map((sub: any) => {
-            const progressPercentage =
-              (sub.remainingSessions / sub.totalSessions) * 100;
-            const isExpiringSoon =
-              sub.remainingSessions <= 3 && sub.status === "active";
-
-            return (
-              <View
-                key={sub._id}
-                className="rounded-xl p-4 mb-4"
-                style={{ backgroundColor: colors.surface, ...shadows.medium }}
-              >
-                {/* Header */}
-                <View className="flex-row justify-between items-start mb-3">
-                  <View className="flex-1">
-                    <Text
-                      className="text-lg font-bold"
-                      style={{ color: colors.text }}
-                    >
-                      {getClientName(sub.clientId)}
-                    </Text>
-                    <Text
-                      className="text-sm mt-1"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      {getPackageName(sub.packageId)}
-                    </Text>
-                  </View>
-                  <View className="items-end">
+          activeSubscriptions.map((sub: any) => (
+            <TouchableOpacity
+              key={sub._id}
+              onPress={() =>
+                router.push(`/(trainer)/payment-details?id=${sub._id}` as any)
+              }
+              className="rounded-xl p-4 mb-4"
+              style={{
+                backgroundColor: colors.surface,
+                ...shadows.medium,
+                borderLeftWidth: 4,
+                borderLeftColor: getStatusColor(sub.status),
+              }}
+            >
+              <View className="flex-row justify-between items-center">
+                <View className="flex-1">
+                  <Text
+                    className="text-lg font-bold mb-1"
+                    style={{ color: colors.text }}
+                  >
+                    {getClientName(sub.clientId)}
+                  </Text>
+                  <View className="flex-row items-center gap-2">
                     <View
-                      className="px-3 py-1 rounded-full mb-1"
+                      className="px-2 py-0.5 rounded-full"
                       style={{
                         backgroundColor: `${getStatusColor(sub.status)}20`,
                       }}
@@ -323,192 +336,43 @@ export default function SubscriptionsScreen() {
                         {sub.status}
                       </Text>
                     </View>
-                    <View
-                      className="px-3 py-1 rounded-full"
-                      style={{
-                        backgroundColor: `${getPaymentStatusColor(sub.paymentStatus)}20`,
-                      }}
-                    >
-                      <Text
-                        className="text-xs font-semibold"
-                        style={{
-                          color: getPaymentStatusColor(sub.paymentStatus),
-                        }}
-                      >
-                        {sub.paymentStatus}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Session Progress */}
-                <View className="mb-3">
-                  <View className="flex-row justify-between mb-2">
-                    <Text
-                      className="text-sm font-semibold"
-                      style={{ color: colors.text }}
-                    >
-                      Sessions Used
-                    </Text>
-                    <Text
-                      className="text-sm font-bold"
-                      style={{ color: colors.primary }}
-                    >
-                      {sub.totalSessions - sub.remainingSessions} /{" "}
-                      {sub.totalSessions}
-                    </Text>
-                  </View>
-                  <View
-                    className="h-2 rounded-full overflow-hidden"
-                    style={{ backgroundColor: colors.border }}
-                  >
-                    <View
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${100 - progressPercentage}%`,
-                        backgroundColor: isExpiringSoon
-                          ? colors.warning
-                          : colors.primary,
-                      }}
-                    />
-                  </View>
-                  {isExpiringSoon && (
-                    <Text
-                      className="text-xs mt-1"
-                      style={{ color: colors.warning }}
-                    >
-                      ⚠️ Only {sub.remainingSessions} sessions remaining
-                    </Text>
-                  )}
-                </View>
-
-                {/* Details Grid */}
-                <View className="flex-row gap-2 mb-3">
-                  <View
-                    className="flex-1 rounded-lg p-3"
-                    style={{ backgroundColor: `${colors.primary}10` }}
-                  >
-                    <Text
-                      className="text-xs mb-1"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      Remaining
-                    </Text>
-                    <Text
-                      className="text-2xl font-bold"
-                      style={{ color: colors.primary }}
-                    >
-                      {sub.remainingSessions}
-                    </Text>
-                  </View>
-                  <View
-                    className="flex-1 rounded-lg p-3"
-                    style={{ backgroundColor: `${colors.primary}10` }}
-                  >
-                    <Text
-                      className="text-xs mb-1"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      Amount
-                    </Text>
-                    <Text
-                      className="text-xl font-bold"
-                      style={{ color: colors.text }}
-                    >
-                      {formatCurrency(sub.finalAmount)}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Dates */}
-                <View
-                  className="flex-row justify-between mb-3 p-3 rounded-lg"
-                  style={{ backgroundColor: colors.background }}
-                >
-                  <View>
                     <Text
                       className="text-xs"
-                      style={{ color: colors.textTertiary }}
+                      style={{ color: colors.textSecondary }}
                     >
-                      Start Date
-                    </Text>
-                    <Text
-                      className="text-sm font-semibold mt-0.5"
-                      style={{ color: colors.text }}
-                    >
-                      {new Date(sub.startDate).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <View className="items-end">
-                    <Text
-                      className="text-xs"
-                      style={{ color: colors.textTertiary }}
-                    >
-                      End Date
-                    </Text>
-                    <Text
-                      className="text-sm font-semibold mt-0.5"
-                      style={{ color: colors.text }}
-                    >
-                      {new Date(sub.endDate).toLocaleDateString()}
+                      {getPackageName(sub.packageId)}
                     </Text>
                   </View>
                 </View>
-
-                {/* Discount Info */}
-                {sub.discount > 0 && (
-                  <View
-                    className="flex-row items-center mb-3 p-2 rounded-lg"
-                    style={{ backgroundColor: `${colors.success}15` }}
-                  >
-                    <Ionicons
-                      name="pricetag"
-                      size={16}
-                      color={colors.success}
-                    />
-                    <Text
-                      className="text-sm font-semibold ml-2"
-                      style={{ color: colors.success }}
-                    >
-                      {sub.discount}% discount applied
-                    </Text>
-                  </View>
-                )}
-
-                {/* Payment Method */}
-                <View className="flex-row items-center mb-3">
-                  <Ionicons
-                    name={sub.paymentMethod === "online" ? "card" : "cash"}
-                    size={16}
-                    color={colors.textSecondary}
-                  />
+                <View className="items-end">
                   <Text
-                    className="text-sm ml-2"
+                    className="text-2xl font-bold"
+                    style={{ color: colors.primary }}
+                  >
+                    {formatCurrency(sub.finalAmount)}
+                  </Text>
+                  <Text
+                    className="text-xs"
                     style={{ color: colors.textSecondary }}
                   >
-                    Payment:{" "}
-                    {sub.paymentMethod === "online" ? "Online" : "Offline"}
+                    {sub.remainingSessions} sessions left
                   </Text>
                 </View>
-
-                {/* Actions */}
-                {sub.status === "active" && (
-                  <TouchableOpacity
-                    onPress={() => handleCancelSubscription(sub)}
-                    className="rounded-lg py-2 items-center"
-                    style={{ backgroundColor: `${colors.error}15` }}
-                  >
-                    <Text
-                      className="text-sm font-medium"
-                      style={{ color: colors.error }}
-                    >
-                      Cancel Subscription
-                    </Text>
-                  </TouchableOpacity>
-                )}
               </View>
-            );
-          })
+
+              {/* Chevron indicator */}
+              <View
+                className="absolute right-4 top-1/2"
+                style={{ transform: [{ translateY: -12 }] }}
+              >
+                <Ionicons
+                  name="chevron-forward"
+                  size={24}
+                  color={colors.textTertiary}
+                />
+              </View>
+            </TouchableOpacity>
+          ))
         )}
       </ScrollView>
     </View>

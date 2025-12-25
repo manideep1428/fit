@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation } from "convex/react";
@@ -44,7 +45,7 @@ export default function TrainerSubscriptionsScreen() {
   const handleApprove = (subscription: any) => {
     Alert.alert(
       "Approve Subscription",
-      `Approve ${subscription.clientName}'s subscription request? They will be able to start booking sessions.`,
+      `Approve ${subscription.clientName}'s subscription request?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -62,10 +63,32 @@ export default function TrainerSubscriptionsScreen() {
     );
   };
 
+  const handleReject = (subscription: any) => {
+    Alert.alert(
+      "Reject Subscription",
+      `Reject ${subscription.clientName}'s subscription request?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reject",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await cancelSubscription({ subscriptionId: subscription._id });
+              showToast.success("Subscription rejected");
+            } catch (error) {
+              showToast.error("Failed to reject subscription");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleRenew = (subscription: any) => {
     Alert.alert(
       "Renew Subscription",
-      `Renew ${subscription.clientName}'s subscription for another period?`,
+      `Renew ${subscription.clientName}'s subscription?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -90,7 +113,7 @@ export default function TrainerSubscriptionsScreen() {
   const handleCancel = (subscription: any) => {
     Alert.alert(
       "Cancel Subscription",
-      `Are you sure you want to cancel ${subscription.clientName}'s subscription?`,
+      `Cancel ${subscription.clientName}'s subscription?`,
       [
         { text: "No", style: "cancel" },
         {
@@ -109,22 +132,7 @@ export default function TrainerSubscriptionsScreen() {
     );
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return colors.success;
-      case "pending":
-        return colors.warning;
-      case "expired":
-        return colors.error;
-      case "cancelled":
-        return colors.textTertiary;
-      default:
-        return colors.textSecondary;
-    }
-  };
-
-  const formatCurrency = (amount: number, currency: string) => {
+  const formatCurrency = (amount: number | undefined, currency: string) => {
     const symbols: { [key: string]: string } = {
       INR: "₹",
       USD: "$",
@@ -132,7 +140,8 @@ export default function TrainerSubscriptionsScreen() {
       GBP: "£",
       NOK: "kr",
     };
-    return `${symbols[currency] || currency}${amount.toFixed(0)}`;
+    const safeAmount = amount || 0;
+    return `${symbols[currency] || currency}${safeAmount.toFixed(0)}`;
   };
 
   const pendingSubscriptions =
@@ -141,7 +150,7 @@ export default function TrainerSubscriptionsScreen() {
     subscriptions?.filter(
       (s) => s.status === "active" && s.paymentStatus === "paid"
     ) || [];
-  const inactiveSubscriptions =
+  const pastSubscriptions =
     subscriptions?.filter((s) => s.status !== "active") || [];
 
   return (
@@ -149,216 +158,254 @@ export default function TrainerSubscriptionsScreen() {
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
 
       {/* Header */}
-      <View className="px-4 pb-6" style={{ paddingTop: insets.top + 12 }}>
-        <View className="flex-row items-center mb-4">
-          <TouchableOpacity onPress={() => router.back()} className="mr-3">
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-            Subscriptions
-          </Text>
-        </View>
-
-        {/* Stats */}
-        <View className="flex-row gap-3">
-          <View
-            className="flex-1 rounded-2xl p-4"
-            style={{ backgroundColor: colors.surface, ...shadows.small }}
-          >
-            <Text
-              className="text-3xl font-bold mb-1"
-              style={{ color: colors.primary }}
-            >
-              {stats?.activeCount || 0}
-            </Text>
-            <Text className="text-xs" style={{ color: colors.textSecondary }}>
-              Active
-            </Text>
-          </View>
-          <View
-            className="flex-1 rounded-2xl p-4"
-            style={{ backgroundColor: colors.surface, ...shadows.small }}
-          >
-            <Text
-              className="text-3xl font-bold mb-1"
-              style={{ color: colors.warning }}
-            >
-              {stats?.pendingCount || 0}
-            </Text>
-            <Text className="text-xs" style={{ color: colors.textSecondary }}>
-              Pending
-            </Text>
-          </View>
-          <View
-            className="flex-1 rounded-2xl p-4"
-            style={{ backgroundColor: colors.surface, ...shadows.small }}
-          >
-            <Text
-              className="text-3xl font-bold mb-1"
-              style={{ color: colors.text }}
-            >
-              {stats?.totalCount || 0}
-            </Text>
-            <Text className="text-xs" style={{ color: colors.textSecondary }}>
-              Total
-            </Text>
-          </View>
-        </View>
+      <View
+        className="px-4 pb-2 border-b flex-row items-center justify-between"
+        style={{
+          paddingTop: insets.top + 16,
+          borderBottomColor: colors.border,
+          backgroundColor: `${colors.background}E6`,
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="w-12 h-12 rounded-full items-center justify-center -ml-2"
+          style={{
+            backgroundColor: "transparent",
+          }}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text
+          className="text-lg font-bold flex-1 text-center pr-12"
+          style={{ color: colors.text }}
+        >
+          Subscriptions
+        </Text>
       </View>
 
       <ScrollView
-        className="flex-1 px-4"
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       >
-        {/* Pending Requests */}
-        {pendingSubscriptions.length > 0 && (
-          <View className="mb-6">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="time-outline" size={20} color={colors.warning} />
+        {/* Stats */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="flex-row gap-3 p-4"
+          contentContainerStyle={{ paddingRight: 16 }}
+        >
+          <View
+            className="min-w-[140px] flex-1 flex-col gap-2 rounded-xl p-5"
+            style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              ...shadows.small,
+            }}
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="people" size={18} color={colors.primary} />
               <Text
-                className="text-base font-bold ml-2"
+                className="text-sm font-medium"
+                style={{ color: colors.textSecondary }}
+              >
+                Active
+              </Text>
+            </View>
+            <View className="flex-row items-baseline gap-1">
+              <Text
+                className="text-2xl font-bold"
                 style={{ color: colors.text }}
               >
-                Pending Requests
+                {stats?.activeCount || 0}
+              </Text>
+              <Text
+                className="text-sm font-normal"
+                style={{ color: colors.textSecondary }}
+              >
+                Clients
+              </Text>
+            </View>
+          </View>
+
+          <View
+            className="min-w-[140px] flex-1 flex-col gap-2 rounded-xl p-5"
+            style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              ...shadows.small,
+            }}
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="time" size={18} color={colors.warning} />
+              <Text
+                className="text-sm font-medium"
+                style={{ color: colors.textSecondary }}
+              >
+                Pending
+              </Text>
+            </View>
+            <Text className="text-2xl font-bold" style={{ color: colors.text }}>
+              {stats?.pendingCount || 0}
+            </Text>
+          </View>
+
+          <View
+            className="min-w-[140px] flex-1 flex-col gap-2 rounded-xl p-5"
+            style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              ...shadows.small,
+            }}
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="cash" size={18} color={colors.success} />
+              <Text
+                className="text-sm font-medium"
+                style={{ color: colors.textSecondary }}
+              >
+                Total
+              </Text>
+            </View>
+            <View className="flex-row items-baseline gap-1">
+              <Text
+                className="text-2xl font-bold"
+                style={{ color: colors.text }}
+              >
+                {stats?.totalCount || 0}
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Pending Payments */}
+        {pendingSubscriptions.length > 0 && (
+          <View>
+            <View className="flex-row items-center justify-between px-4 pb-2 pt-4">
+              <Text
+                className="text-lg font-bold"
+                style={{ color: colors.text }}
+              >
+                Pending Payments
               </Text>
               <View
-                className="ml-2 px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: colors.warning }}
+                className="px-2 py-1 rounded-full"
+                style={{ backgroundColor: `${colors.warning}20` }}
               >
-                <Text className="text-white text-xs font-bold">
-                  {pendingSubscriptions.length}
+                <Text
+                  className="text-xs font-bold"
+                  style={{ color: colors.warning }}
+                >
+                  Action Needed
                 </Text>
               </View>
             </View>
 
-            {pendingSubscriptions.map((sub: any) => (
-              <View
-                key={sub._id}
-                className="rounded-2xl p-4 mb-3"
-                style={{
-                  backgroundColor: colors.surface,
-                  ...shadows.medium,
-                  borderLeftWidth: 4,
-                  borderLeftColor: colors.warning,
-                }}
-              >
-                <View className="flex-row items-center justify-between mb-3">
-                  <View className="flex-1">
-                    <Text
-                      className="text-lg font-bold mb-1"
-                      style={{ color: colors.text }}
-                    >
-                      {sub.clientName}
-                    </Text>
-                    <View className="flex-row items-center gap-2">
+            <View className="px-4 flex-col gap-4">
+              {pendingSubscriptions.map((sub: any) => (
+                <View
+                  key={sub._id}
+                  className="flex-col gap-4 rounded-xl p-4"
+                  style={{
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    ...shadows.small,
+                  }}
+                >
+                  <View className="flex-row items-start justify-between gap-4">
+                    <View className="flex-row items-center gap-3 flex-1">
                       <View
-                        className="px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: `${colors.primary}20` }}
+                        className="w-12 h-12 rounded-full items-center justify-center"
+                        style={{
+                          backgroundColor: colors.primary,
+                          borderWidth: 2,
+                          borderColor: colors.surface,
+                          ...shadows.small,
+                        }}
                       >
-                        <Text
-                          className="text-xs font-semibold"
-                          style={{ color: colors.primary }}
-                        >
-                          {sub.planName}
+                        <Text className="text-white text-lg font-bold">
+                          {sub.clientName?.[0] || "C"}
                         </Text>
                       </View>
-                      <Text
-                        className="text-sm"
-                        style={{ color: colors.textSecondary }}
-                      >
-                        {sub.sessionsPerMonth} sessions/month
-                      </Text>
+                      <View className="flex-1">
+                        <Text
+                          className="text-base font-bold"
+                          style={{ color: colors.text }}
+                        >
+                          {sub.clientName}
+                        </Text>
+                        <Text
+                          className="text-sm"
+                          style={{ color: colors.textSecondary }}
+                        >
+                          {sub.planName} • {sub.sessionsPerMonth} Sessions
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                  <View className="items-end">
                     <Text
-                      className="text-xl font-bold"
-                      style={{ color: colors.primary }}
+                      className="text-lg font-bold"
+                      style={{ color: colors.text }}
                     >
                       {formatCurrency(sub.totalAmount, sub.planCurrency)}
                     </Text>
-                    <Text
-                      className="text-xs"
-                      style={{ color: colors.textSecondary }}
+                  </View>
+
+                  <View className="flex-row gap-2 w-full">
+                    <TouchableOpacity
+                      onPress={() => handleReject(sub)}
+                      className="flex-1 h-10 rounded-lg items-center justify-center"
+                      style={{
+                        backgroundColor: colors.surface,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
                     >
-                      {sub.billingMonths === 1
-                        ? "per month"
-                        : `${sub.billingMonths} months`}
-                    </Text>
+                      <Text
+                        className="text-sm font-medium"
+                        style={{ color: colors.text }}
+                      >
+                        Reject
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleApprove(sub)}
+                      className="flex-[2] h-10 rounded-lg items-center justify-center"
+                      style={{
+                        backgroundColor: colors.primary,
+                        ...shadows.medium,
+                      }}
+                    >
+                      <Text className="text-sm font-bold text-white">
+                        Approve Payment
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
-
-                {/* Discount Badge */}
-                {sub.discount > 0 && (
-                  <View
-                    className="mb-3 px-3 py-1.5 rounded-lg self-start"
-                    style={{ backgroundColor: `${colors.success}15` }}
-                  >
-                    <Text
-                      className="text-sm font-semibold"
-                      style={{ color: colors.success }}
-                    >
-                      {sub.discount}% discount applied
-                    </Text>
-                  </View>
-                )}
-
-                <View
-                  className="mb-3 p-3 rounded-xl"
-                  style={{ backgroundColor: `${colors.warning}10` }}
-                >
-                  <View className="flex-row items-center">
-                    <Ionicons
-                      name="information-circle"
-                      size={16}
-                      color={colors.warning}
-                    />
-                    <Text
-                      className="text-xs ml-2 flex-1"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      Client is waiting for your approval to start booking
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => handleApprove(sub)}
-                  className="rounded-xl py-3 flex-row items-center justify-center"
-                  style={{ backgroundColor: colors.success }}
-                >
-                  <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                  <Text className="text-white font-semibold ml-2">
-                    Approve Subscription
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
         )}
 
         {/* Active Subscriptions */}
-        <View className="mb-6">
-          <View className="flex-row items-center mb-3">
-            <Ionicons
-              name="checkmark-circle"
-              size={20}
-              color={colors.success}
-            />
-            <Text
-              className="text-base font-bold ml-2"
-              style={{ color: colors.text }}
-            >
-              Active Subscriptions
-            </Text>
-          </View>
+        <View>
+          <Text
+            className="text-lg font-bold px-4 pb-2 pt-4"
+            style={{ color: colors.text }}
+          >
+            Active Subscriptions
+          </Text>
 
           {!subscriptions ? (
-            <ActivityIndicator size="large" color={colors.primary} />
+            <View className="py-8 items-center">
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
           ) : activeSubscriptions.length === 0 ? (
             <View
-              className="rounded-2xl p-8 items-center"
+              className="mx-4 rounded-xl p-8 items-center"
               style={{ backgroundColor: colors.surface, ...shadows.small }}
             >
               <Ionicons
@@ -374,217 +421,188 @@ export default function TrainerSubscriptionsScreen() {
               </Text>
             </View>
           ) : (
-            activeSubscriptions.map((sub: any) => (
-              <View
-                key={sub._id}
-                className="rounded-2xl p-4 mb-3"
-                style={{
-                  backgroundColor: colors.surface,
-                  ...shadows.medium,
-                  borderLeftWidth: 4,
-                  borderLeftColor: colors.success,
-                }}
-              >
-                <View className="flex-row items-start justify-between mb-3">
-                  <View className="flex-1">
-                    <Text
-                      className="text-lg font-bold mb-1"
-                      style={{ color: colors.text }}
-                    >
-                      {sub.clientName}
-                    </Text>
-                    <View className="flex-row items-center gap-2">
-                      <View
-                        className="px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: `${colors.primary}20` }}
-                      >
+            <View className="px-4 pt-2 flex-col gap-4">
+              {activeSubscriptions.map((sub: any) => {
+                const progress =
+                  ((sub.sessionsPerMonth - sub.remainingSessions) /
+                    sub.sessionsPerMonth) *
+                  100;
+                const sessionsUsed =
+                  sub.sessionsPerMonth - sub.remainingSessions;
+
+                return (
+                  <View
+                    key={sub._id}
+                    className="rounded-xl p-4"
+                    style={{
+                      backgroundColor: colors.surface,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      ...shadows.small,
+                    }}
+                  >
+                    <View className="flex-row justify-between items-start mb-3">
+                      <View className="flex-row items-center gap-3 flex-1">
+                        <View
+                          className="w-10 h-10 rounded-full items-center justify-center"
+                          style={{ backgroundColor: colors.primary }}
+                        >
+                          <Text className="text-white text-base font-bold">
+                            {sub.clientName?.[0] || "C"}
+                          </Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text
+                            className="font-bold"
+                            style={{ color: colors.text }}
+                          >
+                            {sub.clientName}
+                          </Text>
+                          <Text
+                            className="text-xs"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            Ends{" "}
+                            {new Date(sub.currentPeriodEnd).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}{" "}
+                            •{" "}
+                            {formatCurrency(sub.totalAmount, sub.planCurrency)}
+                            /mo
+                          </Text>
+                        </View>
+                      </View>
+                      <View className="flex-row gap-2">
+                        <TouchableOpacity
+                          onPress={() => handleRenew(sub)}
+                          className="w-8 h-8 rounded-full items-center justify-center"
+                          style={{ backgroundColor: `${colors.primary}15` }}
+                        >
+                          <Ionicons
+                            name="refresh"
+                            size={16}
+                            color={colors.primary}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleCancel(sub)}
+                          className="w-8 h-8 rounded-full items-center justify-center"
+                          style={{ backgroundColor: `${colors.error}15` }}
+                        >
+                          <Ionicons
+                            name="trash"
+                            size={16}
+                            color={colors.error}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    <View className="flex-col gap-2">
+                      <View className="flex-row justify-between">
                         <Text
-                          className="text-xs font-semibold"
+                          className="text-sm font-medium"
+                          style={{ color: colors.textSecondary }}
+                        >
+                          Progress
+                        </Text>
+                        <Text
+                          className="text-sm font-bold"
                           style={{ color: colors.primary }}
                         >
-                          {sub.planName}
+                          {sessionsUsed}/{sub.sessionsPerMonth} Sessions
                         </Text>
                       </View>
-                      <Ionicons
-                        name={
-                          sub.billingType === "monthly" ? "refresh" : "calendar"
-                        }
-                        size={14}
-                        color={colors.textSecondary}
-                      />
-                      <Text
-                        className="text-xs"
-                        style={{ color: colors.textSecondary }}
+                      <View
+                        className="h-2 w-full rounded-full overflow-hidden"
+                        style={{ backgroundColor: `${colors.primary}20` }}
                       >
-                        {sub.billingType === "monthly"
-                          ? "Monthly"
-                          : `${sub.billingMonths} months`}{" "}
-                        • Ends{" "}
-                        {new Date(sub.currentPeriodEnd).toLocaleDateString()}
-                      </Text>
+                        <View
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${progress}%`,
+                            backgroundColor: colors.primary,
+                          }}
+                        />
+                      </View>
                     </View>
                   </View>
-                  <View
-                    className="px-2 py-1 rounded-full"
-                    style={{ backgroundColor: `${colors.success}20` }}
-                  >
-                    <Text
-                      className="text-xs font-bold"
-                      style={{ color: colors.success }}
-                    >
-                      ACTIVE
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Session Stats */}
-                <View className="flex-row gap-2 mb-3">
-                  <View
-                    className="flex-1 rounded-xl p-3"
-                    style={{ backgroundColor: `${colors.primary}15` }}
-                  >
-                    <Text
-                      className="text-2xl font-bold"
-                      style={{ color: colors.primary }}
-                    >
-                      {sub.remainingSessions}
-                    </Text>
-                    <Text
-                      className="text-xs"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      Left this period
-                    </Text>
-                  </View>
-                  <View
-                    className="flex-1 rounded-xl p-3"
-                    style={{ backgroundColor: `${colors.primary}15` }}
-                  >
-                    <Text
-                      className="text-2xl font-bold"
-                      style={{ color: colors.primary }}
-                    >
-                      {sub.sessionsPerMonth}
-                    </Text>
-                    <Text
-                      className="text-xs"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      Per month
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Discount Badge */}
-                {sub.discount > 0 && (
-                  <View
-                    className="mb-3 px-3 py-1.5 rounded-lg self-start"
-                    style={{ backgroundColor: `${colors.success}15` }}
-                  >
-                    <Text
-                      className="text-sm font-semibold"
-                      style={{ color: colors.success }}
-                    >
-                      {sub.discount}% discount
-                    </Text>
-                  </View>
-                )}
-
-                {/* Actions */}
-                <View className="flex-row gap-2">
-                  <TouchableOpacity
-                    onPress={() => handleRenew(sub)}
-                    className="flex-1 rounded-xl py-2.5 flex-row items-center justify-center"
-                    style={{ backgroundColor: colors.primary }}
-                  >
-                    <Ionicons name="refresh" size={16} color="#FFF" />
-                    <Text className="ml-2 font-semibold text-white text-sm">
-                      Renew
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleCancel(sub)}
-                    className="rounded-xl py-2.5 px-4"
-                    style={{ backgroundColor: `${colors.error}15` }}
-                  >
-                    <Ionicons
-                      name="close-circle"
-                      size={16}
-                      color={colors.error}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
+                );
+              })}
+            </View>
           )}
         </View>
 
-        {/* Inactive Subscriptions */}
-        {inactiveSubscriptions.length > 0 && (
-          <View className="mb-6">
-            <View className="flex-row items-center mb-3">
-              <Ionicons
-                name="archive-outline"
-                size={20}
-                color={colors.textTertiary}
-              />
-              <Text
-                className="text-base font-bold ml-2"
-                style={{ color: colors.text }}
-              >
-                Past Subscriptions
-              </Text>
-            </View>
+        {/* Past Subscriptions */}
+        {pastSubscriptions.length > 0 && (
+          <View>
+            <Text
+              className="text-lg font-bold px-4 pb-2 pt-4"
+              style={{ color: colors.text }}
+            >
+              Past Subscriptions
+            </Text>
 
-            {inactiveSubscriptions.map((sub: any) => (
-              <View
-                key={sub._id}
-                className="rounded-2xl p-4 mb-3"
-                style={{
-                  backgroundColor: colors.surface,
-                  ...shadows.small,
-                  opacity: 0.7,
-                }}
-              >
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1">
-                    <Text
-                      className="text-base font-semibold mb-1"
-                      style={{ color: colors.text }}
+            <View className="px-4 pt-2 flex-col gap-4 pb-8">
+              {pastSubscriptions.map((sub: any) => (
+                <View
+                  key={sub._id}
+                  className="flex-row items-center justify-between rounded-xl p-4 opacity-70"
+                  style={{
+                    backgroundColor: `${colors.surface}66`,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <View className="flex-row items-center gap-3 flex-1">
+                    <View
+                      className="w-10 h-10 rounded-full items-center justify-center"
+                      style={{ backgroundColor: colors.textTertiary }}
                     >
-                      {sub.clientName}
-                    </Text>
-                    <View className="flex-row items-center gap-2">
                       <Text
-                        className="text-xs"
-                        style={{ color: colors.textSecondary }}
+                        className="text-base font-bold"
+                        style={{ color: colors.surface }}
                       >
-                        {sub.planName}
+                        {sub.clientName?.[0] || "C"}
+                      </Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text
+                        className="font-bold"
+                        style={{ color: colors.text }}
+                      >
+                        {sub.clientName}
                       </Text>
                       <Text
                         className="text-xs"
                         style={{ color: colors.textSecondary }}
                       >
-                        • {sub.sessionsPerMonth} sessions/month
+                        Completed{" "}
+                        {new Date(sub.updatedAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </Text>
                     </View>
                   </View>
                   <View
-                    className="px-2 py-1 rounded-full"
-                    style={{
-                      backgroundColor: `${getStatusColor(sub.status)}20`,
-                    }}
+                    className="px-2 py-1 rounded"
+                    style={{ backgroundColor: `${colors.textTertiary}20` }}
                   >
                     <Text
-                      className="text-xs font-bold"
-                      style={{ color: getStatusColor(sub.status) }}
+                      className="text-xs font-medium"
+                      style={{ color: colors.textSecondary }}
                     >
-                      {sub.status.toUpperCase()}
+                      {sub.planName}
                     </Text>
                   </View>
                 </View>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
         )}
       </ScrollView>

@@ -14,9 +14,9 @@ export const getAvailableSlots = query({
       throw new Error("Invalid duration. Only 45 minutes and 1 hour sessions are supported.");
     }
 
-    // Get day of week from date
-    const dateObj = new Date(args.date);
-    const dayOfWeek = dateObj.getDay();
+    // Get day of week from date in GMT+1
+    const dateObj = new Date(args.date + "T00:00:00+01:00");
+    const dayOfWeek = dateObj.getUTCDay();
 
     // Get trainer's availability for this day
     const availability = await ctx.db
@@ -29,7 +29,7 @@ export const getAvailableSlots = query({
       return [];
     }
 
-    // Get existing bookings for this date
+    // Get existing bookings for this date (exclude cancelled)
     const bookings = await ctx.db
       .query("bookings")
       .withIndex("by_trainer", (q) => q.eq("trainerId", args.trainerId))
@@ -37,13 +37,22 @@ export const getAvailableSlots = query({
       .filter((q) => q.neq(q.field("status"), "cancelled"))
       .collect();
 
+    // Check if date is today to filter past times (in GMT+1)
+    const now = new Date();
+    const gmtPlus1Now = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
+    const todayGMT1 = new Date(gmtPlus1Now.getFullYear(), gmtPlus1Now.getMonth(), gmtPlus1Now.getDate());
+    const targetDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    const isToday = todayGMT1.getTime() === targetDate.getTime();
+    const currentTimeMinutes = isToday ? gmtPlus1Now.getHours() * 60 + gmtPlus1Now.getMinutes() : 0;
+
     // Generate time slots
     const slots = generateTimeSlots(
       availability.startTime,
       availability.endTime,
       args.duration,
       availability.breaks,
-      bookings
+      bookings,
+      isToday ? currentTimeMinutes : null
     );
 
     return slots;
@@ -177,7 +186,8 @@ function generateTimeSlots(
   endTime: string,
   duration: number,
   breaks: Array<{ startTime: string; endTime: string }>,
-  bookings: Array<{ startTime: string; endTime: string }>
+  bookings: Array<{ startTime: string; endTime: string }>,
+  currentTimeMinutes: number | null = null
 ): string[] {
   const slots: string[] = [];
   let currentTime = startTime;
@@ -186,6 +196,12 @@ function generateTimeSlots(
     const slotEnd = addMinutesToTime(currentTime, duration);
     const slotStart = timeToMinutes(currentTime);
     const slotEndMinutes = timeToMinutes(slotEnd);
+
+    // Skip past time slots if checking for today
+    if (currentTimeMinutes !== null && slotStart < currentTimeMinutes) {
+      currentTime = addMinutesToTime(currentTime, duration);
+      continue;
+    }
 
     // Check if slot overlaps with breaks (any overlap at all)
     const overlapsBreak = breaks.some((br) => {
@@ -285,7 +301,7 @@ export const completeSession = mutation({
     const activeSubscription = subscriptions.find(sub => 
       sub.status === "active" && 
       sub.remainingSessions > 0 &&
-      new Date(sub.endDate) >= new Date()
+      (sub.endDate ? new Date(sub.endDate) >= new Date() : true)
     );
 
     if (!activeSubscription) {
@@ -395,6 +411,198 @@ export const cancelBooking = mutation({
       type: "booking_cancelled",
       title: "Booking Cancelled",
       message: `Your session with ${trainer?.fullName || "trainer"} on ${booking.date} at ${booking.startTime} has been cancelled`,
+      bookingId: args.bookingId,
+      read: false,
+      createdAt: now,
+    });
+  },
+});
+
+// Request cancellation (client-initiated, requires trainer approval)
+export const requestCancellation = mutation({
+  args: {
+    bookingId: v.id("bookings"),
+    requestedBy: v.string(), // clerkId of client
+  },
+  handler: async (ctx, args) => {
+    const booking = await ctx.db.get(args.bookingId);
+    
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    if (booking.status === "cancelled") {
+      throw new Error("Booking already cancelled");
+    }
+
+    if (booking.status === "cancellation_requested") {
+      throw new Error("Cancellation already requested");
+    }
+
+    const now = Date.now();
+
+    await ctx.db.patch(args.bookingId, {
+      status: "cancellation_requested",
+      cancellationRequestedBy: args.requestedBy,
+      cancellationRequestedAt: now,
+      updatedAt: now,
+    });
+
+    // Get client and trainer info
+    const client = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", booking.clientId))
+      .first();
+
+    const trainer = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", booking.trainerId))
+      .first();
+
+    // Notify trainer about cancellation request
+    await ctx.db.insert("notifications", {
+      userId: booking.trainerId,
+      type: "booking_cancelled",
+      title: "Cancellation Request",
+      message: `${client?.fullName || "Client"} requested to cancel session on ${booking.date} at ${booking.startTime}`,
+      bookingId: args.bookingId,
+      read: false,
+      createdAt: now,
+    });
+
+    // Notify client that request was sent
+    await ctx.db.insert("notifications", {
+      userId: booking.clientId,
+      type: "booking_cancelled",
+      title: "Cancellation Requested",
+      message: `Your cancellation request for ${booking.date} at ${booking.startTime} is pending trainer approval`,
+      bookingId: args.bookingId,
+      read: false,
+      createdAt: now,
+    });
+  },
+});
+
+// Approve cancellation (trainer approves client's cancellation request)
+export const approveCancellation = mutation({
+  args: {
+    bookingId: v.id("bookings"),
+    approvedBy: v.string(), // clerkId of trainer
+  },
+  handler: async (ctx, args) => {
+    const booking = await ctx.db.get(args.bookingId);
+    
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    if (booking.status !== "cancellation_requested") {
+      throw new Error("No cancellation request to approve");
+    }
+
+    const now = Date.now();
+
+    // Find active subscription for this client-trainer pair
+    const subscriptions = await ctx.db
+      .query("clientSubscriptions")
+      .withIndex("by_client_trainer", (q) => 
+        q.eq("clientId", booking.clientId).eq("trainerId", booking.trainerId)
+      )
+      .collect();
+
+    const activeSubscription = subscriptions.find(sub => 
+      sub.status === "active" && 
+      new Date(sub.currentPeriodEnd || sub.endDate || "") >= new Date()
+    );
+
+    // Return session to subscription
+    if (activeSubscription) {
+      await ctx.db.patch(activeSubscription._id, {
+        remainingSessions: activeSubscription.remainingSessions + 1,
+        updatedAt: now,
+      });
+    }
+
+    // Update booking status
+    await ctx.db.patch(args.bookingId, {
+      status: "cancelled",
+      updatedAt: now,
+    });
+
+    // Get client and trainer info
+    const client = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", booking.clientId))
+      .first();
+
+    const trainer = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", booking.trainerId))
+      .first();
+
+    // Notify client that cancellation was approved
+    await ctx.db.insert("notifications", {
+      userId: booking.clientId,
+      type: "booking_cancelled",
+      title: "Cancellation Approved",
+      message: `Your session on ${booking.date} at ${booking.startTime} has been cancelled. 1 session returned to your package.`,
+      bookingId: args.bookingId,
+      read: false,
+      createdAt: now,
+    });
+
+    // Notify trainer
+    await ctx.db.insert("notifications", {
+      userId: booking.trainerId,
+      type: "booking_cancelled",
+      title: "Cancellation Approved",
+      message: `Session with ${client?.fullName || "client"} on ${booking.date} at ${booking.startTime} has been cancelled`,
+      bookingId: args.bookingId,
+      read: false,
+      createdAt: now,
+    });
+  },
+});
+
+// Reject cancellation (trainer rejects client's cancellation request)
+export const rejectCancellation = mutation({
+  args: {
+    bookingId: v.id("bookings"),
+    rejectedBy: v.string(), // clerkId of trainer
+  },
+  handler: async (ctx, args) => {
+    const booking = await ctx.db.get(args.bookingId);
+    
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    if (booking.status !== "cancellation_requested") {
+      throw new Error("No cancellation request to reject");
+    }
+
+    const now = Date.now();
+
+    // Revert to confirmed status
+    await ctx.db.patch(args.bookingId, {
+      status: "confirmed",
+      cancellationRequestedBy: undefined,
+      cancellationRequestedAt: undefined,
+      updatedAt: now,
+    });
+
+    // Get client info
+    const client = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", booking.clientId))
+      .first();
+
+    // Notify client that cancellation was rejected
+    await ctx.db.insert("notifications", {
+      userId: booking.clientId,
+      type: "booking_cancelled",
+      title: "Cancellation Declined",
+      message: `Your cancellation request for ${booking.date} at ${booking.startTime} was declined by your trainer`,
       bookingId: args.bookingId,
       read: false,
       createdAt: now,

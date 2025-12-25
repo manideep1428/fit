@@ -14,6 +14,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getColors, Shadows } from "@/constants/colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   getNotificationIcon,
   getNotificationColor,
@@ -37,6 +38,7 @@ export default function NotificationHistory({
   const scheme = useColorScheme();
   const colors = getColors(scheme === "dark");
   const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
+  const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
 
   // Fetch notifications
@@ -219,8 +221,9 @@ export default function NotificationHistory({
 
         {/* TopAppBar */}
         <View
-          className="flex-row items-center justify-between px-4 pt-16 pb-2 border-b"
+          className="flex-row items-center justify-between px-4 pb-2 border-b"
           style={{
+            paddingTop: insets.top + 8,
             backgroundColor: `${colors.background}F2`,
             borderBottomColor: colors.border,
           }}
@@ -254,13 +257,20 @@ export default function NotificationHistory({
         </ScrollView>
 
         {/* Notifications List */}
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            flexGrow:
+              !notifications || filteredNotifications.length === 0 ? 1 : 0,
+          }}
+        >
           {!notifications ? (
-            <View className="items-center justify-start flex-1 pt-20">
+            <View className="items-center justify-start pt-12">
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : filteredNotifications.length === 0 ? (
-            <View className="items-center justify-start flex-1 pt-20">
+            <View className="flex-1 items-center justify-center">
               <View
                 className="w-20 h-20 rounded-full items-center justify-center mb-4"
                 style={{ backgroundColor: `${colors.primary}20` }}
@@ -287,11 +297,11 @@ export default function NotificationHistory({
               </Text>
             </View>
           ) : (
-            <View className="flex-1">
+            <View>
               {/* New Section */}
               {newNotifications.length > 0 && (
                 <View>
-                  <View className="px-4 pb-2 pt-2">
+                  <View className="px-4 pb-2 pt-4">
                     <Text
                       className="text-lg font-bold leading-tight"
                       style={{ color: colors.text }}

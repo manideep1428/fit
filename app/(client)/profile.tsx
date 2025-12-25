@@ -7,51 +7,51 @@ import {
   Image,
   Switch,
   Alert,
-} from 'react-native';
-import { useUser, useAuth } from '@clerk/clerk-expo';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows } from '@/constants/colors';
-import { useRouter } from 'expo-router';
-import { useDarkMode } from '@/hooks/useDarkMode';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
+} from "react-native";
+import { useUser, useAuth } from "@clerk/clerk-expo";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getColors, Shadows } from "@/constants/colors";
+import { useRouter } from "expo-router";
+import { useDarkMode } from "@/hooks/useDarkMode";
+import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
 
 export default function ProfileScreen() {
   const { user } = useUser();
   const { signOut } = useAuth();
   const router = useRouter();
   const scheme = useColorScheme();
-  const colors = getColors(scheme === 'dark');
-  const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const colors = getColors(scheme === "dark");
+  const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
   const { isDark, toggleDarkMode } = useDarkMode();
 
   const userData = useQuery(
     api.users.getUserByClerkId,
-    user?.id ? { clerkId: user.id } : 'skip'
+    user?.id ? { clerkId: user.id } : "skip"
   );
   const updateProfile = useMutation(api.users.updateUserProfile);
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   const profileImageUrl = useQuery(
     api.users.getProfileImageUrl,
-    userData?.profileImageId ? { storageId: userData.profileImageId } : 'skip'
+    userData?.profileImageId ? { storageId: userData.profileImageId } : "skip"
   );
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
   const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: 'Logout',
-        style: 'destructive',
+        text: "Logout",
+        style: "destructive",
         onPress: async () => {
           await signOut();
-          router.replace('/(auth)/welcome');
+          router.replace("/(auth)/welcome");
         },
       },
     ]);
@@ -61,17 +61,18 @@ export default function ProfileScreen() {
     if (!user?.id) return;
 
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
         Alert.alert(
-          'Permission needed',
-          'Please grant camera roll permissions to change your profile picture.'
+          "Permission needed",
+          "Please grant camera roll permissions to change your profile picture."
         );
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images' as any,
+        mediaTypes: "images" as any,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -86,8 +87,8 @@ export default function ProfileScreen() {
       const blob = await response.blob();
 
       const uploadResponse = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': blob.type },
+        method: "POST",
+        headers: { "Content-Type": blob.type },
         body: blob,
       });
 
@@ -98,10 +99,10 @@ export default function ProfileScreen() {
         profileImageId: storageId,
       });
 
-      Alert.alert('Success', 'Profile picture updated!');
+      Alert.alert("Success", "Profile picture updated!");
     } catch (error) {
-      console.error('Error uploading image:', error);
-      Alert.alert('Error', 'Failed to upload image. Please try again.');
+      console.error("Error uploading image:", error);
+      Alert.alert("Error", "Failed to upload image. Please try again.");
     } finally {
       setUploadingImage(false);
     }
@@ -109,7 +110,10 @@ export default function ProfileScreen() {
 
   if (!user) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: colors.background }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -119,7 +123,7 @@ export default function ProfileScreen() {
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       {/* Gradient Background Overlay */}
       <LinearGradient
-        colors={[`${colors.primary}33`, `${colors.primary}0D`, 'transparent']}
+        colors={[`${colors.primary}33`, `${colors.primary}0D`, "transparent"]}
         className="absolute top-0 left-0 right-0 h-80"
         pointerEvents="none"
       />
@@ -127,7 +131,10 @@ export default function ProfileScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="px-4 pt-16 pb-4">
-          <Text className="text-lg font-bold text-center" style={{ color: colors.text }}>
+          <Text
+            className="text-lg font-bold text-center"
+            style={{ color: colors.text }}
+          >
             Profile
           </Text>
         </View>
@@ -157,12 +164,19 @@ export default function ProfileScreen() {
               }}
             >
               {profileImageUrl ? (
-                <Image source={{ uri: profileImageUrl }} className="w-full h-full" />
+                <Image
+                  source={{ uri: profileImageUrl }}
+                  className="w-full h-full"
+                />
               ) : user.imageUrl ? (
-                <Image source={{ uri: user.imageUrl }} className="w-full h-full" />
+                <Image
+                  source={{ uri: user.imageUrl }}
+                  className="w-full h-full"
+                />
               ) : (
                 <Text className="text-white text-4xl font-bold">
-                  {user.firstName?.[0] || user.emailAddresses[0]?.emailAddress[0].toUpperCase()}
+                  {user.firstName?.[0] ||
+                    user.emailAddresses[0]?.emailAddress[0].toUpperCase()}
                 </Text>
               )}
             </View>
@@ -189,9 +203,12 @@ export default function ProfileScreen() {
 
           <View className="mt-4 items-center">
             <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-              {userData?.fullName || user.firstName || 'User'}
+              {userData?.fullName || user.firstName || "User"}
             </Text>
-            <Text className="text-sm font-medium mt-1" style={{ color: colors.textSecondary }}>
+            <Text
+              className="text-sm font-medium mt-1"
+              style={{ color: colors.textSecondary }}
+            >
               {user.emailAddresses[0]?.emailAddress}
             </Text>
           </View>
@@ -208,7 +225,7 @@ export default function ProfileScreen() {
               Profile
             </Text>
             <TouchableOpacity
-              onPress={() => router.push('/edit-profile-form' as any)}
+              onPress={() => router.push("/edit-profile-form" as any)}
               className="rounded-xl p-4 flex-row items-center justify-between"
               style={{
                 backgroundColor: colors.surface,
@@ -222,13 +239,24 @@ export default function ProfileScreen() {
                   className="w-10 h-10 rounded-full items-center justify-center"
                   style={{ backgroundColor: `${colors.primary}1A` }}
                 >
-                  <Ionicons name="create-outline" size={20} color={colors.primary} />
+                  <Ionicons
+                    name="create-outline"
+                    size={20}
+                    color={colors.primary}
+                  />
                 </View>
-                <Text className="font-medium text-base" style={{ color: colors.text }}>
+                <Text
+                  className="font-medium text-base"
+                  style={{ color: colors.text }}
+                >
                   Edit Profile
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textTertiary}
+              />
             </TouchableOpacity>
           </View>
 
@@ -240,29 +268,69 @@ export default function ProfileScreen() {
             >
               Activity
             </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/(client)/session-history')}
-              className="rounded-xl p-4 flex-row items-center justify-between"
-              style={{
-                backgroundColor: colors.surface,
-                ...shadows.small,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <View className="flex-row items-center gap-4">
-                <View
-                  className="w-10 h-10 rounded-full items-center justify-center"
-                  style={{ backgroundColor: '#F9731620' }}
-                >
-                  <Ionicons name="time-outline" size={20} color="#F97316" />
+            <View className="gap-2">
+              <TouchableOpacity
+                onPress={() => router.push("/(client)/session-history")}
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: "#F9731620" }}
+                  >
+                    <Ionicons name="time-outline" size={20} color="#F97316" />
+                  </View>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
+                    Session History
+                  </Text>
                 </View>
-                <Text className="font-medium text-base" style={{ color: colors.text }}>
-                  Session History
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-            </TouchableOpacity>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.push("/(client)/my-subscriptions" as any)}
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: "#8B5CF620" }}
+                  >
+                    <Ionicons name="card-outline" size={20} color="#8B5CF6" />
+                  </View>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
+                    My Subscriptions
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* PREFERENCES Section */}
@@ -287,11 +355,14 @@ export default function ProfileScreen() {
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#A855F720' }}
+                    style={{ backgroundColor: "#A855F720" }}
                   >
                     <Ionicons name="moon-outline" size={20} color="#A855F7" />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
                     Dark Mode
                   </Text>
                 </View>
@@ -316,11 +387,18 @@ export default function ProfileScreen() {
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#EF444420' }}
+                    style={{ backgroundColor: "#EF444420" }}
                   >
-                    <Ionicons name="notifications-outline" size={20} color="#EF4444" />
+                    <Ionicons
+                      name="notifications-outline"
+                      size={20}
+                      color="#EF4444"
+                    />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
                     Notifications
                   </Text>
                 </View>
@@ -345,11 +423,13 @@ export default function ProfileScreen() {
             <TouchableOpacity
               onPress={() => {
                 if (!userData?.googleAccessToken) {
-                  router.push('/(client)/bookings' as any);
+                  router.push("/(client)/bookings" as any);
                 } else {
-                  Alert.alert('Google Calendar Connected', 'Your Google Calendar is already connected.', [
-                    { text: 'OK' },
-                  ]);
+                  Alert.alert(
+                    "Google Calendar Connected",
+                    "Your Google Calendar is already connected.",
+                    [{ text: "OK" }]
+                  );
                 }
               }}
               className="rounded-xl p-4 flex-row items-center justify-between"
@@ -363,20 +443,30 @@ export default function ProfileScreen() {
               <View className="flex-row items-center gap-4">
                 <View
                   className="w-10 h-10 rounded-full items-center justify-center"
-                  style={{ backgroundColor: '#10B98120' }}
+                  style={{ backgroundColor: "#10B98120" }}
                 >
                   <Ionicons name="calendar-outline" size={20} color="#10B981" />
                 </View>
-                <Text className="font-medium text-base" style={{ color: colors.text }}>
+                <Text
+                  className="font-medium text-base"
+                  style={{ color: colors.text }}
+                >
                   Google Calendar
                 </Text>
               </View>
               {userData?.googleAccessToken ? (
-                <Text className="text-sm font-medium" style={{ color: colors.primary }}>
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: colors.primary }}
+                >
                   Connected
                 </Text>
               ) : (
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
               )}
             </TouchableOpacity>
           </View>
@@ -392,7 +482,7 @@ export default function ProfileScreen() {
             <View className="gap-2">
               {/* Change Password */}
               <TouchableOpacity
-                onPress={() => router.push('/change-password' as any)}
+                onPress={() => router.push("/change-password" as any)}
                 className="rounded-xl p-4 flex-row items-center justify-between"
                 style={{
                   backgroundColor: colors.surface,
@@ -406,13 +496,24 @@ export default function ProfileScreen() {
                     className="w-10 h-10 rounded-full items-center justify-center"
                     style={{ backgroundColor: `${colors.textTertiary}20` }}
                   >
-                    <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
                     Change Password
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
               </TouchableOpacity>
 
               {/* Logout */}
@@ -429,11 +530,18 @@ export default function ProfileScreen() {
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#EF444420' }}
+                    style={{ backgroundColor: "#EF444420" }}
                   >
-                    <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                    <Ionicons
+                      name="log-out-outline"
+                      size={20}
+                      color="#EF4444"
+                    />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: '#EF4444' }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: "#EF4444" }}
+                  >
                     Logout
                   </Text>
                 </View>

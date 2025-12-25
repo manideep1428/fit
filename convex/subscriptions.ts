@@ -150,7 +150,7 @@ export const getClientSubscriptions = query({
       .order("desc")
       .collect();
 
-    // Enrich with plan/package details
+    // Enrich with plan/package and trainer details
     const enrichedSubscriptions = await Promise.all(
       subscriptions.map(async (sub) => {
         // Try new plan first, then fall back to old package
@@ -167,10 +167,18 @@ export const getClientSubscriptions = query({
           planCurrency = pkg?.currency || planCurrency;
         }
 
+        // Get trainer info
+        const trainer = await ctx.db
+          .query("users")
+          .withIndex("by_clerk_id", (q) => q.eq("clerkId", sub.trainerId))
+          .first();
+
         return {
           ...sub,
           planName,
           planCurrency,
+          trainerName: trainer?.fullName || "Trainer",
+          trainerSpecialty: trainer?.specialty || "Personal Trainer",
           // Normalize fields for backward compatibility
           billingMonths: sub.billingMonths || 1,
           billingType: sub.billingType || "monthly",
@@ -345,6 +353,7 @@ export const approveSubscription = mutation({
     await ctx.db.patch(args.subscriptionId, {
       paymentStatus: "paid",
       status: "active",
+      approvedAt: now,
       updatedAt: now,
     });
 
@@ -486,7 +495,42 @@ export const cancelSubscription = mutation({
 export const getSubscriptionById = query({
   args: { subscriptionId: v.id("clientSubscriptions") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.subscriptionId);
+    const subscription = await ctx.db.get(args.subscriptionId);
+
+    if (!subscription) {
+      return null;
+    }
+
+    // Try new plan first, then fall back to old package
+    let planName = "Unknown Plan";
+    let planCurrency = "INR";
+
+    if (subscription.planId) {
+      const plan = await ctx.db.get(subscription.planId);
+      planName = plan?.name || planName;
+      planCurrency = plan?.currency || planCurrency;
+    } else if (subscription.packageId) {
+      const pkg = await ctx.db.get(subscription.packageId);
+      planName = pkg?.name || planName;
+      planCurrency = pkg?.currency || planCurrency;
+    }
+
+    const client = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", subscription.clientId))
+      .first();
+
+    return {
+      ...subscription,
+      planName,
+      planCurrency,
+      clientName: client?.fullName || "Unknown Client",
+      // Normalize fields for backward compatibility
+      billingMonths: subscription.billingMonths || 1,
+      billingType: subscription.billingType || "monthly",
+      sessionsPerMonth:
+        subscription.sessionsPerMonth || subscription.totalSessions || 0,
+    };
   },
 });
 

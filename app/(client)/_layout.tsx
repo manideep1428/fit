@@ -1,17 +1,17 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { View, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from "expo-router";
+import React from "react";
+import { View, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, BorderRadius, Shadows } from '@/constants/colors';
+import { HapticTab } from "@/components/haptic-tab";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getColors, BorderRadius, Shadows } from "@/constants/colors";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const colors = getColors(colorScheme === 'dark');
-  const shadows = colorScheme === 'dark' ? Shadows.dark : Shadows.light;
+  const colors = getColors(colorScheme === "dark");
+  const shadows = colorScheme === "dark" ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
 
   return (
@@ -25,7 +25,7 @@ export default function TabLayout() {
           tabBarShowLabel: true,
           tabBarLabelStyle: {
             fontSize: 11,
-            fontWeight: '600',
+            fontWeight: "600",
             marginTop: 2,
           },
           tabBarIconStyle: {
@@ -41,18 +41,19 @@ export default function TabLayout() {
             ...shadows.medium,
             ...Platform.select({
               ios: {
-                shadowColor: '#000',
+                shadowColor: "#000",
                 shadowOffset: { width: 0, height: -2 },
-                shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
+                shadowOpacity: colorScheme === "dark" ? 0.3 : 0.1,
                 shadowRadius: 8,
               },
             }),
           },
-        }}>
+        }}
+      >
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home',
+            title: "Home",
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
                 name={focused ? "home" : "home-outline"}
@@ -65,7 +66,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="bookings"
           options={{
-            title: 'Bookings',
+            title: "Bookings",
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
                 name={focused ? "calendar" : "calendar-outline"}
@@ -78,7 +79,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="progress"
           options={{
-            title: 'Progress',
+            title: "Progress",
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
                 name={focused ? "stats-chart" : "stats-chart-outline"}
@@ -91,7 +92,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Profile',
+            title: "Profile",
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
                 name={focused ? "person" : "person-outline"}
@@ -139,6 +140,18 @@ export default function TabLayout() {
         />
         <Tabs.Screen
           name="session-history"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="my-subscriptions"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="pricing"
           options={{
             href: null,
           }}

@@ -218,6 +218,30 @@ export default function TabLayout() {
             href: null,
           }}
         />
+        <Tabs.Screen
+          name="subscription-details"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="payment-details"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="question-form"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="question-list"
+          options={{
+            href: null,
+          }}
+        />
       </Tabs>
     </View>
   );

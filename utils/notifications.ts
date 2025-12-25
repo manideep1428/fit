@@ -16,6 +16,12 @@ export const getNotificationIcon = (type: string) => {
       return 'card';
     case 'goal_updated':
       return 'analytics';
+    case 'discount_added':
+      return 'pricetag';
+    case 'discount_updated':
+      return 'pricetags';
+    case 'discount_removed':
+      return 'pricetag-outline';
     default:
       return 'notifications';
   }
@@ -35,6 +41,12 @@ export const getNotificationColor = (type: string, colors: any) => {
       return colors.info;
     case 'goal_updated':
       return colors.primary;
+    case 'discount_added':
+      return colors.success;
+    case 'discount_updated':
+      return colors.info;
+    case 'discount_removed':
+      return colors.error;
     default:
       return colors.primary;
   }
@@ -71,6 +83,12 @@ export const getNotificationTitle = (type: string, data?: any) => {
       return 'Payment Request';
     case 'goal_updated':
       return 'Progress Updated';
+    case 'discount_added':
+      return 'New Discount Applied';
+    case 'discount_updated':
+      return 'Discount Updated';
+    case 'discount_removed':
+      return 'Discount Removed';
     default:
       return 'Notification';
   }

@@ -60,7 +60,7 @@ export const getUnansweredQuestionsCount = query({
       .query("clientQuestions")
       .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
       .collect();
-    
+
     return questions.filter((q) => !q.answer).length;
   },
 });
@@ -99,5 +99,52 @@ export const updateQuestion = mutation({
     await ctx.db.patch(args.questionId, {
       question: args.question,
     });
+  },
+});
+
+// Create a question with answer (for offline meetings - trainer fills both)
+export const createQuestionWithAnswer = mutation({
+  args: {
+    trainerId: v.string(),
+    clientId: v.string(),
+    question: v.string(),
+    answer: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const questionId = await ctx.db.insert("clientQuestions", {
+      trainerId: args.trainerId,
+      clientId: args.clientId,
+      question: args.question,
+      answer: args.answer,
+      answeredAt: Date.now(),
+      createdAt: Date.now(),
+    });
+    return questionId;
+  },
+});
+
+// Update question and answer (trainer - for offline meeting notes)
+export const updateQuestionWithAnswer = mutation({
+  args: {
+    questionId: v.id("clientQuestions"),
+    question: v.string(),
+    answer: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.questionId, {
+      question: args.question,
+      answer: args.answer,
+      answeredAt: Date.now(),
+    });
+  },
+});
+
+// Get a single question by ID
+export const getQuestionById = query({
+  args: {
+    questionId: v.id("clientQuestions"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.questionId);
   },
 });

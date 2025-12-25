@@ -20,6 +20,7 @@ import {
   formatBookingForCalendar,
 } from "@/utils/googleCalendar";
 import { Id } from "@/convex/_generated/dataModel";
+import Toast from "react-native-toast-message";
 
 const DURATIONS = [
   { value: 45, label: "45 min" },
@@ -79,6 +80,12 @@ export default function BookTrainerScreen() {
     user?.id && trainerId ? { clientId: user.id, trainerId } : "skip"
   );
 
+  // Get all client subscriptions to check for pending ones
+  const allSubscriptions = useQuery(
+    api.subscriptions.getClientSubscriptions,
+    user?.id ? { clientId: user.id } : "skip"
+  );
+
   // Get trainer's active packages
   const trainerPackages = useQuery(
     api.packages.getActiveTrainerPackages,
@@ -99,6 +106,15 @@ export default function BookTrainerScreen() {
 
       setLastBookingId(bookingId);
 
+      // Show success toast
+      Toast.show({
+        type: "success",
+        text1: "Booking Confirmed!",
+        text2: `Session booked for ${selectedDate.toLocaleDateString()} at ${selectedSlot}`,
+        position: "top",
+        visibilityTime: 4000,
+      });
+
       // Check if user has Google Calendar connected
       if (currentUser?.googleAccessToken) {
         // User already has calendar connected, add event automatically
@@ -110,6 +126,13 @@ export default function BookTrainerScreen() {
       }
     } catch (error) {
       console.error("Error creating booking:", error);
+      Toast.show({
+        type: "error",
+        text1: "Booking Failed",
+        text2: "Unable to create booking. Please try again.",
+        position: "top",
+        visibilityTime: 3000,
+      });
     } finally {
       setBooking(false);
     }
@@ -264,6 +287,56 @@ export default function BookTrainerScreen() {
                 </View>
               </View>
             </View>
+          ) : allSubscriptions &&
+            allSubscriptions.filter(
+              (s: any) =>
+                s.trainerId === trainerId && s.paymentStatus === "pending"
+            ).length > 0 ? (
+            <>
+              <View
+                className="rounded-2xl p-5 mb-6"
+                style={{
+                  backgroundColor: colors.warning + "15",
+                  borderWidth: 1,
+                  borderColor: colors.warning,
+                }}
+              >
+                <View className="flex-row items-center mb-3">
+                  <Ionicons
+                    name="hourglass-outline"
+                    size={24}
+                    color={colors.warning}
+                  />
+                  <Text
+                    className="font-semibold ml-3 flex-1"
+                    style={{ color: colors.text }}
+                  >
+                    Subscription Pending Approval
+                  </Text>
+                </View>
+                <Text
+                  className="text-sm mb-4"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Your subscription request is waiting for trainer approval.
+                  You'll be able to book sessions once approved.
+                </Text>
+                <TouchableOpacity
+                  className="rounded-xl py-3 items-center"
+                  style={{ backgroundColor: colors.warning, ...shadows.small }}
+                  onPress={() =>
+                    router.push("/(client)/my-subscriptions" as any)
+                  }
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons name="eye" size={20} color="white" />
+                    <Text className="text-white font-bold ml-2">
+                      View Subscription Status
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </>
           ) : (
             <>
               <View
@@ -386,7 +459,7 @@ export default function BookTrainerScreen() {
                           className="text-sm mb-3"
                           style={{ color: colors.textSecondary }}
                         >
-                          {pkg.description || 'Monthly subscription package'}
+                          {pkg.description || "Monthly subscription package"}
                         </Text>
                         <View className="flex-row gap-2 mb-3">
                           <View
@@ -429,8 +502,8 @@ export default function BookTrainerScreen() {
                           style={{ backgroundColor: colors.primary }}
                           onPress={() => {
                             router.push({
-                              pathname: '/(client)/pricing',
-                              params: { trainerId }
+                              pathname: "/(client)/pricing",
+                              params: { trainerId },
                             } as any);
                           }}
                         >

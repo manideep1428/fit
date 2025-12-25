@@ -9,7 +9,17 @@ export const createNotification = mutation({
       v.literal("booking_created"),
       v.literal("booking_cancelled"),
       v.literal("booking_reminder"),
-      v.literal("trainer_added")
+      v.literal("trainer_added"),
+      v.literal("subscription_created"),
+      v.literal("subscription_request"),
+      v.literal("subscription_request_sent"),
+      v.literal("subscription_approved"),
+      v.literal("session_completed"),
+      v.literal("subscription_ending"),
+      v.literal("subscription_expired"),
+      v.literal("discount_added"),
+      v.literal("discount_updated"),
+      v.literal("discount_removed")
     ),
     title: v.string(),
     message: v.string(),
@@ -17,16 +27,19 @@ export const createNotification = mutation({
     read: v.optional(v.boolean()),
     filter: v.optional(v.union(
       v.literal("bookings"),
-      v.literal("trainers")
+      v.literal("trainers"),
+      v.literal("discounts")
     )),
   },
   handler: async (ctx, args) => {
     // Determine filter based on type
-    let filter: "bookings" | "trainers" | undefined;
+    let filter: "bookings" | "trainers" | "discounts" | undefined;
     if (args.type === "booking_created" || args.type === "booking_cancelled" || args.type === "booking_reminder") {
       filter = "bookings";
     } else if (args.type === "trainer_added") {
       filter = "trainers";
+    } else if (args.type === "discount_added" || args.type === "discount_updated" || args.type === "discount_removed") {
+      filter = "discounts";
     }
 
     return await ctx.db.insert("notifications", {

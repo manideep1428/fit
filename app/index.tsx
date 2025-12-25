@@ -7,10 +7,6 @@ import { api } from '@/convex/_generated/api';
 import { getColors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-/**
- * Root index - handles automatic routing based on user authentication and role
- * This is the entry point of the app
- */
 export default function Index() {
   const { user, isLoaded: isUserLoaded } = useUser();
   const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
@@ -19,20 +15,16 @@ export default function Index() {
   const colors = getColors(scheme === 'dark');
   const [hasNavigated, setHasNavigated] = useState(false);
 
-  // Query Convex for user data (more reliable than Clerk metadata for role)
   const convexUser = useQuery(
     api.users.getUserByClerkId,
     user?.id ? { clerkId: user.id } : 'skip'
   );
 
   useEffect(() => {
-    // Wait for auth to be fully loaded
     if (!isAuthLoaded || !isUserLoaded) return;
     
-    // Prevent multiple navigations
     if (hasNavigated) return;
 
-    // If no user is logged in, redirect to welcome screen
     if (!isSignedIn || !user) {
       setHasNavigated(true);
       router.replace('/(auth)/welcome');

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { View, ActivityIndicator, TouchableOpacity, Text, ScrollView, Modal } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity, Text, ScrollView, Modal, Alert } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/convex/_generated/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -11,6 +11,8 @@ import CalendarView from '@/components/CalendarView';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
 import GoogleTokenStatus from '@/components/GoogleTokenStatus';
+import Toast from 'react-native-toast-message';
+import { Id } from '@/convex/_generated/dataModel';
 
 
 export default function BookingsScreen() {
@@ -22,6 +24,9 @@ export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'schedule' | 'bookings'>('bookings');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+
+  const approveCancellation = useMutation(api.bookings.approveCancellation);
+  const rejectCancellation = useMutation(api.bookings.rejectCancellation);
 
   const currentUser = useQuery(
     api.users.getUserByClerkId,
@@ -61,8 +66,82 @@ export default function BookingsScreen() {
       case 'confirmed': return colors.success;
       case 'pending': return colors.warning;
       case 'cancelled': return colors.error;
+      case 'cancellation_requested': return colors.warning;
       default: return colors.primary;
     }
+  };
+
+  const handleApproveCancellation = (bookingId: Id<"bookings">, clientName: string) => {
+    Alert.alert(
+      "Approve Cancellation",
+      `Approve ${clientName}'s cancellation request? 1 session will be returned to their package.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Approve",
+          onPress: async () => {
+            try {
+              await approveCancellation({
+                bookingId,
+                approvedBy: user!.id,
+              });
+              Toast.show({
+                type: "success",
+                text1: "Cancellation Approved",
+                text2: "Session returned to client's package",
+                position: "top",
+                visibilityTime: 3000,
+              });
+            } catch (error: any) {
+              Toast.show({
+                type: "error",
+                text1: "Approval Failed",
+                text2: error.message || "Unable to approve cancellation",
+                position: "top",
+                visibilityTime: 3000,
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRejectCancellation = (bookingId: Id<"bookings">, clientName: string) => {
+    Alert.alert(
+      "Decline Cancellation",
+      `Decline ${clientName}'s cancellation request? The session will remain scheduled.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Decline",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await rejectCancellation({
+                bookingId,
+                rejectedBy: user!.id,
+              });
+              Toast.show({
+                type: "info",
+                text1: "Cancellation Declined",
+                text2: "Session remains scheduled",
+                position: "top",
+                visibilityTime: 3000,
+              });
+            } catch (error: any) {
+              Toast.show({
+                type: "error",
+                text1: "Action Failed",
+                text2: error.message || "Unable to decline cancellation",
+                position: "top",
+                visibilityTime: 3000,
+              });
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -221,6 +300,37 @@ export default function BookingsScreen() {
                           {new Date(booking.startTime).toLocaleString()}
                         </Text>
                       </View>
+
+                      {/* Cancellation Request Actions */}
+                      {booking.status === 'cancellation_requested' && (
+                        <View className="flex-row gap-2 mt-3">
+                          <TouchableOpacity
+                            className="flex-1 rounded-xl py-2.5 items-center"
+                            style={{
+                              backgroundColor: colors.success,
+                              ...shadows.small,
+                            }}
+                            onPress={() => handleApproveCancellation(booking._id, booking.clientName)}
+                          >
+                            <Text className="text-sm font-semibold text-white">
+                              Approve
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            className="flex-1 rounded-xl py-2.5 items-center"
+                            style={{
+                              backgroundColor: `${colors.error}15`,
+                              borderWidth: 1,
+                              borderColor: colors.error,
+                            }}
+                            onPress={() => handleRejectCancellation(booking._id, booking.clientName)}
+                          >
+                            <Text className="text-sm font-semibold" style={{ color: colors.error }}>
+                              Decline
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                   </View>
                 </View>

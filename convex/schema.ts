@@ -62,8 +62,11 @@ export default defineSchema({
       v.literal("pending"),
       v.literal("confirmed"),
       v.literal("cancelled"),
-      v.literal("completed")
+      v.literal("completed"),
+      v.literal("cancellation_requested")
     ),
+    cancellationRequestedBy: v.optional(v.string()), // Clerk ID of who requested cancellation
+    cancellationRequestedAt: v.optional(v.number()),
     notes: v.optional(v.string()),
     googleCalendarEventId: v.optional(v.string()), // Google Calendar event ID
     subscriptionId: v.optional(v.id("clientSubscriptions")), // Link to subscription
@@ -89,13 +92,16 @@ export default defineSchema({
       v.literal("subscription_approved"),
       v.literal("session_completed"),
       v.literal("subscription_ending"),
-      v.literal("subscription_expired")
+      v.literal("subscription_expired"),
+      v.literal("discount_added"),
+      v.literal("discount_updated"),
+      v.literal("discount_removed")
     ),
     title: v.string(),
     message: v.string(),
     bookingId: v.optional(v.id("bookings")),
     read: v.boolean(),
-    filter: v.optional(v.union(v.literal("bookings"), v.literal("trainers"))),
+    filter: v.optional(v.union(v.literal("bookings"), v.literal("trainers"), v.literal("discounts"))),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -244,6 +250,7 @@ export default defineSchema({
     paymentMethod: v.union(v.literal("offline"), v.literal("online")),
     paymentStatus: v.union(v.literal("pending"), v.literal("paid")),
     autoRenew: v.optional(v.boolean()),
+    approvedAt: v.optional(v.number()), // Timestamp when subscription was approved
     createdAt: v.number(),
     updatedAt: v.number(),
   })
