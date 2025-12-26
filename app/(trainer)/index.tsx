@@ -50,6 +50,9 @@ export default function TrainerHomeScreen() {
     user?.id ? { trainerId: user.id } : "skip"
   );
 
+  // Fetch clients for enriching bookings
+  const clients = useQuery(api.users.getAllClients);
+
   useEffect(() => {
     if (isLoaded) {
       setLoading(false);
@@ -66,6 +69,29 @@ export default function TrainerHomeScreen() {
       </View>
     );
   }
+
+  // Enrich bookings with client names
+  const enrichedBookings = bookings && clients ? bookings.map((booking: any) => {
+    const client = clients.find((c: any) => c.clerkId === booking.clientId);
+    return {
+      ...booking,
+      clientName: client?.fullName || 'Client',
+    };
+  }) : [];
+
+  // Filter upcoming sessions properly
+  const now = new Date();
+  const upcomingBookings = enrichedBookings
+    .filter((b: any) => {
+      if (b.status === 'cancelled' || b.status === 'completed') return false;
+      const bookingDateTime = new Date(b.startTime);
+      return bookingDateTime >= now;
+    })
+    .sort((a: any, b: any) => {
+      const dateA = new Date(a.startTime);
+      const dateB = new Date(b.startTime);
+      return dateA.getTime() - dateB.getTime();
+    });
 
   return (
     <ScrollView
@@ -219,7 +245,7 @@ export default function TrainerHomeScreen() {
                 className="text-5xl font-bold mb-5 text-white"
                 style={{ letterSpacing: -2 }}
               >
-                {bookings.filter((b: any) => b.status !== "cancelled").length}
+                {bookings.filter((b: any) => b.status !== "cancelled" && b.status !== "completed").length}
               </Text>
 
               <View className="flex-row justify-between items-center">
@@ -231,13 +257,7 @@ export default function TrainerHomeScreen() {
                     Upcoming
                   </Text>
                   <Text className="text-2xl font-bold text-white">
-                    {
-                      bookings.filter(
-                        (b: any) =>
-                          b.status === "confirmed" &&
-                          new Date(b.date) >= new Date()
-                      ).length
-                    }
+                    {upcomingBookings.length}
                   </Text>
                 </View>
 
@@ -303,7 +323,7 @@ export default function TrainerHomeScreen() {
             <Text className="text-lg font-bold" style={{ color: colors.text }}>
               Upcoming Sessions
             </Text>
-            {bookings && bookings.length > 0 && (
+            {upcomingBookings.length > 0 && (
               <TouchableOpacity
                 onPress={() => router.push("/(trainer)/bookings" as any)}
               >
@@ -317,11 +337,11 @@ export default function TrainerHomeScreen() {
             )}
           </View>
 
-          {!bookings ? (
+          {!bookings || !clients ? (
             <View className="items-center py-8">
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
-          ) : bookings.length === 0 ? (
+          ) : upcomingBookings.length === 0 ? (
             <AnimatedCard
               delay={450}
               style={{ alignItems: "center", paddingVertical: 40 }}
@@ -352,23 +372,19 @@ export default function TrainerHomeScreen() {
               </Text>
             </AnimatedCard>
           ) : (
-            bookings
-              .filter(
-                (b: any) =>
-                  b.status === "confirmed" && new Date(b.date) >= new Date()
-              )
-              .sort((a: any, b: any) => {
-                const dateA = new Date(a.date + "T" + a.startTime);
-                const dateB = new Date(b.date + "T" + b.startTime);
-                return dateA.getTime() - dateB.getTime();
-              })
+            upcomingBookings
               .slice(0, 3)
               .map((booking: any, index: number) => {
-                const bookingDate = new Date(booking.date);
-                const dayName = bookingDate.toLocaleDateString("en-US", {
+                const bookingDateTime = new Date(booking.startTime);
+                const dayName = bookingDateTime.toLocaleDateString("en-US", {
                   weekday: "short",
                 });
-                const dayNum = bookingDate.getDate();
+                const dayNum = bookingDateTime.getDate();
+                const timeStr = bookingDateTime.toLocaleTimeString("en-US", {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                });
 
                 return (
                   <AnimatedCard
@@ -405,13 +421,13 @@ export default function TrainerHomeScreen() {
                           className="text-base font-bold mb-0.5"
                           style={{ color: colors.text }}
                         >
-                          {booking.notes || "Training Session"}
+                          {booking.clientName}
                         </Text>
                         <Text
                           className="text-xs"
                           style={{ color: colors.textSecondary }}
                         >
-                          Client Session
+                          {booking.notes || "Training Session"}
                         </Text>
                       </View>
 
@@ -420,14 +436,19 @@ export default function TrainerHomeScreen() {
                           className="text-sm font-bold"
                           style={{ color: colors.text }}
                         >
-                          {booking.startTime}
+                          {timeStr}
                         </Text>
-                        <Text
-                          className="text-xs"
-                          style={{ color: colors.textSecondary }}
+                        <View
+                          className="px-2 py-0.5 rounded-md mt-1"
+                          style={{ backgroundColor: `${colors.success}15` }}
                         >
-                          {booking.duration} min
-                        </Text>
+                          <Text
+                            className="text-xs font-semibold"
+                            style={{ color: colors.success }}
+                          >
+                            {booking.status}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </AnimatedCard>

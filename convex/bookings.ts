@@ -45,17 +45,41 @@ export const getAvailableSlots = query({
     const isToday = todayGMT1.getTime() === targetDate.getTime();
     const currentTimeMinutes = isToday ? gmtPlus1Now.getHours() * 60 + gmtPlus1Now.getMinutes() : 0;
 
-    // Generate time slots
-    const slots = generateTimeSlots(
-      availability.startTime,
-      availability.endTime,
-      args.duration,
-      availability.breaks,
-      bookings,
-      isToday ? currentTimeMinutes : null
-    );
+    // Handle both old schema (startTime/endTime) and new schema (timeRanges)
+    let timeRanges: Array<{ startTime: string; endTime: string }> = [];
+    
+    if (availability.timeRanges && availability.timeRanges.length > 0) {
+      timeRanges = availability.timeRanges;
+    } else if ((availability as any).startTime && (availability as any).endTime) {
+      // Fallback for old schema
+      timeRanges = [{ 
+        startTime: (availability as any).startTime, 
+        endTime: (availability as any).endTime 
+      }];
+    } else {
+      return [];
+    }
 
-    return slots;
+    // Generate time slots for all time ranges
+    const allSlots: string[] = [];
+    for (const range of timeRanges) {
+      const slots = generateTimeSlots(
+        range.startTime,
+        range.endTime,
+        args.duration,
+        availability.breaks,
+        bookings,
+        isToday ? currentTimeMinutes : null
+      );
+      allSlots.push(...slots);
+    }
+
+    // Sort slots by time
+    return allSlots.sort((a, b) => {
+      const [aHour, aMin] = a.split(':').map(Number);
+      const [bHour, bMin] = b.split(':').map(Number);
+      return (aHour * 60 + aMin) - (bHour * 60 + bMin);
+    });
   },
 });
 

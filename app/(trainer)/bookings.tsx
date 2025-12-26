@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, ActivityIndicator, TouchableOpacity, Text, ScrollView, Modal, Alert } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity, Text, ScrollView, Modal } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation } from 'convex/react';
@@ -13,6 +13,7 @@ import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
 import GoogleTokenStatus from '@/components/GoogleTokenStatus';
 import Toast from 'react-native-toast-message';
 import { Id } from '@/convex/_generated/dataModel';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 
 export default function BookingsScreen() {
@@ -24,9 +25,19 @@ export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'schedule' | 'bookings'>('bookings');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    confirmColor: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    onConfirm: () => void;
+  } | null>(null);
 
   const approveCancellation = useMutation(api.bookings.approveCancellation);
   const rejectCancellation = useMutation(api.bookings.rejectCancellation);
+  const completeSession = useMutation(api.bookings.completeSession);
 
   const currentUser = useQuery(
     api.users.getUserByClerkId,
@@ -58,11 +69,24 @@ export default function BookingsScreen() {
   });
 
   const now = new Date();
-  const currentBookings = enrichedBookings.filter((b: any) => new Date(b.startTime) >= now);
-  const pastBookings = enrichedBookings.filter((b: any) => new Date(b.startTime) < now);
+  const currentBookings = enrichedBookings
+    .filter((b: any) => {
+      if (b.status === 'cancelled' || b.status === 'completed') return false;
+      const bookingDateTime = new Date(b.startTime);
+      return bookingDateTime >= now;
+    })
+    .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    
+  const pastBookings = enrichedBookings
+    .filter((b: any) => {
+      const bookingDateTime = new Date(b.startTime);
+      return bookingDateTime < now || b.status === 'completed';
+    })
+    .sort((a: any, b: any) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'completed':
       case 'confirmed': return colors.success;
       case 'pending': return colors.warning;
       case 'cancelled': return colors.error;
@@ -72,76 +96,105 @@ export default function BookingsScreen() {
   };
 
   const handleApproveCancellation = (bookingId: Id<"bookings">, clientName: string) => {
-    Alert.alert(
-      "Approve Cancellation",
-      `Approve ${clientName}'s cancellation request? 1 session will be returned to their package.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Approve",
-          onPress: async () => {
-            try {
-              await approveCancellation({
-                bookingId,
-                approvedBy: user!.id,
-              });
-              Toast.show({
-                type: "success",
-                text1: "Cancellation Approved",
-                text2: "Session returned to client's package",
-                position: "top",
-                visibilityTime: 3000,
-              });
-            } catch (error: any) {
-              Toast.show({
-                type: "error",
-                text1: "Approval Failed",
-                text2: error.message || "Unable to approve cancellation",
-                position: "top",
-                visibilityTime: 3000,
-              });
-            }
-          },
-        },
-      ]
-    );
+    setConfirmDialog({
+      visible: true,
+      title: "Approve Cancellation",
+      message: `Approve ${clientName}'s cancellation request? 1 session will be returned to their package.`,
+      confirmText: "Approve",
+      confirmColor: colors.success,
+      icon: "checkmark-circle-outline",
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await approveCancellation({
+            bookingId,
+            approvedBy: user!.id,
+          });
+          Toast.show({
+            type: "success",
+            text1: "Cancellation Approved",
+            text2: "Session returned to client's package",
+            position: "top",
+            visibilityTime: 3000,
+          });
+        } catch (error: any) {
+          Toast.show({
+            type: "error",
+            text1: "Approval Failed",
+            text2: error.message || "Unable to approve cancellation",
+            position: "top",
+            visibilityTime: 3000,
+          });
+        }
+      },
+    });
   };
 
   const handleRejectCancellation = (bookingId: Id<"bookings">, clientName: string) => {
-    Alert.alert(
-      "Decline Cancellation",
-      `Decline ${clientName}'s cancellation request? The session will remain scheduled.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Decline",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await rejectCancellation({
-                bookingId,
-                rejectedBy: user!.id,
-              });
-              Toast.show({
-                type: "info",
-                text1: "Cancellation Declined",
-                text2: "Session remains scheduled",
-                position: "top",
-                visibilityTime: 3000,
-              });
-            } catch (error: any) {
-              Toast.show({
-                type: "error",
-                text1: "Action Failed",
-                text2: error.message || "Unable to decline cancellation",
-                position: "top",
-                visibilityTime: 3000,
-              });
-            }
-          },
-        },
-      ]
-    );
+    setConfirmDialog({
+      visible: true,
+      title: "Decline Cancellation",
+      message: `Decline ${clientName}'s cancellation request? The session will remain scheduled.`,
+      confirmText: "Decline",
+      confirmColor: colors.error,
+      icon: "close-circle-outline",
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await rejectCancellation({
+            bookingId,
+            rejectedBy: user!.id,
+          });
+          Toast.show({
+            type: "info",
+            text1: "Cancellation Declined",
+            text2: "Session remains scheduled",
+            position: "top",
+            visibilityTime: 3000,
+          });
+        } catch (error: any) {
+          Toast.show({
+            type: "error",
+            text1: "Action Failed",
+            text2: error.message || "Unable to decline cancellation",
+            position: "top",
+            visibilityTime: 3000,
+          });
+        }
+      },
+    });
+  };
+
+  const handleCompleteSession = (bookingId: Id<"bookings">, clientName: string) => {
+    setConfirmDialog({
+      visible: true,
+      title: "Complete Session",
+      message: `Mark session with ${clientName} as completed? This will deduct 1 session from their package.`,
+      confirmText: "Complete",
+      confirmColor: colors.success,
+      icon: "checkmark-done-outline",
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await completeSession({ bookingId });
+          Toast.show({
+            type: "success",
+            text1: "Session Completed",
+            text2: "Session marked as complete",
+            position: "top",
+            visibilityTime: 3000,
+          });
+        } catch (error: any) {
+          Toast.show({
+            type: "error",
+            text1: "Failed to Complete",
+            text2: error.message || "Unable to complete session",
+            position: "top",
+            visibilityTime: 3000,
+          });
+        }
+      },
+    });
   };
 
   return (
@@ -331,6 +384,23 @@ export default function BookingsScreen() {
                           </TouchableOpacity>
                         </View>
                       )}
+
+                      {/* Complete Session Button */}
+                      {booking.status === 'confirmed' && (
+                        <TouchableOpacity
+                          className="rounded-xl py-2.5 items-center flex-row justify-center mt-3"
+                          style={{
+                            backgroundColor: colors.success,
+                            ...shadows.small,
+                          }}
+                          onPress={() => handleCompleteSession(booking._id, booking.clientName)}
+                        >
+                          <Ionicons name="checkmark-done-outline" size={18} color="white" />
+                          <Text className="text-sm font-semibold text-white ml-2">
+                            Mark as Completed
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -399,7 +469,7 @@ export default function BookingsScreen() {
                         </View>
                       </View>
                       <Text className="text-xs font-medium uppercase" style={{ color: colors.textTertiary }}>
-                        Completed
+                        {booking.status === 'completed' ? 'Completed' : 'Past'}
                       </Text>
                     </View>
                   </View>
@@ -441,6 +511,20 @@ export default function BookingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Confirm Dialog */}
+      {confirmDialog && (
+        <ConfirmDialog
+          visible={confirmDialog.visible}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          confirmColor={confirmDialog.confirmColor}
+          icon={confirmDialog.icon}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
     </View>
   );
 }

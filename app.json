@@ -8,6 +8,9 @@
     "scheme": "fit",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "assetBundlePatterns": [
+      "assets/**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.manideep1428.fit",
@@ -32,11 +35,7 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "WAKE_LOCK"
-      ],
-      "statusBar": {
-        "translucent": true,
-        "backgroundColor": "#00000000"
-      }
+      ]
     },
     "notification": {
       "icon": "./assets/images/icon.png",

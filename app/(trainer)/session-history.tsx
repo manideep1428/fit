@@ -44,11 +44,15 @@ export default function SessionHistoryScreen() {
     // Get all past sessions sorted by date (newest first)
     const now = new Date();
     const pastSessions = enrichedBookings
-        .filter((b: any) => new Date(b.startTime) < now)
+        .filter((b: any) => {
+            const sessionDateTime = new Date(b.startTime);
+            return sessionDateTime < now || b.status === 'completed';
+        })
         .sort((a: any, b: any) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
     const getStatusColor = (status: string) => {
         switch (status) {
+            case 'completed':
             case 'confirmed':
                 return colors.success;
             case 'pending':
@@ -147,7 +151,9 @@ export default function SessionHistoryScreen() {
                                                     className="text-xs font-bold uppercase"
                                                     style={{ color: getStatusColor(session.status) }}
                                                 >
-                                                    {session.status === 'confirmed' ? 'Completed' : session.status}
+                                                    {session.status === 'completed' ? 'Completed' : 
+                                                     session.status === 'confirmed' ? 'Completed' : 
+                                                     session.status}
                                                 </Text>
                                             </View>
                                         </View>

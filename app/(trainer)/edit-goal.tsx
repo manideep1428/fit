@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-expo';
@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { StatusBar } from 'expo-status-bar';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 const BODY_PARTS = [
   'Stomach',
@@ -48,8 +49,10 @@ export default function EditGoalScreen() {
   const [loading, setLoading] = useState(false);
   const [showBodyPartPicker, setShowBodyPartPicker] = useState(false);
   const [selectedMeasurementIndex, setSelectedMeasurementIndex] = useState(0);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   const updateGoal = useMutation(api.goals.updateGoal);
+  const createNotification = useMutation(api.notifications.createNotification);
   const checkGoalNameUnique = useQuery(
     api.goals.checkGoalNameUnique,
     clientId && goalDescription ? { clientId: clientId as string, description: goalDescription, excludeGoalId: goalId as any } : 'skip'
@@ -137,7 +140,7 @@ export default function EditGoalScreen() {
           unit: m.unit,
         }));
 
-      await updateGoal({
+      const updatedClientId = await updateGoal({
         goalId: goalId as any,
         description: goalDescription,
         deadline: deadline || undefined,
@@ -147,9 +150,24 @@ export default function EditGoalScreen() {
         measurements: validMeasurements.length > 0 ? validMeasurements : undefined,
       });
 
-      router.back();
+      // Send notification to client about goal update
+      await createNotification({
+        userId: updatedClientId,
+        type: 'goal_updated',
+        title: 'Goal Updated',
+        message: `Your trainer has updated your goal: ${goalDescription}`,
+        read: false,
+      });
+
+      // Show success message
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+        router.back();
+      }, 1500);
     } catch (error) {
       console.error('Error updating goal:', error);
+      Alert.alert('Error', 'Failed to update goal. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -635,6 +653,24 @@ export default function EditGoalScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <Animated.View
+          entering={FadeIn}
+          exiting={FadeOut}
+          className="absolute top-24 left-5 right-5 rounded-2xl p-4 flex-row items-center gap-3"
+          style={{ backgroundColor: colors.success, ...shadows.large }}
+        >
+          <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+            <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-white font-bold text-base">Goal Updated!</Text>
+            <Text className="text-white text-sm opacity-90">Client will be notified</Text>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }

@@ -19,8 +19,10 @@ export const saveAvailability = mutation({
     trainerId: v.string(),
     dayOfWeek: v.number(),
     enabled: v.boolean(),
-    startTime: v.string(),
-    endTime: v.string(),
+    timeRanges: v.array(v.object({
+      startTime: v.string(),
+      endTime: v.string(),
+    })),
     breaks: v.array(v.object({
       startTime: v.string(),
       endTime: v.string(),
@@ -39,8 +41,7 @@ export const saveAvailability = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         enabled: args.enabled,
-        startTime: args.startTime,
-        endTime: args.endTime,
+        timeRanges: args.timeRanges,
         breaks: args.breaks,
         sessionDuration: args.sessionDuration,
         updatedAt: now,
@@ -51,8 +52,7 @@ export const saveAvailability = mutation({
         trainerId: args.trainerId,
         dayOfWeek: args.dayOfWeek,
         enabled: args.enabled,
-        startTime: args.startTime,
-        endTime: args.endTime,
+        timeRanges: args.timeRanges,
         breaks: args.breaks,
         sessionDuration: args.sessionDuration,
         createdAt: now,

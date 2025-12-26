@@ -38,8 +38,12 @@ export default defineSchema({
     trainerId: v.string(), // Clerk ID
     dayOfWeek: v.number(), // 0-6 (Sunday-Saturday)
     enabled: v.boolean(),
-    startTime: v.string(), // "09:00"
-    endTime: v.string(), // "17:00"
+    timeRanges: v.array(
+      v.object({
+        startTime: v.string(), // "09:00"
+        endTime: v.string(), // "17:00"
+      })
+    ),
     breaks: v.array(
       v.object({
         startTime: v.string(),

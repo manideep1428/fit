@@ -179,6 +179,10 @@ export default function ProgressScreen() {
                     ? goalLogs[0].weight
                     : goal.currentWeight;
 
+                // Calculate if recently updated (within last 24 hours)
+                const isRecentlyUpdated = goalLogs.length > 0 && 
+                  (Date.now() - goalLogs[0].createdAt) < 24 * 60 * 60 * 1000;
+
                 return (
                   <AnimatedCard
                     key={goal._id}
@@ -193,12 +197,24 @@ export default function ProgressScreen() {
                   >
                     <View className="flex-row items-start justify-between mb-3">
                       <View className="flex-1">
-                        <Text
-                          className="text-lg font-bold mb-1"
-                          style={{ color: colors.text }}
-                        >
-                          {goal.description}
-                        </Text>
+                        <View className="flex-row items-center gap-2 mb-1">
+                          <Text
+                            className="text-lg font-bold"
+                            style={{ color: colors.text }}
+                          >
+                            {goal.description}
+                          </Text>
+                          {isRecentlyUpdated && (
+                            <View 
+                              className="px-2 py-0.5 rounded-full"
+                              style={{ backgroundColor: `${colors.success}15` }}
+                            >
+                              <Text className="text-xs font-bold" style={{ color: colors.success }}>
+                                NEW
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                         {goal.deadline && (
                           <View className="flex-row items-center gap-1">
                             <Ionicons
@@ -257,6 +273,14 @@ export default function ProgressScreen() {
                         <Text className="text-xs" style={{ color: colors.textSecondary }}>
                           {goalLogs.length} updates
                         </Text>
+                        {isRecentlyUpdated && (
+                          <>
+                            <Text className="text-xs" style={{ color: colors.textTertiary }}>•</Text>
+                            <Text className="text-xs" style={{ color: colors.success }}>
+                              Updated today
+                            </Text>
+                          </>
+                        )}
                       </View>
                       <View className="flex-row items-center gap-1">
                         <Text className="text-xs font-medium" style={{ color: colors.primary }}>

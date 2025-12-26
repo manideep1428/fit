@@ -158,6 +158,9 @@ export const updateGoal = mutation({
     }))),
   },
   handler: async (ctx, args) => {
+    const goal = await ctx.db.get(args.goalId);
+    if (!goal) throw new Error("Goal not found");
+
     await ctx.db.patch(args.goalId, {
       description: args.description,
       deadline: args.deadline,
@@ -167,6 +170,62 @@ export const updateGoal = mutation({
       measurements: args.measurements,
       updatedAt: Date.now(),
     });
+
+    return goal.clientId;
+  },
+});
+
+// Get goal statistics
+export const getGoalStatistics = query({
+  args: { goalId: v.id("goals") },
+  handler: async (ctx, args) => {
+    const goal = await ctx.db.get(args.goalId);
+    if (!goal) return null;
+
+    const logs = await ctx.db
+      .query("progressLogs")
+      .withIndex("by_goal", (q) => q.eq("goalId", args.goalId))
+      .order("desc")
+      .collect();
+
+    if (logs.length === 0) {
+      return {
+        totalLogs: 0,
+        averageProgress: 0,
+        weeklyChange: 0,
+        estimatedCompletion: null,
+      };
+    }
+
+    // Calculate statistics
+    const latestLog = logs[0];
+    const currentWeight = latestLog.weight || goal.currentWeight || 0;
+    const totalChange = Math.abs((goal.targetWeight || 0) - (goal.currentWeight || 0));
+    const currentChange = Math.abs(currentWeight - (goal.currentWeight || 0));
+    const progress = totalChange > 0 ? Math.min((currentChange / totalChange) * 100, 100) : 0;
+
+    // Calculate weekly change (last 7 days)
+    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recentLogs = logs.filter(log => log.createdAt >= oneWeekAgo);
+    const weeklyChange = recentLogs.length > 1
+      ? Math.abs((recentLogs[0].weight || 0) - (recentLogs[recentLogs.length - 1].weight || 0))
+      : 0;
+
+    // Estimate completion date
+    let estimatedCompletion = null;
+    if (weeklyChange > 0 && progress < 100) {
+      const remainingChange = totalChange - currentChange;
+      const weeksToComplete = remainingChange / weeklyChange;
+      estimatedCompletion = new Date(Date.now() + weeksToComplete * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    }
+
+    return {
+      totalLogs: logs.length,
+      averageProgress: Math.round(progress),
+      weeklyChange: Math.round(weeklyChange * 10) / 10,
+      estimatedCompletion,
+      latestWeight: currentWeight,
+    };
   },
 });
 
