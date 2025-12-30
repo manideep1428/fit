@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, ActivityIndicator, TouchableOpacity, Text, ScrollView, Modal } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, ActivityIndicator, TouchableOpacity, Text, Modal } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation } from 'convex/react';
@@ -14,6 +14,7 @@ import GoogleTokenStatus from '@/components/GoogleTokenStatus';
 import Toast from 'react-native-toast-message';
 import { Id } from '@/convex/_generated/dataModel';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import { PullToRefresh } from '@/components/PullToRefresh';
 
 
 export default function BookingsScreen() {
@@ -50,6 +51,11 @@ export default function BookingsScreen() {
   );
 
   const clients = useQuery(api.users.getAllClients);
+
+  // Pull to refresh handler
+  const handleRefresh = useCallback(async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }, []);
 
   if (!user || !bookings || !clients) {
     return (
@@ -266,7 +272,7 @@ export default function BookingsScreen() {
 
       {/* Tab Content */}
       {activeTab === 'bookings' ? (
-        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        <PullToRefresh onRefresh={handleRefresh} contentContainerStyle={{ paddingBottom: 100 }}>
           {/* Current Bookings */}
           <View className="px-6 pt-2">
             <View className="flex-row items-center mb-4">
@@ -490,7 +496,7 @@ export default function BookingsScreen() {
               </>
             )}
           </View>
-        </ScrollView>
+        </PullToRefresh>
       ) : (
         <CalendarView bookings={enrichedBookings} userRole="trainer" />
       )}

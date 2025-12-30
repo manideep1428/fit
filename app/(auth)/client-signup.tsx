@@ -100,7 +100,6 @@ export default function ClientSignUpScreen() {
 
   const handleCreateAccount = async () => {
     if (!isLoaded || !signUp) {
-      console.log("Sign up not loaded or not available");
       return;
     }
 
@@ -121,7 +120,6 @@ export default function ClientSignUpScreen() {
 
     setCreatingAccount(true);
     try {
-      console.log("Creating client sign up...");
       const signUpResult = await signUp.create({
         emailAddress: email.toLowerCase(),
         password,
@@ -132,27 +130,20 @@ export default function ClientSignUpScreen() {
           role: "client",
         },
       });
-      console.log("Sign up created, status:", signUpResult.status);
 
       // Send verification email
-      console.log("Preparing email verification...");
       try {
         await signUp.prepareEmailAddressVerification({
           strategy: "email_code",
         });
-        console.log(
-          "Email verification prepared, setting pendingVerification to true"
-        );
         showToast.success("Verification code sent to your email!");
         setPendingVerification(true);
       } catch (verifyErr: any) {
-        console.error("Email verification error:", verifyErr);
         showToast.error(
           verifyErr.errors?.[0]?.message || "Failed to send verification email"
         );
       }
     } catch (err: any) {
-      console.error("Sign up error:", err);
       showToast.error(err.errors?.[0]?.message || "Failed to create account");
     } finally {
       setCreatingAccount(false);

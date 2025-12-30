@@ -35,7 +35,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     }
     
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
       return null;
     }
     
@@ -46,11 +45,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       );
       token = tokenData.data;
     } catch (error) {
-      console.log('Error getting push token:', error);
       return null;
     }
-  } else {
-    console.log('Must use physical device for Push Notifications');
   }
 
   return token;

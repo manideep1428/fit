@@ -142,7 +142,6 @@ export default function BookingsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       // Force refresh of queries when screen is focused
-      console.log("Bookings screen focused, refreshing data...");
     }, [])
   );
 

@@ -2,13 +2,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Image,
 } from "react-native";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useQuery } from "convex/react";
@@ -18,6 +17,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getColors, Spacing, BorderRadius, Shadows } from "@/constants/colors";
 import { AnimatedCard } from "@/components/AnimatedCard";
 import { GlassCard } from "@/components/GlassCard";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import NotificationHistory from "@/components/NotificationHistory";
 
 export default function TrainerHomeScreen() {
@@ -52,6 +52,12 @@ export default function TrainerHomeScreen() {
 
   // Fetch clients for enriching bookings
   const clients = useQuery(api.users.getAllClients);
+
+  // Pull to refresh handler
+  const handleRefresh = useCallback(async () => {
+    // Convex queries auto-refresh, but we add a small delay for UX
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }, []);
 
   useEffect(() => {
     if (isLoaded) {
@@ -94,11 +100,10 @@ export default function TrainerHomeScreen() {
     });
 
   return (
-    <ScrollView
-      className="flex-1"
+    <PullToRefresh
+      onRefresh={handleRefresh}
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: 100 }}
-      showsVerticalScrollIndicator={false}
     >
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
 
@@ -463,6 +468,6 @@ export default function TrainerHomeScreen() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
       />
-    </ScrollView>
+    </PullToRefresh>
   );
 }

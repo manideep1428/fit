@@ -142,7 +142,6 @@ export default function BookTrainerScreen() {
     try {
       const calendarService = await getCalendarService();
       if (!calendarService) {
-        console.log("No calendar service available");
         return;
       }
 
@@ -164,10 +163,8 @@ export default function BookTrainerScreen() {
         bookingId,
         googleCalendarEventId: event.id,
       });
-
-      console.log("Event added to Google Calendar:", event.id);
     } catch (error) {
-      console.error("Error adding to Google Calendar:", error);
+      // Calendar sync error handled silently
     }
   };
 

@@ -26,7 +26,7 @@ export default function AuthIndex() {
   );
 
   useEffect(() => {
-    console.log("AuthIndex useEffect"); // Wait for auth to be fully loaded
+    // Wait for auth to be fully loaded
     if (!isAuthLoaded || !isUserLoaded) return;
 
     // Prevent multiple navigations

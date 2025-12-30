@@ -72,11 +72,9 @@ export default function GoogleOAuthButton({
         // The index.tsx will check user role and redirect appropriately
         router.replace('/');
       } else {
-        console.log('OAuth flow did not complete');
         showToast.error('Authentication was cancelled or incomplete');
       }
     } catch (err: any) {
-      console.error('Google OAuth Error:', JSON.stringify(err, null, 2));
       const errorMessage =
         err.errors?.[0]?.message || 'Google authentication failed';
       if (onError) {

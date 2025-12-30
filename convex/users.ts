@@ -352,9 +352,6 @@ export const saveGoogleTokens = mutation({
       updatedAt: Date.now(),
     });
 
-    console.log(`Google Calendar token saved for user ${args.clerkId}`);
-    console.log(`Token expires at: ${tokenExpiry ? new Date(tokenExpiry).toISOString() : 'never'}`);
-
     return user._id;
   },
 });
@@ -519,7 +516,6 @@ export const savePushToken = mutation({
 
     // If user doesn't exist yet, silently return - they'll get the token saved when they complete registration
     if (!user) {
-      console.log("User not found for push token, will be saved later");
       return null;
     }
 

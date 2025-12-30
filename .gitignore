@@ -42,3 +42,13 @@ app-example
 /ios
 /android
 .env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+*.log
+.cache/

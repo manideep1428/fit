@@ -8,6 +8,8 @@ import { tokenCache } from '@clerk/clerk-expo/token-cache';
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { useNotifications } from '@/hooks/useNotifications';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { NetworkProvider } from '@/contexts/NetworkContext';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from '@/components/ToastConfig';
 import { getColors } from '@/constants/colors';
@@ -48,11 +50,14 @@ function ThemedApp() {
   const { isDark } = useTheme();
   
   return (
-    <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-      <AppContent />
-      <StatusBar style="auto" />
-      <Toast config={toastConfig} />
-    </NavigationThemeProvider>
+    <NetworkProvider>
+      <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+        <OfflineBanner />
+        <AppContent />
+        <StatusBar style="auto" />
+        <Toast config={toastConfig} />
+      </NavigationThemeProvider>
+    </NetworkProvider>
   );
 }
 

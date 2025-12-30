@@ -6,12 +6,11 @@ export function useSignOut() {
   const { signOut, isSignedIn } = useAuth();
 
   const logout = useCallback(async () => {
-    console.log("DONe")
     if (!isSignedIn) return;
     try {
       await signOut();
     } catch (err) {
-      console.log("Sign-out error:", err);
+      // Sign-out error handled silently
     }
   }, [signOut, isSignedIn]);
 

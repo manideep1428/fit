@@ -20,7 +20,6 @@ export const sendPushNotification = action({
     });
 
     if (!user?.expoPushToken) {
-      console.log("No push token for user:", args.userId);
       return { success: false, error: "No push token" };
     }
 

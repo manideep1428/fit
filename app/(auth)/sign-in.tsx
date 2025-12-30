@@ -58,10 +58,8 @@ export default function SignInScreen() {
         identifier: email,
         password,
       });
-      console.log("Sign in result:", result);
 
       if (result.status === "complete") {
-        console.log("Sign in complete", result.createdSessionId);
         await setActive({ session: result.createdSessionId });
 
         // Give Clerk time to fully initialize the session
@@ -91,7 +89,6 @@ export default function SignInScreen() {
 
   const handleClientSignUp = async () => {
     if (!isSignUpLoaded || !signUp) {
-      console.log("Sign up not loaded or not available");
       return;
     }
 
@@ -107,8 +104,6 @@ export default function SignInScreen() {
 
     setLoading(true);
     try {
-      console.log("Creating client sign up from sign-in page...");
-
       // Create the account
       const result = await signUp.create({
         emailAddress: email,
@@ -142,8 +137,6 @@ export default function SignInScreen() {
         router.replace("/(client)");
       } else {
         // If signup is not complete, Clerk requires email verification
-        // Show a helpful error message
-        console.log("Signup not complete, status:", result.status);
         showToast.error(
           "Email verification required. Please disable email verification in Clerk dashboard for this app, or use the signup page instead."
         );

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useQuery, useMutation } from "convex/react";
@@ -19,6 +19,7 @@ import { api } from "@/convex/_generated/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getColors, Shadows } from "@/constants/colors";
 import NotificationHistory from "@/components/NotificationHistory";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { showToast } from "@/utils/toast";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -72,6 +73,11 @@ export default function ClientHomeScreen() {
 
   // Get unanswered questions
   const unansweredQuestions = questions?.filter((q: any) => !q.answer) || [];
+
+  // Pull to refresh handler
+  const handleRefresh = useCallback(async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }, []);
 
   const handleAnswerQuestion = async (questionId: string) => {
     if (!answerText.trim()) return;
@@ -223,9 +229,8 @@ export default function ClientHomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
+      <PullToRefresh
+        onRefresh={handleRefresh}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         <View className="flex-col gap-6 p-4">
@@ -740,7 +745,7 @@ export default function ClientHomeScreen() {
             </ScrollView>
           </View>
         </View>
-      </ScrollView>
+      </PullToRefresh>
 
       {/* Notification History Modal */}
       <NotificationHistory

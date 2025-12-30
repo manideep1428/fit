@@ -43,7 +43,6 @@ export default function SignUpScreen() {
 
   const handleSignUp = async () => {
     if (!isLoaded || !signUp) {
-      console.log("Sign up not loaded or not available");
       return;
     }
 
@@ -59,7 +58,6 @@ export default function SignUpScreen() {
 
     setLoading(true);
     try {
-      console.log("Creating sign up...");
       const signUpResult = await signUp.create({
         emailAddress: email,
         password,
@@ -70,27 +68,20 @@ export default function SignUpScreen() {
           role: "trainer", // Always trainer for signup
         },
       });
-      console.log("Sign up created, status:", signUpResult.status);
 
       // Send verification email
-      console.log("Preparing email verification...");
       try {
         await signUp.prepareEmailAddressVerification({
           strategy: "email_code",
         });
-        console.log(
-          "Email verification prepared, setting pendingVerification to true"
-        );
         showToast.success("Verification code sent to your email!");
         setPendingVerification(true);
       } catch (verifyErr: any) {
-        console.error("Email verification error:", verifyErr);
         showToast.error(
           verifyErr.errors?.[0]?.message || "Failed to send verification email"
         );
       }
     } catch (err: any) {
-      console.error("Sign up error:", err);
       if (err.errors?.[0]?.code === "form_identifier_exists") {
         showToast.error("Email already registered. Please sign in instead.");
       } else {
