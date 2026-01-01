@@ -85,7 +85,7 @@ export default function TrainerDetailsScreen() {
 
   const handleViewPackages = () => {
     router.push({
-      pathname: "/(client)/trainer-pricing",
+      pathname: "/(client)/trainer-subscriptions",
       params: {
         trainerId: trainerId,
         trainerName: trainerName || trainer?.fullName,
@@ -462,7 +462,7 @@ export default function TrainerDetailsScreen() {
                     className="text-xs"
                     style={{ color: colors.textSecondary }}
                   >
-                    Browse pricing plans
+                    Browse subscription plans
                   </Text>
                 </View>
                 <Ionicons
@@ -490,30 +490,20 @@ export default function TrainerDetailsScreen() {
           pointerEvents="none"
         />
         <TouchableOpacity
-          onPress={handleBookSession}
+          onPress={activeSubscription ? handleBookSession : handleViewPackages}
           className="rounded-2xl py-4 flex-row items-center justify-center"
           style={{
-            backgroundColor: activeSubscription
-              ? colors.primary
-              : colors.surface,
+            backgroundColor: colors.primary,
             ...shadows.large,
-            borderWidth: activeSubscription ? 0 : 1,
-            borderColor: colors.border,
           }}
-          disabled={!activeSubscription}
         >
           <Ionicons
-            name="calendar"
+            name={activeSubscription ? "calendar" : "pricetag"}
             size={22}
-            color={activeSubscription ? "#FFF" : colors.textSecondary}
+            color="#FFF"
           />
-          <Text
-            className="text-lg font-bold ml-2"
-            style={{
-              color: activeSubscription ? "#FFF" : colors.textSecondary,
-            }}
-          >
-            {activeSubscription ? "Book a Session" : "Get Package to Book"}
+          <Text className="text-lg font-bold ml-2 text-white">
+            {activeSubscription ? "Book a Session" : "View Packages"}
           </Text>
         </TouchableOpacity>
       </View>

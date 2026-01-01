@@ -1,11 +1,14 @@
 import { Tabs } from "expo-router";
-import { View, Platform } from "react-native";
+import { View, Text, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useUser } from "@clerk/clerk-expo";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { getColors, BorderRadius, Shadows } from "@/constants/colors";
+import { getColors, Shadows } from "@/constants/colors";
 import { useTrainerProfileCheck } from "@/hooks/useTrainerProfileCheck";
 
 export default function TabLayout() {
@@ -13,9 +16,16 @@ export default function TabLayout() {
   const colors = getColors(colorScheme === "dark");
   const shadows = colorScheme === "dark" ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
+  const { user } = useUser();
 
   // Check if trainer profile is complete
   useTrainerProfileCheck();
+
+  // Fetch unread notification count
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    user?.id ? { userId: user.id } : "skip"
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -71,11 +81,33 @@ export default function TabLayout() {
           options={{
             title: "Bookings",
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? "calendar" : "calendar-outline"}
-                size={24}
-                color={color}
-              />
+              <View>
+                <Ionicons
+                  name={focused ? "calendar" : "calendar-outline"}
+                  size={24}
+                  color={color}
+                />
+                {unreadCount && typeof unreadCount === "number" && unreadCount > 0 && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: -4,
+                      right: -8,
+                      backgroundColor: colors.error,
+                      borderRadius: 10,
+                      minWidth: 18,
+                      height: 18,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingHorizontal: 4,
+                    }}
+                  >
+                    <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "bold" }}>
+                      {unreadCount > 9 ? "9+" : String(unreadCount)}
+                    </Text>
+                  </View>
+                )}
+              </View>
             ),
           }}
         />
@@ -201,7 +233,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="pricing-admin"
+          name="subscriptions-admin"
           options={{
             href: null,
           }}
@@ -238,6 +270,12 @@ export default function TabLayout() {
         />
         <Tabs.Screen
           name="question-list"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="goal-list"
           options={{
             href: null,
           }}

@@ -19,11 +19,11 @@ import { getColors, Shadows } from "@/constants/colors";
 import CalendarView from "@/components/CalendarView";
 import { Ionicons } from "@expo/vector-icons";
 import GoogleCalendarAuth from "@/components/GoogleCalendarAuth";
-import GoogleTokenStatus from "@/components/GoogleTokenStatus";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import Toast from "react-native-toast-message";
 import { Id } from "@/convex/_generated/dataModel";
+import NotificationHistory from "@/components/NotificationHistory";
 
 // Format time from 24h format (HH:mm) to 12h format (h AM/PM)
 const formatTime = (time: string): string => {
@@ -55,6 +55,7 @@ export default function BookingsScreen() {
     "bookings"
   );
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const requestCancellation = useMutation(api.bookings.requestCancellation);
@@ -77,6 +78,12 @@ export default function BookingsScreen() {
   const subscriptions = useQuery(
     api.subscriptions.getClientSubscriptions,
     user?.id ? { clientId: user.id } : "skip"
+  );
+
+  // Fetch unread notification count
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    user?.id ? { userId: user.id } : "skip"
   );
 
   if (!user || !bookings || !clientTrainers) {
@@ -102,17 +109,28 @@ export default function BookingsScreen() {
   });
 
   const now = new Date();
-  // Set time to start of current hour to avoid timezone issues
-  now.setMinutes(0, 0, 0);
 
-  const currentBookings = enrichedBookings.filter((b: any) => {
-    const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
-    return sessionDateTime >= now;
-  });
-  const pastBookings = enrichedBookings.filter((b: any) => {
-    const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
-    return sessionDateTime < now;
-  });
+  const currentBookings = enrichedBookings
+    .filter((b: any) => {
+      const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
+      return sessionDateTime >= now && b.status !== "cancelled";
+    })
+    .sort((a: any, b: any) => {
+      const dateA = new Date(`${a.date}T${a.startTime}:00`);
+      const dateB = new Date(`${b.date}T${b.startTime}:00`);
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+  const pastBookings = enrichedBookings
+    .filter((b: any) => {
+      const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
+      return sessionDateTime < now || b.status === "cancelled";
+    })
+    .sort((a: any, b: any) => {
+      const dateA = new Date(`${a.date}T${a.startTime}:00`);
+      const dateB = new Date(`${b.date}T${b.startTime}:00`);
+      return dateB.getTime() - dateA.getTime(); // Most recent first
+    });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -206,7 +224,25 @@ export default function BookingsScreen() {
           >
             Bookings
           </Text>
-          <GoogleTokenStatus onConnect={() => setShowCalendarModal(true)} />
+          <TouchableOpacity
+            className="relative w-10 h-10 rounded-full items-center justify-center"
+            style={{ backgroundColor: colors.surface }}
+            onPress={() => setShowNotifications(true)}
+          >
+            <Ionicons name="notifications" size={20} color={colors.text} />
+            {unreadCount &&
+              typeof unreadCount === "number" &&
+              unreadCount > 0 && (
+                <View
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center"
+                  style={{ backgroundColor: colors.error }}
+                >
+                  <Text className="text-white text-xs font-bold">
+                    {unreadCount > 9 ? "9+" : String(unreadCount)}
+                  </Text>
+                </View>
+              )}
+          </TouchableOpacity>
         </View>
         <Text
           className="text-sm font-medium"
@@ -227,8 +263,8 @@ export default function BookingsScreen() {
               style={{
                 backgroundColor: `${colors.warning}15`,
                 borderWidth: 1,
-                borderColor: `${colors.warning}40`,
-                ...shadows.small,
+                borderColor: `${colors.warning}`,
+                ...shadows,
               }}
             >
               <View
@@ -290,7 +326,7 @@ export default function BookingsScreen() {
               top: 4,
               bottom: 4,
               backgroundColor: colors.surface,
-              ...shadows.small,
+              ...shadows,
             }}
           />
           <TouchableOpacity
@@ -439,7 +475,7 @@ export default function BookingsScreen() {
                 className="rounded-2xl p-8 items-center"
                 style={{
                   backgroundColor: colors.surface,
-                  ...shadows.small,
+                  ...shadows,
                   borderWidth: 1,
                   borderColor: colors.border,
                 }}
@@ -477,7 +513,7 @@ export default function BookingsScreen() {
                     className="rounded-2xl p-4 mb-4"
                     style={{
                       backgroundColor: colors.surface,
-                      ...shadows.small,
+                      ...shadows,
                       borderWidth: 1,
                       borderColor: colors.border,
                     }}
@@ -705,7 +741,7 @@ export default function BookingsScreen() {
           className="w-14 h-14 rounded-full items-center justify-center"
           style={{
             backgroundColor: colors.primary,
-            ...shadows.large,
+            ...shadows,
             shadowColor: colors.primary,
             shadowOpacity: 0.3,
           }}
@@ -740,6 +776,12 @@ export default function BookingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Notification History Modal */}
+      <NotificationHistory
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </View>
   );
 }

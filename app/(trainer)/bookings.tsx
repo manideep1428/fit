@@ -10,11 +10,11 @@ import { getColors, Shadows } from '@/constants/colors';
 import CalendarView from '@/components/CalendarView';
 import { Ionicons } from '@expo/vector-icons';
 import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
-import GoogleTokenStatus from '@/components/GoogleTokenStatus';
 import Toast from 'react-native-toast-message';
 import { Id } from '@/convex/_generated/dataModel';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { PullToRefresh } from '@/components/PullToRefresh';
+import NotificationHistory from '@/components/NotificationHistory';
 
 
 export default function BookingsScreen() {
@@ -26,6 +26,7 @@ export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'schedule' | 'bookings'>('bookings');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     visible: boolean;
     title: string;
@@ -51,6 +52,12 @@ export default function BookingsScreen() {
   );
 
   const clients = useQuery(api.users.getAllClients);
+
+  // Fetch unread notification count
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    user?.id ? { userId: user.id } : "skip"
+  );
 
   // Pull to refresh handler
   const handleRefresh = useCallback(async () => {
@@ -217,9 +224,25 @@ export default function BookingsScreen() {
               Manage your training sessions
             </Text>
           </View>
-
-          {/* Google Calendar Status */}
-          <GoogleTokenStatus onConnect={() => setShowCalendarModal(true)} />
+          <TouchableOpacity
+            className="relative w-10 h-10 rounded-full items-center justify-center"
+            style={{ backgroundColor: colors.surfaceSecondary }}
+            onPress={() => setShowNotifications(true)}
+          >
+            <Ionicons name="notifications" size={20} color={colors.text} />
+            {unreadCount &&
+              typeof unreadCount === "number" &&
+              unreadCount > 0 && (
+                <View
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center"
+                  style={{ backgroundColor: colors.error }}
+                >
+                  <Text className="text-white text-xs font-bold">
+                    {unreadCount > 9 ? "9+" : String(unreadCount)}
+                  </Text>
+                </View>
+              )}
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -273,6 +296,39 @@ export default function BookingsScreen() {
       {/* Tab Content */}
       {activeTab === 'bookings' ? (
         <PullToRefresh onRefresh={handleRefresh} contentContainerStyle={{ paddingBottom: 100 }}>
+          {/* Session Stats Summary */}
+          <View className="px-6 pt-2 pb-4">
+            <View
+              className="rounded-2xl p-4 flex-row"
+              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+            >
+              <View className="flex-1 items-center border-r" style={{ borderRightColor: colors.border }}>
+                <Text className="text-2xl font-bold" style={{ color: colors.primary }}>
+                  {enrichedBookings.filter((b: any) => b.status === 'completed').length}
+                </Text>
+                <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+                  Completed
+                </Text>
+              </View>
+              <View className="flex-1 items-center border-r" style={{ borderRightColor: colors.border }}>
+                <Text className="text-2xl font-bold" style={{ color: colors.success }}>
+                  {currentBookings.length}
+                </Text>
+                <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+                  Upcoming
+                </Text>
+              </View>
+              <View className="flex-1 items-center">
+                <Text className="text-2xl font-bold" style={{ color: colors.warning }}>
+                  {enrichedBookings.filter((b: any) => b.status === 'cancellation_requested').length}
+                </Text>
+                <Text className="text-xs mt-1" style={{ color: colors.textSecondary }}>
+                  Pending
+                </Text>
+              </View>
+            </View>
+          </View>
+
           {/* Current Bookings */}
           <View className="px-6 pt-2">
             <View className="flex-row items-center mb-4">
@@ -531,6 +587,12 @@ export default function BookingsScreen() {
           onCancel={() => setConfirmDialog(null)}
         />
       )}
+
+      {/* Notification History Modal */}
+      <NotificationHistory
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </View>
   );
 }

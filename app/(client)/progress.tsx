@@ -14,6 +14,8 @@ import { getColors, Shadows, BorderRadius } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AnimatedCard } from '@/components/AnimatedCard';
+import { useState } from 'react';
+import NotificationHistory from '@/components/NotificationHistory';
 
 export default function ProgressScreen() {
   const { user } = useUser();
@@ -22,6 +24,7 @@ export default function ProgressScreen() {
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const goals = useQuery(
     api.goals.getClientGoals,
@@ -31,6 +34,12 @@ export default function ProgressScreen() {
   const progressLogs = useQuery(
     api.goals.getClientProgressLogs,
     user?.id ? { clientId: user.id } : 'skip'
+  );
+
+  // Fetch unread notification count
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    user?.id ? { userId: user.id } : "skip"
   );
 
   if (!goals || !progressLogs) {
@@ -66,13 +75,34 @@ export default function ProgressScreen() {
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="px-5 pb-6" style={{ paddingTop: insets.top + 12 }}>
-          <View>
-            <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
-              My Progress
-            </Text>
-            <Text className="text-base" style={{ color: colors.textSecondary }}>
-              Track your fitness journey
-            </Text>
+          <View className="flex-row items-center justify-between">
+            <View>
+              <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
+                My Progress
+              </Text>
+              <Text className="text-base" style={{ color: colors.textSecondary }}>
+                Track your fitness journey
+              </Text>
+            </View>
+            <TouchableOpacity
+              className="relative w-10 h-10 rounded-full items-center justify-center"
+              style={{ backgroundColor: colors.surface, ...shadows.small }}
+              onPress={() => setShowNotifications(true)}
+            >
+              <Ionicons name="notifications" size={20} color={colors.text} />
+              {unreadCount &&
+                typeof unreadCount === "number" &&
+                unreadCount > 0 && (
+                  <View
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center"
+                    style={{ backgroundColor: colors.error }}
+                  >
+                    <Text className="text-white text-xs font-bold">
+                      {unreadCount > 9 ? "9+" : String(unreadCount)}
+                    </Text>
+                  </View>
+                )}
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -356,6 +386,12 @@ export default function ProgressScreen() {
 
 
       </ScrollView>
+
+      {/* Notification History Modal */}
+      <NotificationHistory
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </View>
   );
 }

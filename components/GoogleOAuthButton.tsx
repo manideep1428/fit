@@ -59,7 +59,7 @@ export default function GoogleOAuthButton({
 
       if (createdSessionId) {
         if (mode === 'signup' && signIn?.status === 'complete') {
-          showToast.success('Account already exists. Signing you in...');
+          showToast.success('Account exists, signing in...');
         }
 
         // Set the session active
@@ -72,7 +72,7 @@ export default function GoogleOAuthButton({
         // The index.tsx will check user role and redirect appropriately
         router.replace('/');
       } else {
-        showToast.error('Authentication was cancelled or incomplete');
+        showToast.error('Auth cancelled');
       }
     } catch (err: any) {
       const errorMessage =

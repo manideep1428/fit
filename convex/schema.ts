@@ -27,6 +27,10 @@ export default defineSchema({
         newBookings: v.boolean(),
       })
     ),
+    // Profile setup tracking for trainers
+    profileSetupStep: v.optional(v.number()), // Current step in profile setup (1-4)
+    profileSetupData: v.optional(v.string()), // JSON string of saved form data
+    profileCompleted: v.optional(v.boolean()), // Whether profile setup is complete
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -38,11 +42,13 @@ export default defineSchema({
     trainerId: v.string(), // Clerk ID
     dayOfWeek: v.number(), // 0-6 (Sunday-Saturday)
     enabled: v.boolean(),
-    timeRanges: v.array(
-      v.object({
-        startTime: v.string(), // "09:00"
-        endTime: v.string(), // "17:00"
-      })
+    timeRanges: v.optional(
+      v.array(
+        v.object({
+          startTime: v.string(), // "09:00"
+          endTime: v.string(), // "17:00"
+        })
+      )
     ),
     breaks: v.array(
       v.object({
@@ -94,6 +100,7 @@ export default defineSchema({
       v.literal("subscription_request"),
       v.literal("subscription_request_sent"),
       v.literal("subscription_approved"),
+      v.literal("subscription_rejected"),
       v.literal("session_completed"),
       v.literal("subscription_ending"),
       v.literal("subscription_expired"),
@@ -105,7 +112,13 @@ export default defineSchema({
     message: v.string(),
     bookingId: v.optional(v.id("bookings")),
     read: v.boolean(),
-    filter: v.optional(v.union(v.literal("bookings"), v.literal("trainers"), v.literal("discounts"))),
+    filter: v.optional(
+      v.union(
+        v.literal("bookings"),
+        v.literal("trainers"),
+        v.literal("discounts")
+      )
+    ),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -252,7 +265,7 @@ export default defineSchema({
       v.literal("cancelled")
     ),
     paymentMethod: v.union(v.literal("offline"), v.literal("online")),
-    paymentStatus: v.union(v.literal("pending"), v.literal("paid")),
+    paymentStatus: v.union(v.literal("pending"), v.literal("paid"), v.literal("rejected")),
     autoRenew: v.optional(v.boolean()),
     approvedAt: v.optional(v.number()), // Timestamp when subscription was approved
     createdAt: v.number(),

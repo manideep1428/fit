@@ -7,72 +7,72 @@ import {
   Image,
   Switch,
   Alert,
-} from 'react-native';
-import { useUser, useAuth } from '@clerk/clerk-expo';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows } from '@/constants/colors';
-import { useRouter } from 'expo-router';
-import { useDarkMode } from '@/hooks/useDarkMode';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
+} from "react-native";
+import { useUser, useAuth } from "@clerk/clerk-expo";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getColors, Shadows } from "@/constants/colors";
+import { useRouter } from "expo-router";
+import { useDarkMode } from "@/hooks/useDarkMode";
+import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
 
 export default function ProfileScreen() {
   const { user } = useUser();
   const { signOut } = useAuth();
   const router = useRouter();
   const scheme = useColorScheme();
-  const colors = getColors(scheme === 'dark');
-  const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const colors = getColors(scheme === "dark");
+  const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
   const { isDark, toggleDarkMode } = useDarkMode();
 
   const userData = useQuery(
     api.users.getUserByClerkId,
-    user?.id ? { clerkId: user.id } : 'skip'
+    user?.id ? { clerkId: user.id } : "skip"
   );
   const updateProfile = useMutation(api.users.updateUserProfile);
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   const profileImageUrl = useQuery(
     api.users.getProfileImageUrl,
-    userData?.profileImageId ? { storageId: userData.profileImageId } : 'skip'
+    userData?.profileImageId ? { storageId: userData.profileImageId } : "skip"
   );
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await signOut();
-            router.replace('/(auth)/welcome');
-          },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await signOut();
+          router.replace("/(auth)/welcome");
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handlePickImage = async () => {
     if (!user?.id) return;
-    
+
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant camera roll permissions to change your profile picture.');
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission needed",
+          "Please grant camera roll permissions to change your profile picture."
+        );
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images' as any,
+        mediaTypes: "images" as any,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -87,8 +87,8 @@ export default function ProfileScreen() {
       const blob = await response.blob();
 
       const uploadResponse = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': blob.type },
+        method: "POST",
+        headers: { "Content-Type": blob.type },
         body: blob,
       });
 
@@ -99,10 +99,10 @@ export default function ProfileScreen() {
         profileImageId: storageId,
       });
 
-      Alert.alert('Success', 'Profile picture updated!');
+      Alert.alert("Success", "Profile picture updated!");
     } catch (error) {
-      console.error('Error uploading image:', error);
-      Alert.alert('Error', 'Failed to upload image. Please try again.');
+      console.error("Error uploading image:", error);
+      Alert.alert("Error", "Failed to upload image. Please try again.");
     } finally {
       setUploadingImage(false);
     }
@@ -110,7 +110,10 @@ export default function ProfileScreen() {
 
   if (!user) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: colors.background }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -120,7 +123,7 @@ export default function ProfileScreen() {
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       {/* Gradient Background Overlay */}
       <LinearGradient
-        colors={[`${colors.primary}33`, `${colors.primary}0D`, 'transparent']}
+        colors={[`${colors.primary}33`, `${colors.primary}0D`, "transparent"]}
         className="absolute top-0 left-0 right-0 h-80"
         pointerEvents="none"
       />
@@ -128,7 +131,10 @@ export default function ProfileScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="px-4 pt-16 pb-4">
-          <Text className="text-lg font-bold text-center" style={{ color: colors.text }}>
+          <Text
+            className="text-lg font-bold text-center"
+            style={{ color: colors.text }}
+          >
             Profile
           </Text>
         </View>
@@ -147,7 +153,7 @@ export default function ProfileScreen() {
                 shadowRadius: 20,
               }}
             />
-            
+
             {/* Avatar */}
             <View
               className="w-32 h-32 rounded-full overflow-hidden items-center justify-center"
@@ -158,12 +164,19 @@ export default function ProfileScreen() {
               }}
             >
               {profileImageUrl ? (
-                <Image source={{ uri: profileImageUrl }} className="w-full h-full" />
+                <Image
+                  source={{ uri: profileImageUrl }}
+                  className="w-full h-full"
+                />
               ) : user.imageUrl ? (
-                <Image source={{ uri: user.imageUrl }} className="w-full h-full" />
+                <Image
+                  source={{ uri: user.imageUrl }}
+                  className="w-full h-full"
+                />
               ) : (
                 <Text className="text-white text-4xl font-bold">
-                  {user.firstName?.[0] || user.emailAddresses[0]?.emailAddress[0].toUpperCase()}
+                  {user.firstName?.[0] ||
+                    user.emailAddresses[0]?.emailAddress[0].toUpperCase()}
                 </Text>
               )}
             </View>
@@ -190,9 +203,12 @@ export default function ProfileScreen() {
 
           <View className="mt-4 items-center">
             <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-              {userData?.fullName || user.firstName || 'Trainer'}
+              {userData?.fullName || user.firstName || "Trainer"}
             </Text>
-            <Text className="text-sm font-medium mt-1" style={{ color: colors.textSecondary }}>
+            <Text
+              className="text-sm font-medium mt-1"
+              style={{ color: colors.textSecondary }}
+            >
               {user.emailAddresses[0]?.emailAddress}
             </Text>
             {userData?.specialty && (
@@ -200,7 +216,10 @@ export default function ProfileScreen() {
                 className="px-4 py-2 rounded-full mt-2"
                 style={{ backgroundColor: `${colors.primary}20` }}
               >
-                <Text className="text-xs font-semibold" style={{ color: colors.primary }}>
+                <Text
+                  className="text-xs font-semibold"
+                  style={{ color: colors.primary }}
+                >
                   {userData.specialty}
                 </Text>
               </View>
@@ -212,134 +231,191 @@ export default function ProfileScreen() {
         <View className="px-4 pb-8">
           {/* PROFILE Section */}
           <View className="mb-6">
-            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
+            <Text
+              className="text-xs font-bold uppercase tracking-widest mb-3 ml-2"
+              style={{ color: colors.textTertiary }}
+            >
               Profile
             </Text>
             <View className="gap-2">
               <TouchableOpacity
-                onPress={() => router.push('/(trainer)/availability' as any)}
+                onPress={() => router.push("/(trainer)/availability" as any)}
                 className="rounded-xl p-4 flex-row items-center justify-between"
-                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
                     style={{ backgroundColor: `${colors.primary}1A` }}
                   >
-                    <Ionicons name="time-outline" size={20} color={colors.primary} />
+                    <Ionicons
+                      name="time-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
                     Availability
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => router.push('/edit-profile' as any)}
+                onPress={() => router.push("/edit-profile" as any)}
                 className="rounded-xl p-4 flex-row items-center justify-between"
-                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
                     style={{ backgroundColor: `${colors.primary}1A` }}
                   >
-                    <Ionicons name="create-outline" size={20} color={colors.primary} />
+                    <Ionicons
+                      name="create-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
                     Edit Profile
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* BUSINESS Section */}
           <View className="mb-6">
-            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
+            <Text
+              className="text-xs font-bold uppercase tracking-widest mb-3 ml-2"
+              style={{ color: colors.textTertiary }}
+            >
               Business
             </Text>
             <View className="gap-2">
               <TouchableOpacity
-                onPress={() => router.push('/(trainer)/packages' as any)}
+                onPress={() => router.push("/(trainer)/packages" as any)}
                 className="rounded-xl p-4 flex-row items-center justify-between"
-                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#8B5CF620' }}
+                    style={{ backgroundColor: "#8B5CF620" }}
                   >
                     <Ionicons name="cube-outline" size={20} color="#8B5CF6" />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
-                    Packages
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
+                    Subscriptions
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
               </TouchableOpacity>
-
               <TouchableOpacity
-                onPress={() => router.push('/(trainer)/pricing-admin' as any)}
+                onPress={() => router.push("/(trainer)/subscriptions" as any)}
                 className="rounded-xl p-4 flex-row items-center justify-between"
-                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#F9731620' }}
+                    style={{ backgroundColor: "#3B82F620" }}
                   >
-                    <Ionicons name="pricetag-outline" size={20} color="#F97316" />
+                    <Ionicons
+                      name="calendar-outline"
+                      size={20}
+                      color="#3B82F6"
+                    />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
-                    Pricing & Discounts
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => router.push('/(trainer)/subscriptions' as any)}
-                className="rounded-xl p-4 flex-row items-center justify-between"
-                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
-              >
-                <View className="flex-row items-center gap-4">
-                  <View
-                    className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#3B82F620' }}
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
                   >
-                    <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
-                  </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
                     Client Subscriptions
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* PREFERENCES Section */}
           <View className="mb-6">
-            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
+            <Text
+              className="text-xs font-bold uppercase tracking-widest mb-3 ml-2"
+              style={{ color: colors.textTertiary }}
+            >
               Preferences
             </Text>
             <View className="gap-2">
               {/* Dark Mode */}
               <View
                 className="rounded-xl p-4 flex-row items-center justify-between"
-                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#A855F720' }}
+                    style={{ backgroundColor: "#A855F720" }}
                   >
                     <Ionicons name="moon-outline" size={20} color="#A855F7" />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
                     Dark Mode
                   </Text>
                 </View>
@@ -354,16 +430,28 @@ export default function ProfileScreen() {
               {/* Notifications */}
               <View
                 className="rounded-xl p-4 flex-row items-center justify-between"
-                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#EF444420' }}
+                    style={{ backgroundColor: "#EF444420" }}
                   >
-                    <Ionicons name="notifications-outline" size={20} color="#EF4444" />
+                    <Ionicons
+                      name="notifications-outline"
+                      size={20}
+                      color="#EF4444"
+                    />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
                     Notifications
                   </Text>
                 </View>
@@ -377,90 +465,77 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* INTEGRATIONS Section */}
-          <View className="mb-6">
-            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
-              Integrations
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                if (!userData?.googleAccessToken) {
-                  router.push('/(trainer)/bookings' as any);
-                } else {
-                  Alert.alert(
-                    'Google Calendar Connected',
-                    'Your Google Calendar is already connected. You can manage your calendar sync from the bookings page.',
-                    [
-                      { text: 'OK', style: 'default' },
-                      { text: 'Go to Bookings', onPress: () => router.push('/(trainer)/bookings' as any) },
-                    ]
-                  );
-                }
-              }}
-              className="rounded-xl p-4 flex-row items-center justify-between"
-              style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
-            >
-              <View className="flex-row items-center gap-4">
-                <View
-                  className="w-10 h-10 rounded-full items-center justify-center"
-                  style={{ backgroundColor: '#10B98120' }}
-                >
-                  <Ionicons name="calendar-outline" size={20} color="#10B981" />
-                </View>
-                <Text className="font-medium text-base" style={{ color: colors.text }}>
-                  Google Calendar
-                </Text>
-              </View>
-              {userData?.googleAccessToken ? (
-                <Text className="text-sm font-medium" style={{ color: colors.primary }}>
-                  Connected
-                </Text>
-              ) : (
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-              )}
-            </TouchableOpacity>
-          </View>
-
           {/* ACCOUNT Section */}
           <View className="mb-6">
-            <Text className="text-xs font-bold uppercase tracking-widest mb-3 ml-2" style={{ color: colors.textTertiary }}>
+            <Text
+              className="text-xs font-bold uppercase tracking-widest mb-3 ml-2"
+              style={{ color: colors.textTertiary }}
+            >
               Account
             </Text>
             <View className="gap-2">
               {/* Change Password */}
               <TouchableOpacity
-                onPress={() => router.push('/change-password' as any)}
+                onPress={() => router.push("/change-password" as any)}
                 className="rounded-xl p-4 flex-row items-center justify-between"
-                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
                     style={{ backgroundColor: `${colors.textTertiary}20` }}
                   >
-                    <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: colors.text }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
                     Change Password
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
               </TouchableOpacity>
 
               {/* Logout */}
               <TouchableOpacity
                 onPress={handleLogout}
                 className="rounded-xl p-4 flex-row items-center justify-between"
-                style={{ backgroundColor: colors.surface, ...shadows.small, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
               >
                 <View className="flex-row items-center gap-4">
                   <View
                     className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: '#EF444420' }}
+                    style={{ backgroundColor: "#EF444420" }}
                   >
-                    <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                    <Ionicons
+                      name="log-out-outline"
+                      size={20}
+                      color="#EF4444"
+                    />
                   </View>
-                  <Text className="font-medium text-base" style={{ color: '#EF4444' }}>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: "#EF4444" }}
+                  >
                     Logout
                   </Text>
                 </View>

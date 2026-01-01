@@ -433,6 +433,19 @@ export default function SignInScreen() {
             </View>
           </View>
 
+          {/* Forgot Password Link */}
+          <TouchableOpacity
+            onPress={() => router.push("/(auth)/forgot-password" as any)}
+            className="mb-4"
+          >
+            <Text
+              className="text-right text-base"
+              style={{ color: colors.primary }}
+            >
+              Forgot Password?
+            </Text>
+          </TouchableOpacity>
+
           {/* Sign In Button */}
           <TouchableOpacity
             onPress={handleSignIn}

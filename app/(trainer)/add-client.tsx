@@ -1,25 +1,34 @@
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { useUser } from '@clerk/clerk-expo';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows } from '@/constants/colors';
-import { StatusBar } from 'expo-status-bar';
-import { showToast } from '@/utils/toast';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Image,
+  Alert,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { useUser } from "@clerk/clerk-expo";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getColors, Shadows } from "@/constants/colors";
+import { StatusBar } from "expo-status-bar";
+import { showToast } from "@/utils/toast";
 
 export default function AddClientScreen() {
   const { user } = useUser();
   const router = useRouter();
   const scheme = useColorScheme();
-  const colors = getColors(scheme === 'dark');
-  const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const colors = getColors(scheme === "dark");
+  const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
 
-  const [clientEmail, setClientEmail] = useState('');
-  const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
   const inviteClient = useMutation(api.users.inviteClientByEmail);
@@ -28,7 +37,7 @@ export default function AddClientScreen() {
   // Get existing clients for this trainer
   const existingClients = useQuery(
     api.users.getTrainerClients,
-    user?.id ? { trainerId: user.id } : 'skip'
+    user?.id ? { trainerId: user.id } : "skip"
   );
 
   const validateEmail = (email: string) => {
@@ -40,32 +49,33 @@ export default function AddClientScreen() {
     if (!user?.id) return;
 
     if (!clientEmail.trim()) {
-      showToast.error('Please enter client email');
+      showToast.error("Enter email");
       return;
     }
 
     if (!validateEmail(clientEmail.trim())) {
-      showToast.error('Please enter a valid email address');
+      showToast.error("Invalid email");
       return;
     }
 
     if (!clientName.trim()) {
-      showToast.error('Please enter client name');
+      showToast.error("Enter name");
       return;
     }
 
     if (!clientPhone.trim()) {
-      showToast.error('Please enter client phone number');
+      showToast.error("Enter phone");
       return;
     }
 
     // Check if client already exists in trainer's list
     const alreadyAdded = existingClients?.some(
-      (client: any) => client?.email?.toLowerCase() === clientEmail.trim().toLowerCase()
+      (client: any) =>
+        client?.email?.toLowerCase() === clientEmail.trim().toLowerCase()
     );
 
     if (alreadyAdded) {
-      showToast.error('This client is already in your list');
+      showToast.error("Client already added");
       return;
     }
 
@@ -78,17 +88,19 @@ export default function AddClientScreen() {
         phoneNumber: clientPhone.trim(),
       });
 
-      if (result.status === 'existing') {
-        showToast.success('Client added to your list!');
+      if (result.status === "existing") {
+        showToast.success("Client added to your list!");
       } else {
-        showToast.success('Client invited! They can now sign in with this email.');
+        showToast.success(
+          "Client invited! They can now sign in with this email."
+        );
       }
 
-      // Navigate back
-      router.push("/(trainer)/clients");
+      // Navigate back to previous screen
+      router.back();
     } catch (error: any) {
-      console.error('Error inviting client:', error);
-      showToast.error(error.message || 'Failed to invite client');
+      console.error("Error inviting client:", error);
+      showToast.error(error.message || "Failed to invite client");
     } finally {
       setIsAdding(false);
     }
@@ -96,7 +108,7 @@ export default function AddClientScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={scheme === "dark" ? "light" : "dark"} />
 
       {/* Header */}
       <View className="px-4 pt-16 pb-4 flex-row items-center justify-between">
@@ -106,7 +118,10 @@ export default function AddClientScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text className="text-xl font-semibold flex-1 text-center" style={{ color: colors.text }}>
+        <Text
+          className="text-xl font-semibold flex-1 text-center"
+          style={{ color: colors.text }}
+        >
           Add Client
         </Text>
         <View className="w-12" />
@@ -114,24 +129,36 @@ export default function AddClientScreen() {
 
       <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
         {/* Info Card */}
-        <View 
+        <View
           className="p-4 rounded-xl mb-6"
           style={{ backgroundColor: `${colors.primary}15` }}
         >
           <View className="flex-row items-center mb-2">
-            <Ionicons name="information-circle" size={20} color={colors.primary} />
-            <Text className="text-sm font-semibold ml-2" style={{ color: colors.text }}>
+            <Ionicons
+              name="information-circle"
+              size={20}
+              color={colors.primary}
+            />
+            <Text
+              className="text-sm font-semibold ml-2"
+              style={{ color: colors.text }}
+            >
               How it works
             </Text>
           </View>
           <Text className="text-sm" style={{ color: colors.textSecondary }}>
-            Enter your client's email, name, and phone number. They will be able to sign in using this email address. If they don't have an account yet, one will be created for them.
+            Enter your client's email, name, and phone number. They will be able
+            to sign in using this email address. If they don't have an account
+            yet, one will be created for them.
           </Text>
         </View>
 
         {/* Client Email Input */}
         <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             Client Email *
           </Text>
           <View
@@ -142,7 +169,11 @@ export default function AddClientScreen() {
               borderColor: colors.border,
             }}
           >
-            <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="mail-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               className="flex-1 ml-3 text-base"
               style={{ color: colors.text }}
@@ -159,7 +190,10 @@ export default function AddClientScreen() {
 
         {/* Client Name Input */}
         <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             Client Name *
           </Text>
           <View
@@ -170,7 +204,11 @@ export default function AddClientScreen() {
               borderColor: colors.border,
             }}
           >
-            <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="person-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               className="flex-1 ml-3 text-base"
               style={{ color: colors.text }}
@@ -185,7 +223,10 @@ export default function AddClientScreen() {
 
         {/* Client Phone Input */}
         <View className="mb-6">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             Phone Number *
           </Text>
           <View
@@ -196,7 +237,11 @@ export default function AddClientScreen() {
               borderColor: colors.border,
             }}
           >
-            <Ionicons name="call-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="call-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               className="flex-1 ml-3 text-base"
               style={{ color: colors.text }}
@@ -212,8 +257,11 @@ export default function AddClientScreen() {
         {/* Add Button */}
         <TouchableOpacity
           className="rounded-xl py-4 items-center mb-6"
-          style={{ 
-            backgroundColor: clientEmail && clientName && clientPhone ? colors.primary : colors.border,
+          style={{
+            backgroundColor:
+              clientEmail && clientName && clientPhone
+                ? colors.primary
+                : colors.border,
           }}
           onPress={handleInviteClient}
           disabled={isAdding || !clientEmail || !clientName || !clientPhone}
@@ -233,7 +281,10 @@ export default function AddClientScreen() {
         {/* Existing Clients Section */}
         {existingClients && existingClients.length > 0 && (
           <View className="mt-4">
-            <Text className="text-sm font-semibold mb-3" style={{ color: colors.textSecondary }}>
+            <Text
+              className="text-sm font-semibold mb-3"
+              style={{ color: colors.textSecondary }}
+            >
               Your Clients ({existingClients.length})
             </Text>
             {existingClients.slice(0, 5).map((client: any) => (
@@ -247,28 +298,37 @@ export default function AddClientScreen() {
                   style={{ backgroundColor: colors.primary }}
                 >
                   <Text className="text-white font-bold">
-                    {client?.fullName?.[0] || 'C'}
+                    {client?.fullName?.[0] || "C"}
                   </Text>
                 </View>
                 <View className="flex-1">
                   <Text className="font-medium" style={{ color: colors.text }}>
-                    {client?.fullName || 'Client'}
+                    {client?.fullName || "Client"}
                   </Text>
-                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                  <Text
+                    className="text-xs"
+                    style={{ color: colors.textSecondary }}
+                  >
                     {client?.email}
                   </Text>
                   {client?.phoneNumber && (
-                    <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+                    <Text
+                      className="text-xs mt-0.5"
+                      style={{ color: colors.textSecondary }}
+                    >
                       {client.phoneNumber}
                     </Text>
                   )}
                 </View>
-                {client?.clerkId?.startsWith('pending_') && (
-                  <View 
+                {client?.clerkId?.startsWith("pending_") && (
+                  <View
                     className="px-2 py-1 rounded-full"
                     style={{ backgroundColor: `${colors.warning}20` }}
                   >
-                    <Text className="text-xs font-medium" style={{ color: colors.warning }}>
+                    <Text
+                      className="text-xs font-medium"
+                      style={{ color: colors.warning }}
+                    >
                       Pending
                     </Text>
                   </View>
@@ -278,9 +338,12 @@ export default function AddClientScreen() {
             {existingClients.length > 5 && (
               <TouchableOpacity
                 className="py-3 items-center"
-                onPress={() => router.push('/(trainer)/clients' as any)}
+                onPress={() => router.push("/(trainer)/clients" as any)}
               >
-                <Text className="text-sm font-medium" style={{ color: colors.primary }}>
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: colors.primary }}
+                >
                   View all {existingClients.length} clients
                 </Text>
               </TouchableOpacity>

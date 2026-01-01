@@ -64,7 +64,7 @@ export default function QuestionFormScreen() {
 
   const handleSave = async () => {
     if (!question.trim()) {
-      showToast.error("Please enter a question");
+      showToast.error("Enter a question");
       return;
     }
     if (!user?.id || !clientId) return;
@@ -77,7 +77,7 @@ export default function QuestionFormScreen() {
           question: question.trim(),
           answer: answer.trim(),
         });
-        showToast.success("Question updated!");
+        showToast.success("Updated");
       } else {
         await createQuestionWithAnswer({
           trainerId: user.id,
@@ -85,12 +85,12 @@ export default function QuestionFormScreen() {
           question: question.trim(),
           answer: answer.trim(),
         });
-        showToast.success("Question saved!");
+        showToast.success("Saved");
       }
       router.back();
     } catch (error) {
       console.error("Error saving question:", error);
-      showToast.error("Failed to save question");
+      showToast.error("Save failed");
     } finally {
       setSaving(false);
     }
@@ -98,7 +98,7 @@ export default function QuestionFormScreen() {
 
   const handleSaveAndAddAnother = async () => {
     if (!question.trim()) {
-      showToast.error("Please enter a question");
+      showToast.error("Enter a question");
       return;
     }
     if (!user?.id || !clientId) return;
@@ -111,12 +111,12 @@ export default function QuestionFormScreen() {
         question: question.trim(),
         answer: answer.trim(),
       });
-      showToast.success("Question saved!");
+      showToast.success("Saved");
       setQuestion("");
       setAnswer("");
     } catch (error) {
       console.error("Error saving question:", error);
-      showToast.error("Failed to save question");
+      showToast.error("Save failed");
     } finally {
       setSaving(false);
     }
@@ -255,25 +255,23 @@ export default function QuestionFormScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
+        style={{ flex: 1 }}
       >
-        <ScrollView
-          className="flex-1 px-4 py-6"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Question Section */}
+        <View className="flex-1 px-4 py-4">
+          {/* Question Section - Compact */}
           <View
-            className="rounded-2xl p-5 mb-4"
+            className="rounded-2xl p-4 mb-4"
             style={{ backgroundColor: colors.surface, ...shadows.medium }}
           >
-            <View className="flex-row items-center mb-4">
+            <View className="flex-row items-center mb-3">
               <View
-                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                className="w-8 h-8 rounded-full items-center justify-center mr-2"
                 style={{ backgroundColor: `${colors.primary}15` }}
               >
-                <Ionicons name="help-circle" size={22} color={colors.primary} />
+                <Ionicons name="help-circle" size={18} color={colors.primary} />
               </View>
               <Text
-                className="text-lg font-bold"
+                className="text-base font-bold"
                 style={{ color: colors.text }}
               >
                 Question
@@ -283,14 +281,14 @@ export default function QuestionFormScreen() {
             {isViewMode ? (
               <View>
                 <Text
-                  className="text-base leading-7"
+                  className="text-base leading-6"
                   style={{ color: colors.text }}
                 >
                   {existingQuestion?.question}
                 </Text>
                 {existingQuestion?.createdAt && (
                   <View
-                    className="flex-row items-center mt-4 pt-4 border-t"
+                    className="flex-row items-center mt-3 pt-3 border-t"
                     style={{ borderTopColor: colors.border }}
                   >
                     <Ionicons
@@ -319,39 +317,39 @@ export default function QuestionFormScreen() {
               <TextInput
                 value={question}
                 onChangeText={setQuestion}
-                placeholder="What question was discussed?"
+                placeholder="Enter the question..."
                 placeholderTextColor={colors.textTertiary}
                 multiline
-                numberOfLines={4}
-                className="px-4 py-3"
+                numberOfLines={2}
+                className="px-3 py-2"
                 style={{
                   backgroundColor: colors.background,
                   color: colors.text,
-                  borderRadius: 12,
+                  borderRadius: 10,
                   borderWidth: 1,
                   borderColor: colors.border,
                   textAlignVertical: "top",
-                  minHeight: 100,
-                  fontSize: 16,
+                  minHeight: 50,
+                  fontSize: 15,
                 }}
               />
             )}
           </View>
 
-          {/* Answer Section */}
+          {/* Answer Section - Takes remaining space */}
           <View
-            className="rounded-2xl p-5 mb-6"
+            className="flex-1 rounded-2xl p-4"
             style={{ backgroundColor: colors.surface, ...shadows.medium }}
           >
-            <View className="flex-row items-center mb-4">
+            <View className="flex-row items-center mb-3">
               <View
-                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                className="w-8 h-8 rounded-full items-center justify-center mr-2"
                 style={{ backgroundColor: `${colors.success}15` }}
               >
-                <Ionicons name="chatbubble" size={20} color={colors.success} />
+                <Ionicons name="chatbubble" size={16} color={colors.success} />
               </View>
               <Text
-                className="text-lg font-bold"
+                className="text-base font-bold"
                 style={{ color: colors.text }}
               >
                 Answer / Notes
@@ -359,7 +357,7 @@ export default function QuestionFormScreen() {
             </View>
 
             {isViewMode ? (
-              <View>
+              <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                 {existingQuestion?.answer ? (
                   <View>
                     <Text
@@ -422,7 +420,7 @@ export default function QuestionFormScreen() {
                     </Text>
                   </View>
                 )}
-              </View>
+              </ScrollView>
             ) : (
               <TextInput
                 value={answer}
@@ -430,8 +428,7 @@ export default function QuestionFormScreen() {
                 placeholder="Write the client's answer or discussion notes..."
                 placeholderTextColor={colors.textTertiary}
                 multiline
-                numberOfLines={8}
-                className="px-4 py-3"
+                className="flex-1 px-4 py-3"
                 style={{
                   backgroundColor: colors.background,
                   color: colors.text,
@@ -439,43 +436,12 @@ export default function QuestionFormScreen() {
                   borderWidth: 1,
                   borderColor: colors.border,
                   textAlignVertical: "top",
-                  minHeight: 200,
                   fontSize: 16,
                 }}
               />
             )}
           </View>
-
-          {/* Tips Section - only in create/edit mode */}
-          {!isViewMode && (
-            <View
-              className="rounded-xl p-4 mb-8"
-              style={{
-                backgroundColor: `${colors.info}10`,
-                borderWidth: 1,
-                borderColor: `${colors.info}30`,
-              }}
-            >
-              <View className="flex-row items-center mb-2">
-                <Ionicons name="bulb" size={18} color={colors.info} />
-                <Text
-                  className="text-sm font-semibold ml-2"
-                  style={{ color: colors.info }}
-                >
-                  Tip
-                </Text>
-              </View>
-              <Text
-                className="text-sm leading-relaxed"
-                style={{ color: colors.textSecondary }}
-              >
-                Use this to record important conversation points from offline
-                meetings with your client. You can add the question and answer
-                together, or come back later to update the notes.
-              </Text>
-            </View>
-          )}
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );

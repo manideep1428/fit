@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
+import { useState } from 'react';
+import NotificationHistory from '@/components/NotificationHistory';
 
 export default function ClientsScreen() {
   const { user } = useUser();
@@ -15,6 +17,7 @@ export default function ClientsScreen() {
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const clients = useQuery(
     api.users.getTrainerClients,
@@ -24,6 +27,12 @@ export default function ClientsScreen() {
   const bookings = useQuery(
     api.bookings.getTrainerBookings,
     user?.id ? { trainerId: user.id } : 'skip'
+  );
+
+  // Fetch unread notification count
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    user?.id ? { userId: user.id } : "skip"
   );
 
   if (!user) {
@@ -67,13 +76,34 @@ export default function ClientsScreen() {
                 {clients?.length || 0} active {clients?.length === 1 ? 'client' : 'clients'}
               </Text>
             </View>
-            <TouchableOpacity
-              className="w-12 h-12 rounded-full items-center justify-center"
-              style={{ backgroundColor: colors.primary, ...shadows.medium }}
-              onPress={() => router.push('/(trainer)/add-client' as any)}
-            >
-              <Ionicons name="person-add" size={24} color="#FFF" />
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                className="relative w-10 h-10 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.surface, ...shadows.small }}
+                onPress={() => setShowNotifications(true)}
+              >
+                <Ionicons name="notifications" size={20} color={colors.text} />
+                {unreadCount &&
+                  typeof unreadCount === "number" &&
+                  unreadCount > 0 && (
+                    <View
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center"
+                      style={{ backgroundColor: colors.error }}
+                    >
+                      <Text className="text-white text-xs font-bold">
+                        {unreadCount > 9 ? "9+" : String(unreadCount)}
+                      </Text>
+                    </View>
+                  )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="w-12 h-12 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.primary, ...shadows.medium }}
+                onPress={() => router.push('/(trainer)/add-client' as any)}
+              >
+                <Ionicons name="person-add" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Stats Cards */}
@@ -219,6 +249,12 @@ export default function ClientsScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Notification History Modal */}
+      <NotificationHistory
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </View>
   );
 }

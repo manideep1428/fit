@@ -200,7 +200,22 @@ export const getClientBookings = query({
       .query("bookings")
       .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
       .collect();
-    return bookings;
+    
+    // Fetch trainer names for each booking
+    const bookingsWithTrainer = await Promise.all(
+      bookings.map(async (booking) => {
+        const trainer = await ctx.db
+          .query("users")
+          .withIndex("by_clerk_id", (q) => q.eq("clerkId", booking.trainerId))
+          .first();
+        return {
+          ...booking,
+          trainerName: trainer?.fullName || "Trainer",
+        };
+      })
+    );
+    
+    return bookingsWithTrainer;
   },
 });
 

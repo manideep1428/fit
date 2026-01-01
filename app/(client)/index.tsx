@@ -13,7 +13,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvex } from "convex/react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -51,9 +51,9 @@ export default function ClientHomeScreen() {
     user?.id ? { clientId: user.id } : "skip"
   );
 
-  // Fetch client goals
+  // Fetch client goals with progress
   const goals = useQuery(
-    api.goals.getActiveClientGoals,
+    api.goals.getActiveClientGoalsWithProgress,
     user?.id ? { clientId: user.id } : "skip"
   );
 
@@ -69,7 +69,49 @@ export default function ClientHomeScreen() {
     user?.id ? { clientId: user.id } : "skip"
   );
 
+  // Fetch current user data for profile image
+  const userData = useQuery(
+    api.users.getUserByClerkId,
+    user?.id ? { clerkId: user.id } : "skip"
+  );
+
+  // Fetch profile image URL from Convex storage
+  const profileImageUrl = useQuery(
+    api.users.getProfileImageUrl,
+    userData?.profileImageId ? { storageId: userData.profileImageId } : "skip"
+  );
+
   const answerQuestion = useMutation(api.questions.answerQuestion);
+  const convex = useConvex();
+
+  // State for trainer profile image URLs
+  const [trainerImageUrls, setTrainerImageUrls] = useState<Record<string, string>>({});
+
+  // Fetch trainer profile image URLs
+  useEffect(() => {
+    const fetchTrainerImages = async () => {
+      if (!clientTrainers) return;
+      
+      const urls: Record<string, string> = {};
+      for (const trainer of clientTrainers) {
+        if (trainer.profileImageId) {
+          try {
+            const url = await convex.query(api.users.getProfileImageUrl, { 
+              storageId: trainer.profileImageId 
+            });
+            if (url) {
+              urls[trainer.clerkId] = url;
+            }
+          } catch (error) {
+            console.error("Error fetching trainer image:", error);
+          }
+        }
+      }
+      setTrainerImageUrls(urls);
+    };
+
+    fetchTrainerImages();
+  }, [clientTrainers, convex]);
 
   // Get unanswered questions
   const unansweredQuestions = questions?.filter((q: any) => !q.answer) || [];
@@ -144,9 +186,6 @@ export default function ClientHomeScreen() {
       }) || [];
 
   const nextSession = upcomingSessions[0];
-  const nextSessionTrainer = nextSession
-    ? clientTrainers?.find((t: any) => t.clerkId === nextSession.trainerId)
-    : null;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -180,9 +219,9 @@ export default function ClientHomeScreen() {
                 borderColor: `${colors.primary}33`,
               }}
             >
-              {user?.imageUrl ? (
+              {profileImageUrl || user?.imageUrl ? (
                 <Image
-                  source={{ uri: user.imageUrl }}
+                  source={{ uri: profileImageUrl || user?.imageUrl }}
                   className="w-full h-full"
                 />
               ) : (
@@ -357,7 +396,7 @@ export default function ClientHomeScreen() {
                       className="text-base font-bold"
                       style={{ color: colors.text }}
                     >
-                      {nextSessionTrainer?.fullName || "Training Session"}
+                      {nextSession.trainerName || "Training Session"}
                     </Text>
                     <View className="flex-row items-center gap-1 mt-1">
                       <Ionicons
@@ -553,15 +592,8 @@ export default function ClientHomeScreen() {
                 contentContainerStyle={{ paddingRight: 16 }}
               >
                 {goals.map((goal: any, index: number) => {
-                  const progress =
-                    goal.currentWeight && goal.targetWeight
-                      ? Math.min(
-                          ((goal.currentWeight - goal.targetWeight) /
-                            (goal.currentWeight - goal.targetWeight)) *
-                            100,
-                          100
-                        )
-                      : 0;
+                  // Progress is calculated from goal statistics (uses latest progress log)
+                  const progress = goal.latestProgress || 0;
 
                   const iconColors = [
                     colors.warning,
@@ -621,7 +653,7 @@ export default function ClientHomeScreen() {
                             className="text-xs"
                             style={{ color: colors.textSecondary }}
                           >
-                            Target: {goal.targetWeight}
+                            {goal.latestWeight || goal.currentWeight}{goal.weightUnit} → {goal.targetWeight}
                             {goal.weightUnit}
                           </Text>
                         )}
@@ -645,7 +677,7 @@ export default function ClientHomeScreen() {
             </View>
           )}
 
-          {/* My Trainers Carousel */}
+          {/* My Trainers */}
           <View className="flex-col gap-3">
             <Text
               className="text-xl font-bold px-1"
@@ -653,12 +685,7 @@ export default function ClientHomeScreen() {
             >
               My Trainers
             </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="flex-row gap-3"
-              contentContainerStyle={{ paddingRight: 16 }}
-            >
+            <View className="flex-col gap-3">
               {clientTrainers && clientTrainers.length > 0 ? (
                 clientTrainers.map((trainer: any) => (
                   <TouchableOpacity
@@ -674,7 +701,7 @@ export default function ClientHomeScreen() {
                         },
                       } as any)
                     }
-                    className="min-w-[140px] rounded-xl p-3 flex-col items-center gap-2"
+                    className="w-full rounded-xl p-4 flex-row items-center gap-4"
                     style={{
                       backgroundColor: colors.surface,
                       borderWidth: 1,
@@ -682,45 +709,50 @@ export default function ClientHomeScreen() {
                     }}
                   >
                     <View
-                      className="w-16 h-16 rounded-full overflow-hidden items-center justify-center"
+                      className="w-14 h-14 rounded-full overflow-hidden items-center justify-center"
                       style={{
                         backgroundColor: colors.primary,
                         borderWidth: 2,
                         borderColor: `${colors.primary}33`,
                       }}
                     >
-                      {trainer.profileImageId ? (
+                      {trainerImageUrls[trainer.clerkId] ? (
                         <Image
-                          source={{ uri: trainer.profileImageId }}
+                          source={{ uri: trainerImageUrls[trainer.clerkId] }}
                           className="w-full h-full"
                         />
                       ) : (
-                        <Text className="text-white text-2xl font-bold">
+                        <Text className="text-white text-xl font-bold">
                           {trainer.fullName?.[0] || "T"}
                         </Text>
                       )}
                     </View>
-                    <View className="items-center">
+                    <View className="flex-1">
                       <Text
-                        className="text-sm font-bold"
+                        className="text-base font-bold"
                         style={{ color: colors.text }}
                         numberOfLines={1}
                       >
                         {trainer.fullName}
                       </Text>
                       <Text
-                        className="text-xs"
+                        className="text-sm"
                         style={{ color: colors.textSecondary }}
                         numberOfLines={1}
                       >
-                        {trainer.specialty || "Personal Trainer"}
+                        {"Personal Trainer"}
                       </Text>
                     </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
                   </TouchableOpacity>
                 ))
               ) : (
                 <View
-                  className="min-w-[140px] rounded-xl p-3 flex-col items-center justify-center gap-2 h-[132px]"
+                  className="w-full rounded-xl p-4 flex-row items-center justify-center gap-3 h-[80px]"
                   style={{
                     backgroundColor: `${colors.surface}80`,
                     borderWidth: 1,
@@ -735,14 +767,14 @@ export default function ClientHomeScreen() {
                     <Ionicons name="add" size={20} color={colors.text} />
                   </View>
                   <Text
-                    className="text-xs font-medium"
+                    className="text-sm font-medium"
                     style={{ color: colors.textSecondary }}
                   >
                     Find Trainer
                   </Text>
                 </View>
               )}
-            </ScrollView>
+            </View>
           </View>
         </View>
       </PullToRefresh>

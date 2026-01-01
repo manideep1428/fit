@@ -61,6 +61,12 @@ export const migrateSubscriptionsToMonthly = mutation({
         continue;
       }
       
+      // Skip if no packageId
+      if (!sub.packageId) {
+        skipped++;
+        continue;
+      }
+      
       // Get package to calculate monthly sessions
       const pkg = await ctx.db.get(sub.packageId);
       if (!pkg) {
@@ -144,6 +150,49 @@ export const listPackagesNeedingMigration = mutation({
         hasOldFields: !!(pkg.amount && pkg.sessions && pkg.durationMonths),
         hasNewFields: !!(pkg.monthlyAmount && pkg.sessionsPerMonth),
       }))
+    };
+  },
+});
+
+// Migration: Convert old availability startTime/endTime to timeRanges array
+export const migrateAvailabilityToTimeRanges = mutation({
+  handler: async (ctx) => {
+    const availabilities = await ctx.db.query("availability").collect();
+    let migrated = 0;
+    let skipped = 0;
+    
+    for (const avail of availabilities) {
+      // Skip if already has timeRanges
+      if (avail.timeRanges && avail.timeRanges.length > 0) {
+        skipped++;
+        continue;
+      }
+      
+      // Check if has old startTime/endTime fields
+      const oldAvail = avail as any;
+      if (oldAvail.startTime && oldAvail.endTime) {
+        // Convert to timeRanges array
+        await ctx.db.patch(avail._id, {
+          timeRanges: [{
+            startTime: oldAvail.startTime,
+            endTime: oldAvail.endTime,
+          }],
+        });
+        migrated++;
+      } else {
+        // No old fields, set empty timeRanges
+        await ctx.db.patch(avail._id, {
+          timeRanges: [],
+        });
+        migrated++;
+      }
+    }
+    
+    return { 
+      total: availabilities.length,
+      migrated, 
+      skipped,
+      message: `Migrated ${migrated} availability records, skipped ${skipped}`
     };
   },
 });

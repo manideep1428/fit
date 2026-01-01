@@ -484,9 +484,53 @@ export const renewMonthlySubscription = renewSubscription;
 export const cancelSubscription = mutation({
   args: { subscriptionId: v.id("clientSubscriptions") },
   handler: async (ctx, args) => {
+    const subscription = await ctx.db.get(args.subscriptionId);
+    
+    if (!subscription) {
+      throw new Error("Subscription not found");
+    }
+
+    const now = Date.now();
+
     await ctx.db.patch(args.subscriptionId, {
       status: "cancelled",
-      updatedAt: Date.now(),
+      paymentStatus: "rejected",
+      updatedAt: now,
+    });
+
+    // Get plan/package and user details for notifications
+    const plan = subscription.planId
+      ? await ctx.db.get(subscription.planId)
+      : subscription.packageId
+        ? await ctx.db.get(subscription.packageId)
+        : null;
+    const client = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", subscription.clientId))
+      .first();
+    const trainer = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", subscription.trainerId))
+      .first();
+
+    // Notify client about rejection
+    await ctx.db.insert("notifications", {
+      userId: subscription.clientId,
+      type: "subscription_rejected",
+      title: "Subscription Request Rejected",
+      message: `Your request for ${plan?.name || "subscription"} was not approved by ${trainer?.fullName || "your trainer"}. Please contact them for more details.`,
+      read: false,
+      createdAt: now,
+    });
+
+    // Notify trainer about the rejection
+    await ctx.db.insert("notifications", {
+      userId: subscription.trainerId,
+      type: "subscription_rejected",
+      title: "Subscription Rejected",
+      message: `You rejected ${client?.fullName || "client"}'s subscription request for ${plan?.name || "a plan"}.`,
+      read: false,
+      createdAt: now,
     });
   },
 });

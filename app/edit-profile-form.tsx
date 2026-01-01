@@ -61,11 +61,11 @@ export default function EditProfileFormScreen() {
         bio,
         specialty,
       });
-      showToast.success('Profile updated successfully');
+      showToast.success('Profile updated');
       router.back();
     } catch (error) {
       console.error('Error updating profile:', error);
-      showToast.error('Failed to update profile');
+      showToast.error('Update failed');
     } finally {
       setSaving(false);
     }

@@ -90,7 +90,7 @@ export default function GoogleCalendarAuth({
     } catch (err: any) {
       console.error('Error connecting Google Calendar:', err);
       setError(err.message || 'Failed to connect Google Calendar');
-      showToast.error('Failed to connect Google Calendar');
+      showToast.error('Calendar connect failed');
     } finally {
       setLoading(false);
     }

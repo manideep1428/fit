@@ -251,3 +251,50 @@ export const checkGoalNameUnique = query({
     return !duplicate; // Returns true if unique, false if duplicate
   },
 });
+
+
+// Get active goals with latest progress for a client
+export const getActiveClientGoalsWithProgress = query({
+  args: { clientId: v.string() },
+  handler: async (ctx, args) => {
+    const goals = await ctx.db
+      .query("goals")
+      .withIndex("by_client", (q) => q.eq("clientId", args.clientId))
+      .collect();
+    
+    const activeGoals = goals.filter((goal) => goal.status === "active");
+    
+    // Get latest progress for each goal
+    const goalsWithProgress = await Promise.all(
+      activeGoals.map(async (goal) => {
+        const logs = await ctx.db
+          .query("progressLogs")
+          .withIndex("by_goal", (q) => q.eq("goalId", goal._id))
+          .order("desc")
+          .take(1);
+        
+        const latestLog = logs[0];
+        let latestProgress = 0;
+        let latestWeight = goal.currentWeight;
+        
+        if (latestLog && goal.currentWeight && goal.targetWeight) {
+          latestWeight = latestLog.weight || goal.currentWeight;
+          const totalChange = Math.abs(goal.targetWeight - goal.currentWeight);
+          const currentChange = Math.abs(latestWeight - goal.currentWeight);
+          latestProgress = totalChange > 0 
+            ? Math.min(Math.round((currentChange / totalChange) * 100), 100) 
+            : 0;
+        }
+        
+        return {
+          ...goal,
+          latestProgress,
+          latestWeight,
+          latestMeasurements: latestLog?.measurements,
+        };
+      })
+    );
+    
+    return goalsWithProgress;
+  },
+});

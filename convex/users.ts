@@ -116,15 +116,18 @@ export const checkInvitedEmail = query({
       .first();
 
     if (!user) {
-      return { invited: false, message: "Email not found. Please contact your trainer to get invited." };
+      return {
+        invited: false,
+        message: "Email not found. Please contact your trainer to get invited.",
+      };
     }
 
     if (user.role !== "client") {
       return { invited: true, isTrainer: true };
     }
 
-    return { 
-      invited: true, 
+    return {
+      invited: true,
       isTrainer: false,
       isPending: user.clerkId.startsWith("pending_"),
       fullName: user.fullName,
@@ -302,7 +305,8 @@ export const updateUserProfile = mutation({
     if (args.phoneNumber !== undefined) updates.phoneNumber = args.phoneNumber;
     if (args.bio !== undefined) updates.bio = args.bio;
     if (args.specialty !== undefined) updates.specialty = args.specialty;
-    if (args.profileImageId !== undefined) updates.profileImageId = args.profileImageId;
+    if (args.profileImageId !== undefined)
+      updates.profileImageId = args.profileImageId;
 
     await ctx.db.patch(user._id, updates);
 
@@ -342,7 +346,7 @@ export const saveGoogleTokens = mutation({
     }
 
     const tokenExpiry = args.expiresIn
-      ? Date.now() + (args.expiresIn * 1000)
+      ? Date.now() + args.expiresIn * 1000
       : undefined;
 
     await ctx.db.patch(user._id, {
@@ -370,7 +374,9 @@ export const getGoogleTokenStatus = query({
     }
 
     const hasToken = !!user.googleAccessToken;
-    const isExpired = user.googleTokenExpiry ? Date.now() > user.googleTokenExpiry : false;
+    const isExpired = user.googleTokenExpiry
+      ? Date.now() > user.googleTokenExpiry
+      : false;
 
     return {
       connected: hasToken,
@@ -380,7 +386,6 @@ export const getGoogleTokenStatus = query({
     };
   },
 });
-
 
 // Search trainers by username
 export const searchTrainersByUsername = query({
@@ -392,7 +397,7 @@ export const searchTrainersByUsername = query({
 
     const trainers = await ctx.db
       .query("users")
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.eq(q.field("role"), "trainer"),
           q.neq(q.field("username"), undefined)
@@ -464,7 +469,7 @@ export const getClientTrainers = query({
       .collect();
 
     const trainerIds = relationships.map((r) => r.trainerId);
-    
+
     const trainers = await Promise.all(
       trainerIds.map(async (trainerId) => {
         return await ctx.db
@@ -488,7 +493,7 @@ export const getTrainerClients = query({
       .collect();
 
     const clientIds = relationships.map((r) => r.clientId);
-    
+
     const clients = await Promise.all(
       clientIds.map(async (clientId) => {
         return await ctx.db
@@ -523,7 +528,7 @@ export const savePushToken = mutation({
       expoPushToken: args.expoPushToken,
       updatedAt: Date.now(),
     });
-    
+
     return user._id;
   },
 });
@@ -572,10 +577,11 @@ export const searchClients = query({
       .collect();
 
     const searchLower = args.query.toLowerCase();
-    
-    return clients.filter((client) =>
-      client.fullName?.toLowerCase().includes(searchLower) ||
-      client.email?.toLowerCase().includes(searchLower)
+
+    return clients.filter(
+      (client) =>
+        client.fullName?.toLowerCase().includes(searchLower) ||
+        client.email?.toLowerCase().includes(searchLower)
     );
   },
 });
@@ -604,5 +610,77 @@ export const addClientToTrainer = mutation({
       trainerId: args.trainerId,
       addedAt: Date.now(),
     });
+  },
+});
+
+// Save trainer profile setup progress
+export const saveProfileSetupProgress = mutation({
+  args: {
+    clerkId: v.string(),
+    step: v.number(),
+    formData: v.string(), // JSON string of form data
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(user._id, {
+      profileSetupStep: args.step,
+      profileSetupData: args.formData,
+      updatedAt: Date.now(),
+    });
+
+    return user._id;
+  },
+});
+
+// Get trainer profile setup progress
+export const getProfileSetupProgress = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      step: user.profileSetupStep || 1,
+      formData: user.profileSetupData || null,
+      profileCompleted: user.profileCompleted || false,
+    };
+  },
+});
+
+// Mark profile setup as complete
+export const markProfileSetupComplete = mutation({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(user._id, {
+      profileCompleted: true,
+      profileSetupStep: undefined, // Clear the step
+      profileSetupData: undefined, // Clear the saved data
+      updatedAt: Date.now(),
+    });
+
+    return user._id;
   },
 });

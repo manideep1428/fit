@@ -31,9 +31,9 @@ export default function ClientDetailScreen() {
     clientId ? { clerkId: clientId as string } : "skip"
   );
 
-  // Fetch client goals
+  // Fetch client goals with progress
   const goals = useQuery(
-    api.goals.getActiveClientGoals,
+    api.goals.getActiveClientGoalsWithProgress,
     clientId ? { clientId: clientId as string } : "skip"
   );
 
@@ -184,7 +184,7 @@ export default function ClientDetailScreen() {
               className="rounded-xl p-4"
               style={{
                 backgroundColor: `${colors.primary}15`,
-                ...shadows.medium,
+                ...shadows,
               }}
             >
               <View className="flex-row items-center justify-between mb-3">
@@ -228,9 +228,9 @@ export default function ClientDetailScreen() {
                     className="text-sm font-semibold"
                     style={{ color: colors.text }}
                   >
-                    {activeSubscription.endDate
+                    {activeSubscription.currentPeriodEnd
                       ? new Date(
-                          activeSubscription.endDate
+                          activeSubscription.currentPeriodEnd
                         ).toLocaleDateString()
                       : "N/A"}
                   </Text>
@@ -525,55 +525,120 @@ export default function ClientDetailScreen() {
         {/* Goals Section */}
         <View className="px-4 pt-5 pb-3">
           <View className="flex-row justify-between items-center mb-3">
-            <Text
-              className="text-xl font-semibold"
-              style={{ color: colors.text }}
-            >
-              Current Goals
-            </Text>
+            <View className="flex-row items-center">
+              <Text
+                className="text-xl font-semibold"
+                style={{ color: colors.text }}
+              >
+                Current Goals
+              </Text>
+              {goals && goals.length > 0 && (
+                <View
+                  className="ml-2 px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: `${colors.primary}20` }}
+                >
+                  <Text
+                    className="text-xs font-bold"
+                    style={{ color: colors.primary }}
+                  >
+                    {goals.length}
+                  </Text>
+                </View>
+              )}
+            </View>
             <TouchableOpacity
               onPress={() =>
                 router.push(`/(trainer)/set-goal?clientId=${clientId}` as any)
               }
             >
-              <Text
-                className="text-sm font-semibold"
-                style={{ color: colors.primary }}
-              >
-                Add Goal
-              </Text>
+              <View className="flex-row items-center">
+                <Ionicons name="add-circle" size={20} color={colors.primary} />
+                <Text
+                  className="text-sm font-semibold ml-1"
+                  style={{ color: colors.primary }}
+                >
+                  Add
+                </Text>
+              </View>
             </TouchableOpacity>
           </View>
+
+          {/* Update Progress Button - shown when goals exist */}
+          {goals && goals.length > 0 && (
+            <TouchableOpacity
+              onPress={() =>
+                router.push(
+                  `/(trainer)/progress-tracking?goalId=${goals[0]._id}&clientId=${clientId}` as any
+                )
+              }
+              className="rounded-xl py-3 mb-3 flex-row items-center justify-center"
+              style={{
+                backgroundColor: colors.primary,
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trending-up" size={20} color="#FFF" />
+              <Text className="text-white font-semibold ml-2">
+                Update Progress
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {!goals ? (
             <ActivityIndicator color={colors.primary} />
           ) : goals.length === 0 ? (
-            <View
-              className="rounded-xl p-4"
+            <TouchableOpacity
+              onPress={() =>
+                router.push(`/(trainer)/set-goal?clientId=${clientId}` as any)
+              }
+              className="rounded-2xl p-6"
               style={{ backgroundColor: colors.surface, ...shadows.medium }}
+              activeOpacity={0.7}
             >
-              <View className="items-center py-6">
-                <Ionicons
-                  name="flag-outline"
-                  size={48}
-                  color={colors.textTertiary}
-                />
+              <View className="items-center py-2">
+                <View
+                  className="w-16 h-16 rounded-full items-center justify-center mb-4"
+                  style={{ backgroundColor: `${colors.primary}15` }}
+                >
+                  <Ionicons
+                    name="flag-outline"
+                    size={32}
+                    color={colors.primary}
+                  />
+                </View>
                 <Text
-                  className="mt-3 font-semibold"
-                  style={{ color: colors.textSecondary }}
+                  className="text-base font-bold mb-2"
+                  style={{ color: colors.text }}
                 >
                   No goals set yet
                 </Text>
                 <Text
-                  className="mt-1 text-sm text-center"
-                  style={{ color: colors.textTertiary }}
+                  className="text-sm text-center mb-4"
+                  style={{ color: colors.textSecondary }}
                 >
                   Set a goal to help track progress
                 </Text>
+                <View
+                  className="px-4 py-2 rounded-full flex-row items-center"
+                  style={{ backgroundColor: `${colors.primary}20` }}
+                >
+                  <Ionicons
+                    name="add-circle"
+                    size={18}
+                    color={colors.primary}
+                  />
+                  <Text
+                    className="text-sm font-bold ml-2"
+                    style={{ color: colors.primary }}
+                  >
+                    Set First Goal
+                  </Text>
+                </View>
               </View>
-            </View>
+            </TouchableOpacity>
           ) : (
-            goals.map((goal: any) => (
+            <View>
+            {goals.slice(0, 2).map((goal: any) => (
               <View
                 key={goal._id}
                 className="rounded-xl p-4 mb-3"
@@ -666,46 +731,76 @@ export default function ClientDetailScreen() {
                     className="rounded-lg p-3 mb-2"
                     style={{ backgroundColor: colors.background }}
                   >
-                    <Text
-                      className="text-sm font-semibold mb-2"
-                      style={{ color: colors.text }}
-                    >
-                      Weight Goal
-                    </Text>
-                    <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center justify-between mb-2">
+                      <Text
+                        className="text-sm font-semibold"
+                        style={{ color: colors.text }}
+                      >
+                        Weight Goal
+                      </Text>
+                      <Text
+                        className="text-xs font-bold"
+                        style={{ color: colors.success }}
+                      >
+                        {goal.latestProgress || 0}%
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center justify-between mb-2">
                       <View className="flex-1">
                         <Text
                           className="text-xs mb-1"
                           style={{ color: colors.textSecondary }}
                         >
-                          Current
+                          Start
                         </Text>
                         <Text
-                          className="text-lg font-bold"
-                          style={{ color: colors.text }}
+                          className="text-sm"
+                          style={{ color: colors.textSecondary }}
                         >
                           {goal.currentWeight} {goal.weightUnit}
                         </Text>
                       </View>
-                      <Ionicons
-                        name="arrow-forward"
-                        size={20}
-                        color={colors.textSecondary}
-                      />
-                      <View className="flex-1 items-end">
+                      <View className="flex-1 items-center">
                         <Text
                           className="text-xs mb-1"
-                          style={{ color: colors.textSecondary }}
+                          style={{ color: colors.primary }}
                         >
-                          Target
+                          Current
                         </Text>
                         <Text
                           className="text-lg font-bold"
                           style={{ color: colors.primary }}
                         >
+                          {goal.latestWeight || goal.currentWeight} {goal.weightUnit}
+                        </Text>
+                      </View>
+                      <View className="flex-1 items-end">
+                        <Text
+                          className="text-xs mb-1"
+                          style={{ color: colors.success }}
+                        >
+                          Target
+                        </Text>
+                        <Text
+                          className="text-sm"
+                          style={{ color: colors.success }}
+                        >
                           {goal.targetWeight} {goal.weightUnit}
                         </Text>
                       </View>
+                    </View>
+                    {/* Progress Bar */}
+                    <View
+                      className="h-1.5 w-full rounded-full"
+                      style={{ backgroundColor: `${colors.primary}20` }}
+                    >
+                      <View
+                        className="h-full rounded-full"
+                        style={{
+                          backgroundColor: colors.primary,
+                          width: `${goal.latestProgress || 0}%`,
+                        }}
+                      />
                     </View>
                   </View>
                 )}
@@ -762,7 +857,41 @@ export default function ClientDetailScreen() {
                   </View>
                 )}
               </View>
-            ))
+            ))}
+
+              {/* View All Button */}
+              {goals.length > 2 && (
+                <TouchableOpacity
+                  onPress={() =>
+                    router.push(
+                      `/(trainer)/goal-list?clientId=${clientId}` as any
+                    )
+                  }
+                  className="rounded-xl py-4 items-center mt-2"
+                  style={{
+                    backgroundColor: `${colors.primary}10`,
+                    borderWidth: 1.5,
+                    borderColor: colors.primary,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View className="flex-row items-center">
+                    <Text
+                      className="text-sm font-bold"
+                      style={{ color: colors.primary }}
+                    >
+                      View All {goals.length} Goals
+                    </Text>
+                    <Ionicons
+                      name="arrow-forward"
+                      size={18}
+                      color={colors.primary}
+                      style={{ marginLeft: 6 }}
+                    />
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
 
@@ -846,11 +975,10 @@ export default function ClientDetailScreen() {
                                   await completeSession({
                                     bookingId: booking._id,
                                   });
-                                  showToast.success("Session completed!");
+                                  showToast.success("Completed");
                                 } catch (error: any) {
                                   showToast.error(
-                                    error.message ||
-                                      "Failed to complete session"
+                                    error.message || "Complete failed"
                                   );
                                 }
                               },

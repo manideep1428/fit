@@ -17,6 +17,8 @@ import { StatusBar } from "expo-status-bar";
 import { useUser } from "@clerk/clerk-expo";
 import { showToast } from "@/utils/toast";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useState } from "react";
+import NotificationHistory from "@/components/NotificationHistory";
 
 export default function TrainerSubscriptionsScreen() {
   const router = useRouter();
@@ -25,6 +27,7 @@ export default function TrainerSubscriptionsScreen() {
   const colors = getColors(scheme === "dark");
   const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const subscriptions = useQuery(
     api.subscriptions.getTrainerSubscriptions,
@@ -34,6 +37,12 @@ export default function TrainerSubscriptionsScreen() {
   const stats = useQuery(
     api.subscriptions.getTrainerSubscriptionStats,
     user?.id ? { trainerId: user.id } : "skip"
+  );
+
+  // Fetch unread notification count
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    user?.id ? { userId: user.id } : "skip"
   );
 
   const approveSubscription = useMutation(
@@ -53,9 +62,9 @@ export default function TrainerSubscriptionsScreen() {
           onPress: async () => {
             try {
               await approveSubscription({ subscriptionId: subscription._id });
-              showToast.success("Subscription approved!");
+              showToast.success("Approved");
             } catch (error) {
-              showToast.error("Failed to approve subscription");
+              showToast.error("Approve failed");
             }
           },
         },
@@ -75,9 +84,9 @@ export default function TrainerSubscriptionsScreen() {
           onPress: async () => {
             try {
               await cancelSubscription({ subscriptionId: subscription._id });
-              showToast.success("Subscription rejected");
+              showToast.success("Rejected");
             } catch (error) {
-              showToast.error("Failed to reject subscription");
+              showToast.error("Reject failed");
             }
           },
         },
@@ -100,9 +109,9 @@ export default function TrainerSubscriptionsScreen() {
                 paymentStatus:
                   subscription.paymentMethod === "offline" ? "pending" : "paid",
               });
-              showToast.success("Subscription renewed!");
+              showToast.success("Renewed");
             } catch (error) {
-              showToast.error("Failed to renew subscription");
+              showToast.error("Renew failed");
             }
           },
         },
@@ -122,9 +131,9 @@ export default function TrainerSubscriptionsScreen() {
           onPress: async () => {
             try {
               await cancelSubscription({ subscriptionId: subscription._id });
-              showToast.success("Subscription cancelled");
+              showToast.success("Cancelled");
             } catch (error) {
-              showToast.error("Failed to cancel subscription");
+              showToast.error("Cancel failed");
             }
           },
         },
@@ -145,13 +154,13 @@ export default function TrainerSubscriptionsScreen() {
   };
 
   const pendingSubscriptions =
-    subscriptions?.filter((s) => s.paymentStatus === "pending") || [];
+    subscriptions?.filter((s: any) => s.paymentStatus === "pending") || [];
   const activeSubscriptions =
     subscriptions?.filter(
-      (s) => s.status === "active" && s.paymentStatus === "paid"
+      (s: any) => s.status === "active" && s.paymentStatus === "paid"
     ) || [];
   const pastSubscriptions =
-    subscriptions?.filter((s) => s.status !== "active") || [];
+    subscriptions?.filter((s: any) => s.status !== "active") || [];
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -176,11 +185,30 @@ export default function TrainerSubscriptionsScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text
-          className="text-lg font-bold flex-1 text-center pr-12"
+          className="text-lg font-bold flex-1 text-center"
           style={{ color: colors.text }}
         >
           Subscriptions
         </Text>
+        <TouchableOpacity
+          className="relative w-10 h-10 rounded-full items-center justify-center"
+          style={{ backgroundColor: `${colors.text}08` }}
+          onPress={() => setShowNotifications(true)}
+        >
+          <Ionicons name="notifications" size={20} color={colors.text} />
+          {unreadCount &&
+            typeof unreadCount === "number" &&
+            unreadCount > 0 && (
+              <View
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.error }}
+              >
+                <Text className="text-white text-xs font-bold">
+                  {unreadCount > 9 ? "9+" : String(unreadCount)}
+                </Text>
+              </View>
+            )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -606,6 +634,12 @@ export default function TrainerSubscriptionsScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Notification History Modal */}
+      <NotificationHistory
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </View>
   );
 }

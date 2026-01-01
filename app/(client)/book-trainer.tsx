@@ -367,7 +367,7 @@ export default function BookTrainerScreen() {
                 <TouchableOpacity
                   className="rounded-xl py-3 items-center"
                   style={{ backgroundColor: colors.primary, ...shadows.small }}
-                  onPress={() => router.push("/(client)/pricing")}
+                  onPress={() => router.push("/(client)/subscriptions")}
                 >
                   <View className="flex-row items-center">
                     <Ionicons name="cart" size={20} color="white" />
@@ -499,7 +499,7 @@ export default function BookTrainerScreen() {
                           style={{ backgroundColor: colors.primary }}
                           onPress={() => {
                             router.push({
-                              pathname: "/(client)/pricing",
+                              pathname: "/(client)/subscriptions",
                               params: { trainerId },
                             } as any);
                           }}

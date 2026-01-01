@@ -35,17 +35,17 @@ export default function ChangePasswordScreen() {
     if (!user) return;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      showToast.error('Please fill in all password fields');
+      showToast.error('Fill all fields');
       return;
     }
 
     if (newPassword.length < 8) {
-      showToast.error('New password must be at least 8 characters');
+      showToast.error('Min 8 characters required');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showToast.error('New passwords do not match');
+      showToast.error('Passwords don\'t match');
       return;
     }
 
@@ -56,11 +56,11 @@ export default function ChangePasswordScreen() {
         newPassword,
       });
 
-      showToast.success('Password changed successfully');
+      showToast.success('Password changed');
       router.back();
     } catch (error: any) {
       console.error('Error changing password:', error);
-      showToast.error(error.errors?.[0]?.message || 'Failed to change password. Please check your current password.');
+      showToast.error(error.errors?.[0]?.message || 'Wrong current password');
     } finally {
       setChangingPassword(false);
     }

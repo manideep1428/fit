@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Image,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -20,7 +19,7 @@ import { showToast } from "@/utils/toast";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 
-export default function TrainerPricingScreen() {
+export default function TrainerSubscriptionsScreen() {
   const router = useRouter();
   const { trainerId } = useLocalSearchParams();
   const { user } = useUser();
@@ -46,7 +45,7 @@ export default function TrainerPricingScreen() {
 
   const handleSubscribe = async (paymentMethod: "online" | "offline") => {
     if (!selectedPlan || !user?.id || !trainerId) {
-      showToast.error("Please select a plan first");
+      showToast.error("Select a plan");
       return;
     }
 
@@ -69,13 +68,13 @@ export default function TrainerPricingScreen() {
 
       showToast.success(
         paymentMethod === "offline"
-          ? "Subscription request sent! Waiting for trainer approval."
-          : "Subscription created successfully!"
+          ? "Request sent!"
+          : "Subscribed!"
       );
       router.back();
     } catch (error) {
       console.error("Subscription error:", error);
-      showToast.error("Failed to create subscription");
+      showToast.error("Subscribe failed");
     }
   };
 
@@ -131,7 +130,7 @@ export default function TrainerPricingScreen() {
             className="text-xl font-bold flex-1 text-center pr-10"
             style={{ color: colors.text }}
           >
-            Pricing
+            Subscriptions
           </Text>
         </View>
       </View>

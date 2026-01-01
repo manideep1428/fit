@@ -57,10 +57,10 @@ export default function PaymentDetailsScreen() {
               await markOfflinePaymentPaid({
                 subscriptionId: subscription._id,
               });
-              showToast.success("Payment approved!");
+              showToast.success("Approved");
               router.back();
             } catch (error) {
-              showToast.error("Failed to approve payment");
+              showToast.error("Approve failed");
             }
           },
         },
@@ -81,10 +81,10 @@ export default function PaymentDetailsScreen() {
           onPress: async () => {
             try {
               await cancelSubscription({ subscriptionId: subscription._id });
-              showToast.success("Subscription cancelled");
+              showToast.success("Cancelled");
               router.back();
             } catch (error) {
-              showToast.error("Failed to cancel subscription");
+              showToast.error("Cancel failed");
             }
           },
         },

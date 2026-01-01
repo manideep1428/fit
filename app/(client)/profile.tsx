@@ -19,6 +19,7 @@ import { useRouter } from "expo-router";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
+import NotificationHistory from "@/components/NotificationHistory";
 
 export default function ProfileScreen() {
   const { user } = useUser();
@@ -28,6 +29,7 @@ export default function ProfileScreen() {
   const colors = getColors(scheme === "dark");
   const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
   const { isDark, toggleDarkMode } = useDarkMode();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const userData = useQuery(
     api.users.getUserByClerkId,
@@ -38,6 +40,12 @@ export default function ProfileScreen() {
   const profileImageUrl = useQuery(
     api.users.getProfileImageUrl,
     userData?.profileImageId ? { storageId: userData.profileImageId } : "skip"
+  );
+
+  // Fetch unread notification count
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    user?.id ? { userId: user.id } : "skip"
   );
 
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -130,13 +138,33 @@ export default function ProfileScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View className="px-4 pt-16 pb-4">
+        <View className="px-4 pt-16 pb-4 flex-row items-center justify-between">
+          <View style={{ width: 40 }} />
           <Text
-            className="text-lg font-bold text-center"
+            className="text-lg font-bold text-center flex-1"
             style={{ color: colors.text }}
           >
             Profile
           </Text>
+          <TouchableOpacity
+            className="relative w-10 h-10 rounded-full items-center justify-center"
+            style={{ backgroundColor: colors.surface }}
+            onPress={() => setShowNotifications(true)}
+          >
+            <Ionicons name="notifications" size={20} color={colors.text} />
+            {unreadCount &&
+              typeof unreadCount === "number" &&
+              unreadCount > 0 && (
+                <View
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center"
+                  style={{ backgroundColor: colors.error }}
+                >
+                  <Text className="text-white text-xs font-bold">
+                    {unreadCount > 9 ? "9+" : String(unreadCount)}
+                  </Text>
+                </View>
+              )}
+          </TouchableOpacity>
         </View>
 
         {/* Profile Header */}
@@ -413,7 +441,7 @@ export default function ProfileScreen() {
           </View>
 
           {/* INTEGRATIONS Section */}
-          <View className="mb-6">
+          {/* <View className="mb-6">
             <Text
               className="text-xs font-bold uppercase tracking-widest mb-3 ml-2"
               style={{ color: colors.textTertiary }}
@@ -469,7 +497,7 @@ export default function ProfileScreen() {
                 />
               )}
             </TouchableOpacity>
-          </View>
+          </View> */}
 
           {/* ACCOUNT Section */}
           <View className="mb-6">
@@ -557,6 +585,12 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Notification History Modal */}
+      <NotificationHistory
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </View>
   );
 }

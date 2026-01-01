@@ -8,11 +8,12 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-expo";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -20,6 +21,7 @@ import { getColors, Shadows } from "@/constants/colors";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import { showToast } from "@/utils/toast";
+import { LinearGradient } from "expo-linear-gradient";
 
 const SPECIALTIES = [
   "Strength Training",
@@ -46,10 +48,20 @@ export default function TrainerSetupScreen() {
   const updateUserProfile = useMutation(api.users.updateUserProfile);
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   const createPackage = useMutation(api.packages.createPackage);
+  const saveProgress = useMutation(api.users.saveProfileSetupProgress);
+  const markComplete = useMutation(api.users.markProfileSetupComplete);
+  const createDefaultAvailability = useMutation(api.availability.createDefaultAvailability);
+  const profileProgress = useQuery(
+    api.users.getProfileSetupProgress,
+    user?.id ? { clerkId: user.id } : "skip"
+  );
 
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
+
+  // Availability dialog state
+  const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false);
 
   // Step 1: Profile basics
   const [profileImage, setProfileImage] = useState<string | null>(
@@ -65,7 +77,7 @@ export default function TrainerSetupScreen() {
   // Step 3: Bio
   const [bio, setBio] = useState("");
 
-  // Step 4: Packages
+  // Step 4: Subscriptions (renamed from Packages)
   const [packages, setPackages] = useState<
     Array<{
       name: string;
@@ -80,11 +92,90 @@ export default function TrainerSetupScreen() {
       description: "",
       sessionsPerMonth: "",
       monthlyAmount: "",
-      currency: "INR",
+      currency: "NOK", // Changed to Norwegian Krone
     },
   ]);
 
   const [loading, setLoading] = useState(false);
+  const [progressLoaded, setProgressLoaded] = useState(false);
+
+  // Load saved progress on mount
+  useEffect(() => {
+    if (profileProgress && !progressLoaded && user?.id) {
+      if (profileProgress.profileCompleted) {
+        // If profile is already completed, redirect to trainer dashboard
+        router.replace("/(trainer)");
+        return;
+      }
+
+      if (profileProgress.formData) {
+        try {
+          const savedData = JSON.parse(profileProgress.formData);
+
+          // Restore form data
+          if (savedData.username) setUsername(savedData.username);
+          if (savedData.profileImage) setProfileImage(savedData.profileImage);
+          if (savedData.hasChangedImage !== undefined)
+            setHasChangedImage(savedData.hasChangedImage);
+          if (savedData.specialties) setSpecialties(savedData.specialties);
+          if (savedData.experience) setExperience(savedData.experience);
+          if (savedData.bio) setBio(savedData.bio);
+          if (savedData.packages) setPackages(savedData.packages);
+
+          // Restore current step
+          setCurrentStep(profileProgress.step || 1);
+
+          showToast.success("Resuming where you left off!");
+        } catch (error) {
+          console.error("Error loading saved progress:", error);
+        }
+      }
+
+      setProgressLoaded(true);
+    }
+  }, [profileProgress, progressLoaded, user?.id]);
+
+  // Save progress whenever step or form data changes
+  useEffect(() => {
+    if (!user?.id || !progressLoaded) return;
+
+    const saveCurrentProgress = async () => {
+      try {
+        const formData = JSON.stringify({
+          username,
+          profileImage,
+          hasChangedImage,
+          specialties,
+          experience,
+          bio,
+          packages,
+        });
+
+        await saveProgress({
+          clerkId: user.id,
+          step: currentStep,
+          formData,
+        });
+      } catch (error) {
+        console.error("Error saving progress:", error);
+      }
+    };
+
+    // Debounce the save to avoid too many calls
+    const timeoutId = setTimeout(saveCurrentProgress, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [
+    currentStep,
+    username,
+    profileImage,
+    hasChangedImage,
+    specialties,
+    experience,
+    bio,
+    packages,
+    user?.id,
+    progressLoaded,
+  ]);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -162,7 +253,7 @@ export default function TrainerSetupScreen() {
             pkg.monthlyAmount.trim()
         );
         if (validPackages.length === 0) {
-          showToast.error("Please add at least one complete package");
+          showToast.error("Please add at least one complete subscription plan");
           return false;
         }
         return true;
@@ -222,12 +313,17 @@ export default function TrainerSetupScreen() {
         await createPackage({
           trainerId: user.id,
           name: pkg.name.trim(),
-          description: pkg.description.trim() ? pkg.description.trim() : undefined,
+          description: pkg.description.trim()
+            ? pkg.description.trim()
+            : undefined,
           sessionsPerMonth: parseInt(pkg.sessionsPerMonth),
           monthlyAmount: parseFloat(pkg.monthlyAmount),
           currency: pkg.currency,
         });
       }
+
+      // Create default availability (Mon-Fri 9AM-5PM)
+      await createDefaultAvailability({ trainerId: user.id });
 
       // Update Clerk metadata
       await user.update({
@@ -240,12 +336,15 @@ export default function TrainerSetupScreen() {
         },
       });
 
-      showToast.success("Profile setup complete!");
-      router.replace("/(trainer)");
+      // Mark profile setup as complete in Convex
+      await markComplete({ clerkId: user.id });
+
+      setLoading(false);
+      // Show availability dialog instead of navigating immediately
+      setShowAvailabilityDialog(true);
     } catch (error) {
       console.error("Error setting up profile:", error);
       showToast.error("Failed to setup profile. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
@@ -494,22 +593,316 @@ export default function TrainerSetupScreen() {
         );
 
       case 4:
+        const PLAN_COLORS = [
+          { gradient: ["#667eea", "#764ba2"], accent: "#667eea" },
+          { gradient: ["#f093fb", "#f5576c"], accent: "#f5576c" },
+          { gradient: ["#4facfe", "#00f2fe"], accent: "#4facfe" },
+          { gradient: ["#43e97b", "#38f9d7"], accent: "#43e97b" },
+          { gradient: ["#fa709a", "#fee140"], accent: "#fa709a" },
+        ];
+
+        const getPlanColor = (index: number) =>
+          PLAN_COLORS[index % PLAN_COLORS.length];
+
+        const getCurrencySymbol = (code: string) => {
+          const symbols: { [key: string]: string } = {
+            NOK: "kr",
+            USD: "$",
+            EUR: "€",
+            GBP: "£",
+          };
+          return symbols[code] || code;
+        };
+
         return (
           <View>
             <Text
               className="text-2xl font-bold mb-2"
               style={{ color: colors.text }}
             >
-              Your Monthly Packages
+              Your Monthly Subscriptions
             </Text>
             <Text
               className="text-base mb-6"
               style={{ color: colors.textSecondary }}
             >
-              Create monthly subscription packages for your clients
+              Create monthly subscription plans for your clients
             </Text>
 
-            {/* Add Package Button */}
+            {/* Subscriptions List */}
+            {packages.map((pkg, index) => {
+              const planColor = getPlanColor(index);
+              const hasRequiredFields =
+                pkg.name.trim() &&
+                pkg.sessionsPerMonth.trim() &&
+                pkg.monthlyAmount.trim();
+
+              return (
+                <View
+                  key={index}
+                  className="mb-5 rounded-3xl overflow-hidden"
+                  style={shadows.large}
+                >
+                  {/* Gradient Header */}
+                  <LinearGradient
+                    colors={planColor.gradient as [string, string]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="p-5 pb-6"
+                  >
+                    {/* Header Row */}
+                    <View className="flex-row items-center justify-between mb-4">
+                      <View className="flex-row items-center">
+                        <View
+                          className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                          style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
+                        >
+                          <Text className="text-white text-lg font-bold">
+                            {index + 1}
+                          </Text>
+                        </View>
+                        <Text className="text-white text-lg font-bold">
+                          Plan {index + 1}
+                        </Text>
+                      </View>
+                      {packages.length > 1 && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setPackages(packages.filter((_, i) => i !== index));
+                          }}
+                          className="w-9 h-9 rounded-full items-center justify-center"
+                          style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={18}
+                            color="#FFF"
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Price Display */}
+                    {hasRequiredFields && (
+                      <View className="mb-3">
+                        <View className="flex-row items-end">
+                          <Text className="text-white text-4xl font-bold">
+                            {getCurrencySymbol(pkg.currency)}
+                            {pkg.monthlyAmount || "0"}
+                          </Text>
+                          <Text className="text-white/70 text-base mb-2 ml-1">
+                            /month
+                          </Text>
+                        </View>
+                        {pkg.sessionsPerMonth && (
+                          <View className="flex-row items-center mt-2">
+                            <View
+                              className="w-6 h-6 rounded-full items-center justify-center mr-2"
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.25)",
+                              }}
+                            >
+                              <Ionicons
+                                name="calendar"
+                                size={14}
+                                color="#FFF"
+                              />
+                            </View>
+                            <Text className="text-white/90 text-sm font-medium">
+                              {pkg.sessionsPerMonth} sessions per month
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {!hasRequiredFields && (
+                      <View className="py-2">
+                        <Text className="text-white/70 text-sm">
+                          Fill in the details below to preview your plan
+                        </Text>
+                      </View>
+                    )}
+                  </LinearGradient>
+
+                  {/* Form Fields */}
+                  <View
+                    className="p-5"
+                    style={{ backgroundColor: colors.surface }}
+                  >
+                    {/* Plan Name */}
+                    <View className="mb-4">
+                      <Text
+                        className="text-xs font-semibold mb-2"
+                        style={{ color: colors.textSecondary }}
+                      >
+                        PLAN NAME *
+                      </Text>
+                      <TextInput
+                        className="rounded-xl py-3.5 px-4 text-base"
+                        style={{
+                          backgroundColor: colors.background,
+                          borderWidth: 2,
+                          borderColor: pkg.name
+                            ? planColor.accent + "40"
+                            : colors.border,
+                          color: colors.text,
+                        }}
+                        placeholder="e.g., Premium Fitness, Starter Plan"
+                        placeholderTextColor={colors.textTertiary}
+                        value={pkg.name}
+                        onChangeText={(text) => {
+                          const newPackages = [...packages];
+                          newPackages[index].name = text;
+                          setPackages(newPackages);
+                        }}
+                      />
+                    </View>
+
+                    {/* Description */}
+                    <View className="mb-4">
+                      <Text
+                        className="text-xs font-semibold mb-2"
+                        style={{ color: colors.textSecondary }}
+                      >
+                        DESCRIPTION (OPTIONAL)
+                      </Text>
+                      <TextInput
+                        className="rounded-xl py-3.5 px-4 text-base"
+                        style={{
+                          backgroundColor: colors.background,
+                          borderWidth: 2,
+                          borderColor: pkg.description
+                            ? planColor.accent + "40"
+                            : colors.border,
+                          color: colors.text,
+                          minHeight: 70,
+                          textAlignVertical: "top",
+                        }}
+                        placeholder="Describe what makes this plan special..."
+                        placeholderTextColor={colors.textTertiary}
+                        multiline
+                        numberOfLines={3}
+                        value={pkg.description}
+                        onChangeText={(text) => {
+                          const newPackages = [...packages];
+                          newPackages[index].description = text;
+                          setPackages(newPackages);
+                        }}
+                      />
+                    </View>
+
+                    {/* Sessions Per Month */}
+                    <View className="mb-4">
+                      <Text
+                        className="text-xs font-semibold mb-2"
+                        style={{ color: colors.textSecondary }}
+                      >
+                        SESSIONS PER MONTH *
+                      </Text>
+                      <TextInput
+                        className="rounded-xl py-3.5 px-4 text-base"
+                        style={{
+                          backgroundColor: colors.background,
+                          borderWidth: 2,
+                          borderColor: pkg.sessionsPerMonth
+                            ? planColor.accent + "40"
+                            : colors.border,
+                          color: colors.text,
+                        }}
+                        placeholder="e.g., 4, 8, 12"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="numeric"
+                        value={pkg.sessionsPerMonth}
+                        onChangeText={(text) => {
+                          const newPackages = [...packages];
+                          newPackages[index].sessionsPerMonth = text;
+                          setPackages(newPackages);
+                        }}
+                      />
+                    </View>
+
+                    {/* Monthly Amount & Currency */}
+                    <View className="flex-row gap-3">
+                      <View className="flex-1">
+                        <Text
+                          className="text-xs font-semibold mb-2"
+                          style={{ color: colors.textSecondary }}
+                        >
+                          MONTHLY AMOUNT *
+                        </Text>
+                        <TextInput
+                          className="rounded-xl py-3.5 px-4 text-base"
+                          style={{
+                            backgroundColor: colors.background,
+                            borderWidth: 2,
+                            borderColor: pkg.monthlyAmount
+                              ? planColor.accent + "40"
+                              : colors.border,
+                            color: colors.text,
+                          }}
+                          placeholder="e.g., 5000"
+                          placeholderTextColor={colors.textTertiary}
+                          keyboardType="numeric"
+                          value={pkg.monthlyAmount}
+                          onChangeText={(text) => {
+                            const newPackages = [...packages];
+                            newPackages[index].monthlyAmount = text;
+                            setPackages(newPackages);
+                          }}
+                        />
+                      </View>
+                      <View style={{ width: 100 }}>
+                        <Text
+                          className="text-xs font-semibold mb-2"
+                          style={{ color: colors.textSecondary }}
+                        >
+                          CURRENCY
+                        </Text>
+                        <View
+                          className="rounded-xl py-3.5 px-4 justify-center"
+                          style={{
+                            backgroundColor: colors.background,
+                            borderWidth: 2,
+                            borderColor: colors.border,
+                          }}
+                        >
+                          <Text
+                            className="text-base font-semibold text-center"
+                            style={{ color: colors.text }}
+                          >
+                            {pkg.currency}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Completion Status Indicator */}
+                    {hasRequiredFields && (
+                      <View
+                        className="flex-row items-center p-3 rounded-xl mt-4"
+                        style={{ backgroundColor: `${planColor.accent}15` }}
+                      >
+                        <View
+                          className="w-6 h-6 rounded-full items-center justify-center mr-2"
+                          style={{ backgroundColor: planColor.accent }}
+                        >
+                          <Ionicons name="checkmark" size={14} color="#FFF" />
+                        </View>
+                        <Text
+                          className="text-sm font-medium"
+                          style={{ color: planColor.accent }}
+                        >
+                          Plan ready to create
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+
+            {/* Add Another Subscription Button */}
             <TouchableOpacity
               onPress={() => {
                 setPackages([
@@ -519,197 +912,41 @@ export default function TrainerSetupScreen() {
                     description: "",
                     sessionsPerMonth: "",
                     monthlyAmount: "",
-                    currency: "INR",
+                    currency: "NOK",
                   },
                 ]);
               }}
-              className="flex-row items-center justify-center px-4 py-3 rounded-xl mb-4"
+              className="flex-row items-center justify-center px-5 py-4 rounded-2xl mb-2"
               style={{
-                backgroundColor: `${colors.primary}15`,
-                borderWidth: 1,
+                backgroundColor: colors.surface,
+                borderWidth: 2,
                 borderColor: colors.primary,
                 borderStyle: "dashed",
+                ...shadows.small,
               }}
             >
-              <Ionicons name="add-circle" size={20} color={colors.primary} />
+              <View
+                className="w-9 h-9 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.primary}20` }}
+              >
+                <Ionicons name="add" size={22} color={colors.primary} />
+              </View>
               <Text
-                className="text-sm font-semibold ml-2"
+                className="text-base font-semibold"
                 style={{ color: colors.primary }}
               >
-                Add Another Package
+                Add Another Plan
               </Text>
             </TouchableOpacity>
 
-            {/* Packages List */}
-            {packages.map((pkg, index) => (
-              <View
-                key={index}
-                className="rounded-2xl p-4 mb-4"
-                style={{
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  ...shadows.small,
-                }}
-              >
-                <View className="flex-row items-center justify-between mb-3">
-                  <Text
-                    className="text-base font-bold"
-                    style={{ color: colors.text }}
-                  >
-                    Package {index + 1}
-                  </Text>
-                  {packages.length > 1 && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setPackages(packages.filter((_, i) => i !== index));
-                      }}
-                    >
-                      <Ionicons
-                        name="trash-outline"
-                        size={20}
-                        color={colors.error}
-                      />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Package Name */}
-                <View className="mb-3">
-                  <Text
-                    className="text-xs font-semibold mb-1.5"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Package Name *
-                  </Text>
-                  <TextInput
-                    className="rounded-xl py-3 px-4 text-sm"
-                    style={{
-                      backgroundColor: colors.background,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      color: colors.text,
-                    }}
-                    placeholder="e.g., Starter Pack"
-                    placeholderTextColor={colors.textSecondary}
-                    value={pkg.name}
-                    onChangeText={(text) => {
-                      const newPackages = [...packages];
-                      newPackages[index].name = text;
-                      setPackages(newPackages);
-                    }}
-                  />
-                </View>
-
-                {/* Package Description */}
-                <View className="mb-3">
-                  <Text
-                    className="text-xs font-semibold mb-1.5"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Description
-                  </Text>
-                  <TextInput
-                    className="rounded-xl py-3 px-4 text-sm"
-                    style={{
-                      backgroundColor: colors.background,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      color: colors.text,
-                      minHeight: 60,
-                      textAlignVertical: "top",
-                    }}
-                    placeholder="Brief description of the package"
-                    placeholderTextColor={colors.textSecondary}
-                    multiline
-                    value={pkg.description}
-                    onChangeText={(text) => {
-                      const newPackages = [...packages];
-                      newPackages[index].description = text;
-                      setPackages(newPackages);
-                    }}
-                  />
-                </View>
-
-                {/* Sessions and Duration */}
-                <View className="mb-3">
-                  <Text
-                    className="text-xs font-semibold mb-1.5"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Sessions Per Month *
-                  </Text>
-                  <TextInput
-                    className="rounded-xl py-3 px-4 text-sm"
-                    style={{
-                      backgroundColor: colors.background,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      color: colors.text,
-                    }}
-                    placeholder="e.g., 12"
-                    placeholderTextColor={colors.textSecondary}
-                    keyboardType="numeric"
-                    value={pkg.sessionsPerMonth}
-                    onChangeText={(text) => {
-                      const newPackages = [...packages];
-                      newPackages[index].sessionsPerMonth = text;
-                      setPackages(newPackages);
-                    }}
-                  />
-                </View>
-
-                {/* Amount and Currency */}
-                <View className="flex-row gap-3">
-                  <View className="flex-1">
-                    <Text
-                      className="text-xs font-semibold mb-1.5"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      Monthly Amount *
-                    </Text>
-                    <TextInput
-                      className="rounded-xl py-3 px-4 text-sm"
-                      style={{
-                        backgroundColor: colors.background,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                        color: colors.text,
-                      }}
-                      placeholder="e.g., 5000"
-                      placeholderTextColor={colors.textSecondary}
-                      keyboardType="numeric"
-                      value={pkg.monthlyAmount}
-                      onChangeText={(text) => {
-                        const newPackages = [...packages];
-                        newPackages[index].monthlyAmount = text;
-                        setPackages(newPackages);
-                      }}
-                    />
-                  </View>
-                  <View style={{ width: 100 }}>
-                    <Text
-                      className="text-xs font-semibold mb-1.5"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      Currency
-                    </Text>
-                    <View
-                      className="rounded-xl py-3 px-4 justify-center"
-                      style={{
-                        backgroundColor: colors.background,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                      }}
-                    >
-                      <Text className="text-sm" style={{ color: colors.text }}>
-                        {pkg.currency}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ))}
+            {/* Helper Text */}
+            <Text
+              className="text-xs text-center mt-2 px-4"
+              style={{ color: colors.textSecondary }}
+            >
+              You can add multiple subscription plans to offer different options
+              to your clients
+            </Text>
           </View>
         );
 
@@ -824,6 +1061,117 @@ export default function TrainerSetupScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Default Availability Dialog */}
+      <Modal
+        visible={showAvailabilityDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View
+          className="flex-1 items-center justify-center px-6"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <View
+            className="w-full rounded-3xl p-6"
+            style={{
+              backgroundColor: colors.surface,
+              ...shadows.large,
+            }}
+          >
+            {/* Icon */}
+            <View className="items-center mb-4">
+              <View
+                className="w-16 h-16 rounded-full items-center justify-center"
+                style={{ backgroundColor: `${colors.primary}20` }}
+              >
+                <Ionicons name="time-outline" size={32} color={colors.primary} />
+              </View>
+            </View>
+
+            {/* Title */}
+            <Text
+              className="text-xl font-bold text-center mb-2"
+              style={{ color: colors.text }}
+            >
+              Default Availability Set
+            </Text>
+
+            {/* Description */}
+            <Text
+              className="text-base text-center mb-4"
+              style={{ color: colors.textSecondary }}
+            >
+              We've set up your default availability:
+            </Text>
+
+            {/* Schedule Info */}
+            <View
+              className="rounded-2xl p-4 mb-4"
+              style={{ backgroundColor: colors.background }}
+            >
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="checkmark-circle" size={20} color={colors.success || "#22C55E"} />
+                <Text className="ml-2 text-sm font-medium" style={{ color: colors.text }}>
+                  Monday - Friday: 9:00 AM - 5:00 PM
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+                <Text className="ml-2 text-sm" style={{ color: colors.textSecondary }}>
+                  Saturday & Sunday: Off
+                </Text>
+              </View>
+            </View>
+
+            {/* Info Text */}
+            <Text
+              className="text-sm text-center mb-6"
+              style={{ color: colors.textSecondary }}
+            >
+              You can change your availability anytime from your profile settings.
+            </Text>
+
+            {/* Buttons */}
+            <View className="gap-3">
+              <TouchableOpacity
+                className="rounded-2xl py-4 items-center"
+                style={{ backgroundColor: colors.primary }}
+                onPress={() => {
+                  setShowAvailabilityDialog(false);
+                  router.replace("/(trainer)/availability" as any);
+                }}
+              >
+                <Text className="text-base font-bold text-white">
+                  Customize Now
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="rounded-2xl py-4 items-center"
+                style={{
+                  backgroundColor: colors.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+                onPress={() => {
+                  setShowAvailabilityDialog(false);
+                  showToast.success("Profile setup complete!");
+                  router.replace("/(trainer)");
+                }}
+              >
+                <Text
+                  className="text-base font-bold"
+                  style={{ color: colors.text }}
+                >
+                  Continue to Dashboard
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

@@ -53,6 +53,18 @@ export default function TrainerHomeScreen() {
   // Fetch clients for enriching bookings
   const clients = useQuery(api.users.getAllClients);
 
+  // Fetch current user data for profile image
+  const userData = useQuery(
+    api.users.getUserByClerkId,
+    user?.id ? { clerkId: user.id } : "skip"
+  );
+
+  // Fetch profile image URL from Convex storage
+  const profileImageUrl = useQuery(
+    api.users.getProfileImageUrl,
+    userData?.profileImageId ? { storageId: userData.profileImageId } : "skip"
+  );
+
   // Pull to refresh handler
   const handleRefresh = useCallback(async () => {
     // Convex queries auto-refresh, but we add a small delay for UX
@@ -90,12 +102,13 @@ export default function TrainerHomeScreen() {
   const upcomingBookings = enrichedBookings
     .filter((b: any) => {
       if (b.status === 'cancelled' || b.status === 'completed') return false;
-      const bookingDateTime = new Date(b.startTime);
+      // Combine date and startTime properly
+      const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
       return bookingDateTime >= now;
     })
     .sort((a: any, b: any) => {
-      const dateA = new Date(a.startTime);
-      const dateB = new Date(b.startTime);
+      const dateA = new Date(`${a.date}T${a.startTime}:00`);
+      const dateB = new Date(`${b.date}T${b.startTime}:00`);
       return dateA.getTime() - dateB.getTime();
     });
 
@@ -117,9 +130,9 @@ export default function TrainerHomeScreen() {
               className="w-14 h-14 rounded-full mr-4 overflow-hidden justify-center items-center"
               style={{ backgroundColor: colors.primary, ...shadows.medium }}
             >
-              {user?.imageUrl ? (
+              {profileImageUrl || user?.imageUrl ? (
                 <Image
-                  source={{ uri: user.imageUrl }}
+                  source={{ uri: profileImageUrl || user?.imageUrl }}
                   className="w-full h-full"
                 />
               ) : (
@@ -380,7 +393,8 @@ export default function TrainerHomeScreen() {
             upcomingBookings
               .slice(0, 3)
               .map((booking: any, index: number) => {
-                const bookingDateTime = new Date(booking.startTime);
+                // Combine date and startTime properly
+                const bookingDateTime = new Date(`${booking.date}T${booking.startTime}:00`);
                 const dayName = bookingDateTime.toLocaleDateString("en-US", {
                   weekday: "short",
                 });
@@ -390,6 +404,22 @@ export default function TrainerHomeScreen() {
                   minute: '2-digit',
                   hour12: true,
                 });
+
+                // Determine status color
+                const getStatusColor = (status: string) => {
+                  switch (status) {
+                    case 'completed':
+                      return colors.success;
+                    case 'cancelled':
+                      return colors.error;
+                    case 'cancellation_requested':
+                      return colors.warning;
+                    default:
+                      return colors.primary;
+                  }
+                };
+
+                const statusColor = getStatusColor(booking.status);
 
                 return (
                   <AnimatedCard
@@ -445,13 +475,13 @@ export default function TrainerHomeScreen() {
                         </Text>
                         <View
                           className="px-2 py-0.5 rounded-md mt-1"
-                          style={{ backgroundColor: `${colors.success}15` }}
+                          style={{ backgroundColor: `${statusColor}15` }}
                         >
                           <Text
                             className="text-xs font-semibold"
-                            style={{ color: colors.success }}
+                            style={{ color: statusColor }}
                           >
-                            {booking.status}
+                            {booking.status === 'cancellation_requested' ? 'Cancel Req' : booking.status}
                           </Text>
                         </View>
                       </View>

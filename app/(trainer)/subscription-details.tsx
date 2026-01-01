@@ -52,10 +52,10 @@ export default function SubscriptionDetailsScreen() {
                 paymentStatus:
                   subscription.paymentMethod === "offline" ? "pending" : "paid",
               });
-              showToast.success("Subscription renewed!");
+              showToast.success("Renewed");
               router.back();
             } catch (error) {
-              showToast.error("Failed to renew subscription");
+              showToast.error("Renew failed");
             }
           },
         },
@@ -76,10 +76,10 @@ export default function SubscriptionDetailsScreen() {
           onPress: async () => {
             try {
               await cancelSubscription({ subscriptionId: subscription._id });
-              showToast.success("Subscription cancelled");
+              showToast.success("Cancelled");
               router.back();
             } catch (error) {
-              showToast.error("Failed to cancel subscription");
+              showToast.error("Cancel failed");
             }
           },
         },

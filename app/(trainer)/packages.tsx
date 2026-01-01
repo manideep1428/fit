@@ -8,29 +8,38 @@ import {
   Alert,
   Modal,
   Switch,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getColors, Shadows } from "@/constants/colors";
 import { StatusBar } from "expo-status-bar";
 import { useUser } from "@clerk/clerk-expo";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { showToast } from "@/utils/toast";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+
+const { width } = Dimensions.get("window");
+const CARD_WIDTH = width - 48;
 
 const CURRENCIES = [
   { code: "GBP", symbol: "£" },
   { code: "NOK", symbol: "kr" },
+  { code: "USD", symbol: "$" },
+  { code: "EUR", symbol: "€" },
 ];
 
-const DEFAULT_FEATURES = [
-  "Cancel anytime",
-  "Direct chat support",
-  "Progress tracking",
-  "Custom workout plans",
+
+const PLAN_COLORS = [
+  { gradient: ["#667eea", "#764ba2"], accent: "#667eea" },
+  { gradient: ["#f093fb", "#f5576c"], accent: "#f5576c" },
+  { gradient: ["#4facfe", "#00f2fe"], accent: "#4facfe" },
+  { gradient: ["#43e97b", "#38f9d7"], accent: "#43e97b" },
+  { gradient: ["#fa709a", "#fee140"], accent: "#fa709a" },
 ];
 
 export default function ManagePlansScreen() {
@@ -48,7 +57,7 @@ export default function ManagePlansScreen() {
   const [description, setDescription] = useState("");
   const [sessionsPerMonth, setSessionsPerMonth] = useState("");
   const [monthlyPrice, setMonthlyPrice] = useState("");
-  const [currency, setCurrency] = useState("INR");
+  const [currency, setCurrency] = useState("GBP");
   const [discount, setDiscount] = useState("");
   const [isVisible, setIsVisible] = useState(true);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([
@@ -81,9 +90,8 @@ export default function ManagePlansScreen() {
   const toggleVisibility = useMutation(api.trainerPlans.togglePlanVisibility);
   const toggleActive = useMutation(api.trainerPlans.togglePlanActive);
   const deletePlan = useMutation(api.trainerPlans.deletePlan);
-  const createPricingRule = useMutation(api.pricingRules.createPricingRule);
+  const createPricingRule = useAction(api.pricingRules.createPricingRule);
 
-  // Open edit modal with plan data
   const handleEditPlan = (plan: any) => {
     setEditingPlan(plan);
     setName(plan.name);
@@ -97,7 +105,6 @@ export default function ManagePlansScreen() {
     setShowPlanModal(true);
   };
 
-  // Open send discount modal
   const handleOpenDiscountModal = (plan: any) => {
     setDiscountPlan(plan);
     setDiscountPercentage(plan.discount ? plan.discount.toString() : "");
@@ -109,14 +116,13 @@ export default function ManagePlansScreen() {
 
   const handleSavePlan = async () => {
     if (!name || !description || !sessionsPerMonth || !monthlyPrice) {
-      showToast.error("Please fill all required fields");
+      showToast.error("Fill all fields");
       return;
     }
 
     setSaving(true);
     try {
       if (editingPlan) {
-        // Update existing plan
         await updatePlan({
           planId: editingPlan._id,
           name,
@@ -128,9 +134,8 @@ export default function ManagePlansScreen() {
           isVisible,
           features: selectedFeatures,
         });
-        showToast.success("Plan updated successfully!");
+        showToast.success("Plan updated");
       } else {
-        // Create new plan
         await createPlan({
           trainerId: user!.id,
           name,
@@ -142,52 +147,46 @@ export default function ManagePlansScreen() {
           isVisible,
           features: selectedFeatures,
         });
-        showToast.success("Plan created successfully!");
+        showToast.success("Plan created");
       }
-
       setShowPlanModal(false);
       resetForm();
     } catch (error) {
-      console.error("Error saving plan:", error);
-      showToast.error("Failed to save plan");
+      showToast.error("Save failed");
     } finally {
       setSaving(false);
     }
   };
 
-  // Send discount to clients
   const handleSendDiscount = async () => {
     if (!discountPercentage) {
-      showToast.error("Please enter discount percentage");
+      showToast.error("Enter discount %");
       return;
     }
 
     const discountNum = parseFloat(discountPercentage);
     if (discountNum < 0 || discountNum > 100) {
-      showToast.error("Discount must be between 0 and 100");
+      showToast.error("Must be 0-100");
       return;
     }
 
     if (discountType === "specific" && selectedClients.length === 0) {
-      showToast.error("Please select at least one client");
+      showToast.error("Select a client");
       return;
     }
 
     setSendingDiscount(true);
     try {
       if (discountType === "all") {
-        // Create global discount for all clients
         await createPricingRule({
           trainerId: user!.id,
-          clientId: undefined, // undefined = applies to all clients
+          clientId: undefined,
           discountPercentage: discountNum,
           description:
-            discountDescription ||
-            `${discountPlan?.name || "Plan"} discount for all clients`,
+            discountDescription || `${discountPlan?.name || "Plan"} discount`,
         });
-        showToast.success("Discount applied to all clients!");
+        showToast.success("Discount applied");
       } else {
-        // Create individual discounts for selected clients
         for (const clientId of selectedClients) {
           await createPricingRule({
             trainerId: user!.id,
@@ -199,42 +198,22 @@ export default function ManagePlansScreen() {
           });
         }
         showToast.success(
-          `Discount sent to ${selectedClients.length} client(s)!`
+          `Sent to ${selectedClients.length} client(s)`
         );
       }
-
       setShowDiscountModal(false);
       resetDiscountForm();
     } catch (error) {
-      console.error("Error sending discount:", error);
-      showToast.error("Failed to send discount");
+      showToast.error("Discount failed");
     } finally {
       setSendingDiscount(false);
-    }
-  };
-
-  const handleToggleVisibility = async (planId: any) => {
-    try {
-      await toggleVisibility({ planId });
-      showToast.success("Visibility updated");
-    } catch (error) {
-      showToast.error("Failed to update visibility");
-    }
-  };
-
-  const handleToggleActive = async (planId: any) => {
-    try {
-      await toggleActive({ planId });
-      showToast.success("Status updated");
-    } catch (error) {
-      showToast.error("Failed to update status");
     }
   };
 
   const handleDeletePlan = (plan: any) => {
     Alert.alert(
       "Delete Plan",
-      `Are you sure you want to delete "${plan.name}"? This cannot be undone.`,
+      `Delete "${plan.name}"? This cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -245,7 +224,7 @@ export default function ManagePlansScreen() {
               await deletePlan({ planId: plan._id });
               showToast.success("Plan deleted");
             } catch (error: any) {
-              showToast.error(error.message || "Failed to delete plan");
+              showToast.error(error.message || "Delete failed");
             }
           },
         },
@@ -260,7 +239,7 @@ export default function ManagePlansScreen() {
     setSessionsPerMonth("");
     setMonthlyPrice("");
     setDiscount("");
-    setCurrency("INR");
+    setCurrency("GBP");
     setIsVisible(true);
     setSelectedFeatures(["Cancel anytime"]);
   };
@@ -293,9 +272,215 @@ export default function ManagePlansScreen() {
     return CURRENCIES.find((c) => c.code === code)?.symbol || code;
   };
 
-  const openCreateModal = () => {
-    resetForm();
-    setShowPlanModal(true);
+  const getDiscountedPrice = (price: number, discountPercent: number) => {
+    return (price * (1 - discountPercent / 100)).toFixed(0);
+  };
+
+  const getPlanColor = (index: number) =>
+    PLAN_COLORS[index % PLAN_COLORS.length];
+
+  const renderSubscriptionCard = (plan: any, index: number) => {
+    const planColor = getPlanColor(index);
+    const finalPrice =
+      plan.discount > 0
+        ? getDiscountedPrice(plan.monthlyPrice, plan.discount)
+        : plan.monthlyPrice;
+
+    return (
+      <View
+        key={plan._id}
+        className="mb-6 rounded-3xl overflow-hidden"
+        style={{
+          width: CARD_WIDTH,
+          ...shadows.large,
+          opacity: plan.isActive ? 1 : 0.6,
+        }}
+      >
+        {/* Card Header with Gradient */}
+        <LinearGradient
+          colors={planColor.gradient as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="p-6 pb-8"
+        >
+          {/* Status & Actions Row */}
+          <View className="flex-row justify-between items-start mb-4">
+            <View className="flex-row gap-2">
+              {!plan.isActive && (
+                <View className="px-3 py-1 rounded-full bg-white/20">
+                  <Text className="text-white text-xs font-semibold">
+                    Paused
+                  </Text>
+                </View>
+              )}
+              {!plan.isVisible && (
+                <View className="px-3 py-1 rounded-full bg-white/20">
+                  <Text className="text-white text-xs font-semibold">
+                    Hidden
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => handleEditPlan(plan)}
+                className="w-9 h-9 rounded-full bg-white/20 items-center justify-center"
+              >
+                <Ionicons name="pencil" size={16} color="#FFF" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleDeletePlan(plan)}
+                className="w-9 h-9 rounded-full bg-white/20 items-center justify-center"
+              >
+                <Ionicons name="trash-outline" size={16} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Plan Name & Discount Badge */}
+          <View className="flex-row items-center gap-3 mb-2">
+            <Text className="text-white text-2xl font-bold">{plan.name}</Text>
+            {plan.discount > 0 && (
+              <View className="px-3 py-1 rounded-full bg-white">
+                <Text
+                  style={{ color: planColor.accent }}
+                  className="text-xs font-bold"
+                >
+                  {plan.discount}% OFF
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <Text className="text-white/80 text-sm mb-6">{plan.description}</Text>
+
+          {/* Price Display */}
+          <View className="flex-row items-end">
+            <Text className="text-white text-5xl font-bold">
+              {getCurrencySymbol(plan.currency)}
+              {finalPrice}
+            </Text>
+            <Text className="text-white/70 text-lg mb-2 ml-1">/month</Text>
+          </View>
+          {plan.discount > 0 && (
+            <Text className="text-white/60 text-sm line-through mt-1">
+              {getCurrencySymbol(plan.currency)}
+              {plan.monthlyPrice}/month
+            </Text>
+          )}
+        </LinearGradient>
+
+        {/* Card Body */}
+        <View className="p-6" style={{ backgroundColor: colors.surface }}>
+          {/* Sessions Info */}
+          <View
+            className="flex-row items-center p-4 rounded-2xl mb-5"
+            style={{ backgroundColor: `${planColor.accent}15` }}
+          >
+            <View
+              className="w-12 h-12 rounded-xl items-center justify-center"
+              style={{ backgroundColor: `${planColor.accent}25` }}
+            >
+              <Ionicons name="calendar" size={24} color={planColor.accent} />
+            </View>
+            <View className="ml-4">
+              <Text
+                className="text-2xl font-bold"
+                style={{ color: colors.text }}
+              >
+                {plan.sessionsPerMonth}
+              </Text>
+              <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                sessions per month
+              </Text>
+            </View>
+          </View>
+
+          {/* Features List */}
+          {plan.features && plan.features.length > 0 && (
+            <View className="mb-5">
+              <Text
+                className="text-sm font-semibold mb-3"
+                style={{ color: colors.textSecondary }}
+              >
+                WHAT'S INCLUDED
+              </Text>
+              {plan.features.map((feature: string, idx: number) => (
+                <View key={idx} className="flex-row items-center mb-3">
+                  <View
+                    className="w-6 h-6 rounded-full items-center justify-center"
+                    style={{ backgroundColor: `${planColor.accent}20` }}
+                  >
+                    <Ionicons
+                      name="checkmark"
+                      size={14}
+                      color={planColor.accent}
+                    />
+                  </View>
+                  <Text
+                    className="ml-3 text-base"
+                    style={{ color: colors.text }}
+                  >
+                    {feature}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          <View className="gap-3">
+            <TouchableOpacity
+              onPress={() => handleOpenDiscountModal(plan)}
+              className="py-4 rounded-2xl flex-row items-center justify-center"
+              style={{ backgroundColor: planColor.accent }}
+            >
+              <Ionicons name="gift" size={20} color="#FFF" />
+              <Text className="text-white font-semibold text-base ml-2">
+                Send Discount
+              </Text>
+            </TouchableOpacity>
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => toggleVisibility({ planId: plan._id })}
+                className="flex-1 py-3 rounded-xl flex-row items-center justify-center"
+                style={{ backgroundColor: colors.background }}
+              >
+                <Ionicons
+                  name={plan.isVisible ? "eye-off-outline" : "eye-outline"}
+                  size={18}
+                  color={colors.text}
+                />
+                <Text
+                  className="ml-2 font-medium"
+                  style={{ color: colors.text }}
+                >
+                  {plan.isVisible ? "Hide" : "Show"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => toggleActive({ planId: plan._id })}
+                className="flex-1 py-3 rounded-xl flex-row items-center justify-center"
+                style={{ backgroundColor: colors.background }}
+              >
+                <Ionicons
+                  name={plan.isActive ? "pause" : "play"}
+                  size={18}
+                  color={colors.text}
+                />
+                <Text
+                  className="ml-2 font-medium"
+                  style={{ color: colors.text }}
+                >
+                  {plan.isActive ? "Pause" : "Enable"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -304,351 +489,130 @@ export default function ManagePlansScreen() {
 
       {/* Header */}
       <View
-        className="px-4 pb-4 flex-row items-center justify-between"
+        className="px-6 pb-4 flex-row items-center justify-between"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity
           onPress={() => router.back()}
-          className="w-10 h-10 rounded-full items-center justify-center"
+          className="w-11 h-11 rounded-full items-center justify-center"
           style={{ backgroundColor: colors.surface }}
         >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text className="text-xl font-bold" style={{ color: colors.text }}>
           Subscription Plans
         </Text>
         <TouchableOpacity
-          onPress={openCreateModal}
-          className="w-10 h-10 rounded-full items-center justify-center"
+          onPress={() => {
+            resetForm();
+            setShowPlanModal(true);
+          }}
+          className="w-11 h-11 rounded-full items-center justify-center"
           style={{ backgroundColor: colors.primary }}
         >
-          <Ionicons name="add" size={24} color="#FFF" />
+          <Ionicons name="add" size={26} color="#FFF" />
         </TouchableOpacity>
       </View>
 
       <ScrollView
-        className="flex-1 px-4"
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
       >
-        {/* Info Card */}
-        <View
-          className="rounded-xl p-4 mb-6"
-          style={{ backgroundColor: `${colors.primary}15` }}
-        >
-          <View className="flex-row items-start">
-            <Ionicons
-              name="information-circle"
-              size={24}
-              color={colors.primary}
-            />
-            <View className="ml-3 flex-1">
+        {/* Stats Summary */}
+        {plans && plans.length > 0 && (
+          <View className="flex-row gap-3 mb-6">
+            <View
+              className="flex-1 p-4 rounded-2xl"
+              style={{ backgroundColor: colors.surface }}
+            >
               <Text
-                className="font-semibold mb-1"
-                style={{ color: colors.text }}
+                className="text-3xl font-bold"
+                style={{ color: colors.primary }}
               >
-                Manage Your Plans
+                {plans.length}
               </Text>
               <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                Create plans, set discounts, and send special offers to your
-                clients.
+                Total Plans
+              </Text>
+            </View>
+            <View
+              className="flex-1 p-4 rounded-2xl"
+              style={{ backgroundColor: colors.surface }}
+            >
+              <Text
+                className="text-3xl font-bold"
+                style={{ color: colors.success }}
+              >
+                {plans.filter((p: any) => p.isActive).length}
+              </Text>
+              <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                Active
+              </Text>
+            </View>
+            <View
+              className="flex-1 p-4 rounded-2xl"
+              style={{ backgroundColor: colors.surface }}
+            >
+              <Text
+                className="text-3xl font-bold"
+                style={{ color: colors.warning }}
+              >
+                {plans.filter((p: any) => p.discount > 0).length}
+              </Text>
+              <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                With Discount
               </Text>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Plans List */}
         {!plans ? (
-          <View className="items-center py-12">
+          <View className="items-center py-20">
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : plans.length === 0 ? (
           <View
-            className="rounded-xl p-8 items-center"
+            className="rounded-3xl p-10 items-center"
             style={{ backgroundColor: colors.surface, ...shadows.medium }}
           >
-            <Ionicons
-              name="pricetags-outline"
-              size={64}
-              color={colors.textTertiary}
-            />
+            <View
+              className="w-24 h-24 rounded-full items-center justify-center mb-6"
+              style={{ backgroundColor: `${colors.primary}15` }}
+            >
+              <Ionicons name="pricetags" size={48} color={colors.primary} />
+            </View>
             <Text
-              className="mt-4 text-lg font-semibold"
+              className="text-xl font-bold mb-2"
               style={{ color: colors.text }}
             >
-              No plans yet
+              No Plans Yet
             </Text>
             <Text
-              className="mt-2 text-sm text-center"
+              className="text-center mb-6"
               style={{ color: colors.textSecondary }}
             >
-              Create your first subscription plan for clients
+              Create your first subscription plan to start accepting clients
             </Text>
             <TouchableOpacity
-              onPress={openCreateModal}
-              className="mt-6 rounded-xl py-3 px-6 flex-row items-center"
+              onPress={() => {
+                resetForm();
+                setShowPlanModal(true);
+              }}
+              className="rounded-2xl py-4 px-8 flex-row items-center"
               style={{ backgroundColor: colors.primary }}
             >
-              <Ionicons name="add" size={20} color="#FFF" />
-              <Text className="text-white font-semibold ml-2">Create Plan</Text>
+              <Ionicons name="add" size={22} color="#FFF" />
+              <Text className="text-white font-semibold text-base ml-2">
+                Create Plan
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
-          plans.map((plan: any) => (
-            <View
-              key={plan._id}
-              className="rounded-xl p-5 mb-4"
-              style={{
-                backgroundColor: colors.surface,
-                ...shadows.medium,
-                opacity: plan.isActive ? 1 : 0.7,
-                borderWidth: 2,
-                borderColor: plan.isVisible ? colors.primary : "transparent",
-              }}
-            >
-              {/* Header */}
-              <View className="flex-row justify-between items-start mb-3">
-                <View className="flex-1 pr-4">
-                  <View className="flex-row items-center flex-wrap gap-2">
-                    <Text
-                      className="text-lg font-bold"
-                      style={{ color: colors.text }}
-                    >
-                      {plan.name}
-                    </Text>
-                    {plan.discount > 0 && (
-                      <View
-                        className="px-2.5 py-1 rounded-lg"
-                        style={{ backgroundColor: colors.success }}
-                      >
-                        <Text className="text-white text-xs font-bold">
-                          {plan.discount}% OFF
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text
-                    className="text-sm mt-1"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    {plan.description}
-                  </Text>
-                </View>
-
-                {/* Edit Button */}
-                <TouchableOpacity
-                  onPress={() => handleEditPlan(plan)}
-                  className="w-9 h-9 rounded-full items-center justify-center"
-                  style={{ backgroundColor: colors.background }}
-                >
-                  <Ionicons name="pencil" size={18} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Status Badges */}
-              <View className="flex-row gap-2 mb-3">
-                <View
-                  className="px-2 py-1 rounded-full"
-                  style={{
-                    backgroundColor: plan.isVisible
-                      ? `${colors.primary}20`
-                      : `${colors.textTertiary}20`,
-                  }}
-                >
-                  <Text
-                    className="text-xs font-semibold"
-                    style={{
-                      color: plan.isVisible
-                        ? colors.primary
-                        : colors.textTertiary,
-                    }}
-                  >
-                    {plan.isVisible ? "Visible" : "Hidden"}
-                  </Text>
-                </View>
-                <View
-                  className="px-2 py-1 rounded-full"
-                  style={{
-                    backgroundColor: plan.isActive
-                      ? `${colors.success}20`
-                      : `${colors.textTertiary}20`,
-                  }}
-                >
-                  <Text
-                    className="text-xs font-semibold"
-                    style={{
-                      color: plan.isActive
-                        ? colors.success
-                        : colors.textTertiary,
-                    }}
-                  >
-                    {plan.isActive ? "Active" : "Inactive"}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Price & Sessions */}
-              <View className="flex-row gap-3 mb-4">
-                <View
-                  className="flex-1 rounded-xl p-3"
-                  style={{ backgroundColor: `${colors.primary}10` }}
-                >
-                  <View className="flex-row items-baseline">
-                    {plan.discount > 0 && (
-                      <Text
-                        className="text-sm mr-2 line-through"
-                        style={{ color: colors.textTertiary }}
-                      >
-                        {getCurrencySymbol(plan.currency)}
-                        {plan.monthlyPrice}
-                      </Text>
-                    )}
-                    <Text
-                      className="text-2xl font-bold"
-                      style={{ color: colors.primary }}
-                    >
-                      {getCurrencySymbol(plan.currency)}
-                      {plan.discount > 0
-                        ? (
-                            plan.monthlyPrice *
-                            (1 - plan.discount / 100)
-                          ).toFixed(0)
-                        : plan.monthlyPrice}
-                    </Text>
-                  </View>
-                  <Text
-                    className="text-xs"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    per month
-                  </Text>
-                </View>
-                <View
-                  className="flex-1 rounded-xl p-3"
-                  style={{ backgroundColor: `${colors.primary}10` }}
-                >
-                  <Text
-                    className="text-2xl font-bold"
-                    style={{ color: colors.primary }}
-                  >
-                    {plan.sessionsPerMonth}
-                  </Text>
-                  <Text
-                    className="text-xs"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    sessions/month
-                  </Text>
-                </View>
-              </View>
-
-              {/* Features */}
-              {plan.features && plan.features.length > 0 && (
-                <View className="mb-4">
-                  {plan.features
-                    .slice(0, 2)
-                    .map((feature: string, index: number) => (
-                      <View
-                        key={index}
-                        className="flex-row items-center mb-1.5"
-                      >
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={16}
-                          color={colors.success}
-                        />
-                        <Text
-                          className="ml-2 text-sm"
-                          style={{ color: colors.text }}
-                        >
-                          {feature}
-                        </Text>
-                      </View>
-                    ))}
-                  {plan.features.length > 2 && (
-                    <Text
-                      className="text-xs ml-6"
-                      style={{ color: colors.textTertiary }}
-                    >
-                      +{plan.features.length - 2} more features
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {/* Send Discount Button */}
-              <TouchableOpacity
-                onPress={() => handleOpenDiscountModal(plan)}
-                className="mb-3 rounded-xl py-2.5 flex-row items-center justify-center"
-                style={{
-                  backgroundColor: `${colors.success}15`,
-                  borderWidth: 1,
-                  borderColor: colors.success,
-                }}
-              >
-                <Ionicons name="gift" size={18} color={colors.success} />
-                <Text
-                  className="ml-2 font-semibold text-sm"
-                  style={{ color: colors.success }}
-                >
-                  Send Discount to Clients
-                </Text>
-              </TouchableOpacity>
-
-              {/* Actions */}
-              <View className="flex-row gap-2">
-                <TouchableOpacity
-                  onPress={() => handleToggleVisibility(plan._id)}
-                  className="flex-1 rounded-xl py-2.5 flex-row items-center justify-center"
-                  style={{ backgroundColor: colors.background }}
-                >
-                  <Ionicons
-                    name={plan.isVisible ? "eye-off-outline" : "eye-outline"}
-                    size={18}
-                    color={colors.text}
-                  />
-                  <Text
-                    className="ml-2 font-semibold text-sm"
-                    style={{ color: colors.text }}
-                  >
-                    {plan.isVisible ? "Hide" : "Show"}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleToggleActive(plan._id)}
-                  className="flex-1 rounded-xl py-2.5 flex-row items-center justify-center"
-                  style={{ backgroundColor: colors.background }}
-                >
-                  <Ionicons
-                    name={
-                      plan.isActive
-                        ? "pause-circle-outline"
-                        : "play-circle-outline"
-                    }
-                    size={18}
-                    color={colors.text}
-                  />
-                  <Text
-                    className="ml-2 font-semibold text-sm"
-                    style={{ color: colors.text }}
-                  >
-                    {plan.isActive ? "Pause" : "Enable"}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleDeletePlan(plan)}
-                  className="rounded-xl py-2.5 px-4"
-                  style={{ backgroundColor: `${colors.error}15` }}
-                >
-                  <Ionicons
-                    name="trash-outline"
-                    size={18}
-                    color={colors.error}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
+          plans.map((plan: any, index: number) =>
+            renderSubscriptionCard(plan, index)
+          )
         )}
       </ScrollView>
 
@@ -659,49 +623,51 @@ export default function ManagePlansScreen() {
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
         >
           <View
-            className="rounded-t-3xl p-6"
+            className="rounded-t-3xl"
             style={{
               backgroundColor: colors.surface,
               maxHeight: "90%",
               paddingBottom: insets.bottom + 16,
             }}
           >
-            <View className="flex-row justify-between items-center mb-6">
+            {/* Modal Header */}
+            <View className="flex-row justify-between items-center p-6 pb-4">
               <Text
                 className="text-xl font-bold"
                 style={{ color: colors.text }}
               >
-                {editingPlan ? "Edit Plan" : "Create Plan"}
+                {editingPlan ? "Edit Plan" : "New Plan"}
               </Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowPlanModal(false);
                   resetForm();
                 }}
+                className="w-10 h-10 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.background }}
               >
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={22} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Name */}
+            <ScrollView className="px-6" showsVerticalScrollIndicator={false}>
+              {/* Plan Name */}
               <Text
                 className="text-sm font-semibold mb-2"
                 style={{ color: colors.text }}
               >
-                Plan Name *
+                Plan Name
               </Text>
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder="e.g., Basic Fitness"
+                placeholder="e.g., Premium Fitness"
                 placeholderTextColor={colors.textTertiary}
-                className="px-4 py-3.5 rounded-xl mb-4"
+                className="px-4 py-4 rounded-xl mb-4"
                 style={{
                   backgroundColor: colors.background,
                   color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
+                  fontSize: 16,
                 }}
               />
 
@@ -710,68 +676,45 @@ export default function ManagePlansScreen() {
                 className="text-sm font-semibold mb-2"
                 style={{ color: colors.text }}
               >
-                Description *
+                Description
               </Text>
               <TextInput
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Perfect for getting started with a routine"
+                placeholder="Describe what's included..."
                 placeholderTextColor={colors.textTertiary}
                 multiline
                 numberOfLines={2}
-                className="px-4 py-3.5 rounded-xl mb-4"
+                className="px-4 py-4 rounded-xl mb-4"
                 style={{
                   backgroundColor: colors.background,
                   color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
+                  fontSize: 16,
                   textAlignVertical: "top",
+                  minHeight: 80,
                 }}
               />
 
-              {/* Sessions */}
-              <Text
-                className="text-sm font-semibold mb-2"
-                style={{ color: colors.text }}
-              >
-                Sessions per Month *
-              </Text>
-              <TextInput
-                value={sessionsPerMonth}
-                onChangeText={setSessionsPerMonth}
-                placeholder="e.g., 4"
-                keyboardType="numeric"
-                placeholderTextColor={colors.textTertiary}
-                className="px-4 py-3.5 rounded-xl mb-4"
-                style={{
-                  backgroundColor: colors.background,
-                  color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              />
-
-              {/* Price */}
+              {/* Price Row */}
               <View className="flex-row gap-3 mb-4">
                 <View className="flex-1">
                   <Text
                     className="text-sm font-semibold mb-2"
                     style={{ color: colors.text }}
                   >
-                    Monthly Price *
+                    Price
                   </Text>
                   <TextInput
                     value={monthlyPrice}
                     onChangeText={setMonthlyPrice}
-                    placeholder="e.g., 5000"
+                    placeholder="0"
                     keyboardType="numeric"
                     placeholderTextColor={colors.textTertiary}
-                    className="px-4 py-3.5 rounded-xl"
+                    className="px-4 py-4 rounded-xl"
                     style={{
                       backgroundColor: colors.background,
                       color: colors.text,
-                      borderWidth: 1,
-                      borderColor: colors.border,
+                      fontSize: 16,
                     }}
                   />
                 </View>
@@ -784,17 +727,15 @@ export default function ManagePlansScreen() {
                   </Text>
                   <TouchableOpacity
                     onPress={() => setShowCurrencyPicker(!showCurrencyPicker)}
-                    className="px-4 py-3.5 rounded-xl flex-row items-center justify-between"
-                    style={{
-                      backgroundColor: colors.background,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                    }}
+                    className="px-4 py-4 rounded-xl flex-row items-center justify-between"
+                    style={{ backgroundColor: colors.background }}
                   >
-                    <Text style={{ color: colors.text }}>{currency}</Text>
+                    <Text style={{ color: colors.text, fontSize: 16 }}>
+                      {currency}
+                    </Text>
                     <Ionicons
                       name="chevron-down"
-                      size={16}
+                      size={18}
                       color={colors.textSecondary}
                     />
                   </TouchableOpacity>
@@ -805,11 +746,7 @@ export default function ManagePlansScreen() {
               {showCurrencyPicker && (
                 <View
                   className="rounded-xl mb-4 overflow-hidden"
-                  style={{
-                    backgroundColor: colors.background,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}
+                  style={{ backgroundColor: colors.background }}
                 >
                   {CURRENCIES.map((curr) => (
                     <TouchableOpacity
@@ -839,31 +776,55 @@ export default function ManagePlansScreen() {
                 </View>
               )}
 
-              {/* Discount */}
-              <Text
-                className="text-sm font-semibold mb-2"
-                style={{ color: colors.text }}
-              >
-                Default Discount % (Optional)
-              </Text>
-              <TextInput
-                value={discount}
-                onChangeText={setDiscount}
-                placeholder="e.g., 20"
-                keyboardType="numeric"
-                placeholderTextColor={colors.textTertiary}
-                className="px-4 py-3.5 rounded-xl mb-4"
-                style={{
-                  backgroundColor: colors.background,
-                  color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              />
+              {/* Sessions & Discount Row */}
+              <View className="flex-row gap-3 mb-4">
+                <View className="flex-1">
+                  <Text
+                    className="text-sm font-semibold mb-2"
+                    style={{ color: colors.text }}
+                  >
+                    Sessions/Month
+                  </Text>
+                  <TextInput
+                    value={sessionsPerMonth}
+                    onChangeText={setSessionsPerMonth}
+                    placeholder="4"
+                    keyboardType="numeric"
+                    placeholderTextColor={colors.textTertiary}
+                    className="px-4 py-4 rounded-xl"
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      fontSize: 16,
+                    }}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className="text-sm font-semibold mb-2"
+                    style={{ color: colors.text }}
+                  >
+                    Discount %
+                  </Text>
+                  <TextInput
+                    value={discount}
+                    onChangeText={setDiscount}
+                    placeholder="0"
+                    keyboardType="numeric"
+                    placeholderTextColor={colors.textTertiary}
+                    className="px-4 py-4 rounded-xl"
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      fontSize: 16,
+                    }}
+                  />
+                </View>
+              </View>
 
               {/* Visibility Toggle */}
               <View
-                className="flex-row items-center justify-between mb-4 p-4 rounded-xl"
+                className="flex-row items-center justify-between p-4 rounded-xl mb-4"
                 style={{ backgroundColor: colors.background }}
               >
                 <View className="flex-1 mr-4">
@@ -877,7 +838,7 @@ export default function ManagePlansScreen() {
                     className="text-sm"
                     style={{ color: colors.textSecondary }}
                   >
-                    Show this plan on your pricing page
+                    Show on your subscriptions page
                   </Text>
                 </View>
                 <Switch
@@ -887,83 +848,50 @@ export default function ManagePlansScreen() {
                   thumbColor="#FFF"
                 />
               </View>
-
-              {/* Features */}
-              <Text
-                className="text-sm font-semibold mb-2"
-                style={{ color: colors.text }}
-              >
-                Features (select what's included)
-              </Text>
-              <View className="flex-row flex-wrap gap-2 mb-6">
-                {DEFAULT_FEATURES.map((feature) => (
-                  <TouchableOpacity
-                    key={feature}
-                    onPress={() => toggleFeature(feature)}
-                    className="px-3 py-2 rounded-full"
-                    style={{
-                      backgroundColor: selectedFeatures.includes(feature)
-                        ? colors.primary
-                        : colors.background,
-                      borderWidth: 1,
-                      borderColor: selectedFeatures.includes(feature)
-                        ? colors.primary
-                        : colors.border,
-                    }}
-                  >
-                    <Text
-                      className="text-sm"
-                      style={{
-                        color: selectedFeatures.includes(feature)
-                          ? "#FFF"
-                          : colors.text,
-                      }}
-                    >
-                      {feature}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Preview */}
+              {/* Preview Card */}
               {name && monthlyPrice && (
-                <View
-                  className="rounded-xl p-4 mb-6"
-                  style={{
-                    backgroundColor: colors.primary,
-                    borderWidth: discount ? 2 : 0,
-                    borderColor: colors.success,
-                  }}
-                >
-                  <Text className="text-white/70 text-xs mb-1">Preview</Text>
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-white font-bold text-lg">{name}</Text>
-                    {discount && parseFloat(discount) > 0 && (
-                      <View className="px-2 py-0.5 rounded-lg bg-green-500">
-                        <Text className="text-white text-xs font-bold">
-                          Save {discount}%
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <View className="flex-row items-baseline mt-2">
-                    {discount && parseFloat(discount) > 0 && (
-                      <Text className="text-white/60 line-through mr-2">
-                        {getCurrencySymbol(currency)}
-                        {monthlyPrice}
+                <View className="rounded-2xl overflow-hidden mb-6">
+                  <LinearGradient
+                    colors={["#667eea", "#764ba2"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="p-5"
+                  >
+                    <Text className="text-white/70 text-xs mb-1">PREVIEW</Text>
+                    <View className="flex-row items-center gap-2 mb-1">
+                      <Text className="text-white font-bold text-lg">
+                        {name}
                       </Text>
-                    )}
-                    <Text className="text-white font-bold text-2xl">
-                      {getCurrencySymbol(currency)}
-                      {discount && parseFloat(discount) > 0
-                        ? (
-                            parseFloat(monthlyPrice) *
-                            (1 - parseFloat(discount) / 100)
-                          ).toFixed(0)
-                        : monthlyPrice}
-                    </Text>
-                    <Text className="text-white/70 ml-1">/month</Text>
-                  </View>
+                      {discount && parseFloat(discount) > 0 && (
+                        <View className="px-2 py-0.5 rounded-full bg-white">
+                          <Text
+                            className="text-xs font-bold"
+                            style={{ color: "#667eea" }}
+                          >
+                            {discount}% OFF
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View className="flex-row items-end">
+                      {discount && parseFloat(discount) > 0 && (
+                        <Text className="text-white/50 line-through mr-2 text-lg">
+                          {getCurrencySymbol(currency)}
+                          {monthlyPrice}
+                        </Text>
+                      )}
+                      <Text className="text-white font-bold text-3xl">
+                        {getCurrencySymbol(currency)}
+                        {discount && parseFloat(discount) > 0
+                          ? (
+                              parseFloat(monthlyPrice) *
+                              (1 - parseFloat(discount) / 100)
+                            ).toFixed(0)
+                          : monthlyPrice}
+                      </Text>
+                      <Text className="text-white/70 ml-1 mb-1">/month</Text>
+                    </View>
+                  </LinearGradient>
                 </View>
               )}
 
@@ -977,7 +905,7 @@ export default function ManagePlansScreen() {
                   !sessionsPerMonth ||
                   !monthlyPrice
                 }
-                className="rounded-xl py-4 items-center"
+                className="rounded-xl py-4 items-center mb-4"
                 style={{
                   backgroundColor:
                     !name || !description || !sessionsPerMonth || !monthlyPrice
@@ -1005,47 +933,52 @@ export default function ManagePlansScreen() {
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
         >
           <View
-            className="rounded-t-3xl p-6"
+            className="rounded-t-3xl"
             style={{
               backgroundColor: colors.surface,
               maxHeight: "85%",
               paddingBottom: insets.bottom + 16,
             }}
           >
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-1">
-                <Text
-                  className="text-xl font-bold"
-                  style={{ color: colors.text }}
-                >
-                  Send Discount
-                </Text>
-                {discountPlan && (
+            {/* Modal Header */}
+            <View className="p-6 pb-4">
+              <View className="flex-row justify-between items-start">
+                <View className="flex-1">
                   <Text
-                    className="text-sm mt-1"
-                    style={{ color: colors.textSecondary }}
+                    className="text-xl font-bold"
+                    style={{ color: colors.text }}
                   >
-                    For: {discountPlan.name}
+                    Send Discount
                   </Text>
-                )}
+                  {discountPlan && (
+                    <Text
+                      className="text-sm mt-1"
+                      style={{ color: colors.textSecondary }}
+                    >
+                      For: {discountPlan.name}
+                    </Text>
+                  )}
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowDiscountModal(false);
+                    resetDiscountForm();
+                  }}
+                  className="w-10 h-10 rounded-full items-center justify-center"
+                  style={{ backgroundColor: colors.background }}
+                >
+                  <Ionicons name="close" size={22} color={colors.text} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowDiscountModal(false);
-                  resetDiscountForm();
-                }}
-              >
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView className="px-6" showsVerticalScrollIndicator={false}>
               {/* Discount Percentage */}
               <Text
                 className="text-sm font-semibold mb-2"
                 style={{ color: colors.text }}
               >
-                Discount Percentage *
+                Discount Percentage
               </Text>
               <TextInput
                 value={discountPercentage}
@@ -1053,12 +986,11 @@ export default function ManagePlansScreen() {
                 placeholder="e.g., 20"
                 keyboardType="numeric"
                 placeholderTextColor={colors.textTertiary}
-                className="px-4 py-3.5 rounded-xl mb-4"
+                className="px-4 py-4 rounded-xl mb-4"
                 style={{
                   backgroundColor: colors.background,
                   color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
+                  fontSize: 16,
                 }}
               />
 
@@ -1072,18 +1004,17 @@ export default function ManagePlansScreen() {
               <TextInput
                 value={discountDescription}
                 onChangeText={setDiscountDescription}
-                placeholder="e.g., Holiday special discount"
+                placeholder="e.g., Holiday special"
                 placeholderTextColor={colors.textTertiary}
-                className="px-4 py-3.5 rounded-xl mb-4"
+                className="px-4 py-4 rounded-xl mb-4"
                 style={{
                   backgroundColor: colors.background,
                   color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
+                  fontSize: 16,
                 }}
               />
 
-              {/* Discount Type Selection */}
+              {/* Discount Type */}
               <Text
                 className="text-sm font-semibold mb-3"
                 style={{ color: colors.text }}
@@ -1093,15 +1024,12 @@ export default function ManagePlansScreen() {
               <View className="flex-row gap-3 mb-4">
                 <TouchableOpacity
                   onPress={() => setDiscountType("all")}
-                  className="flex-1 rounded-xl p-4 flex-row items-center"
+                  className="flex-1 rounded-xl p-4 flex-row items-center justify-center"
                   style={{
                     backgroundColor:
                       discountType === "all"
                         ? colors.primary
                         : colors.background,
-                    borderWidth: 1,
-                    borderColor:
-                      discountType === "all" ? colors.primary : colors.border,
                   }}
                 >
                   <Ionicons
@@ -1120,17 +1048,12 @@ export default function ManagePlansScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setDiscountType("specific")}
-                  className="flex-1 rounded-xl p-4 flex-row items-center"
+                  className="flex-1 rounded-xl p-4 flex-row items-center justify-center"
                   style={{
                     backgroundColor:
                       discountType === "specific"
                         ? colors.primary
                         : colors.background,
-                    borderWidth: 1,
-                    borderColor:
-                      discountType === "specific"
-                        ? colors.primary
-                        : colors.border,
                   }}
                 >
                   <Ionicons
@@ -1144,7 +1067,7 @@ export default function ManagePlansScreen() {
                       color: discountType === "specific" ? "#FFF" : colors.text,
                     }}
                   >
-                    Select Clients
+                    Select
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1153,7 +1076,7 @@ export default function ManagePlansScreen() {
               {discountType === "specific" && (
                 <View className="mb-4">
                   <Text
-                    className="text-sm font-semibold mb-2"
+                    className="text-sm font-semibold mb-3"
                     style={{ color: colors.text }}
                   >
                     Select Clients ({selectedClients.length} selected)
@@ -1164,30 +1087,24 @@ export default function ManagePlansScreen() {
                         <TouchableOpacity
                           key={client._id}
                           onPress={() => toggleClientSelection(client.clerkId)}
-                          className="flex-row items-center p-3 rounded-xl"
+                          className="flex-row items-center p-4 rounded-xl"
                           style={{
                             backgroundColor: selectedClients.includes(
                               client.clerkId
                             )
                               ? `${colors.primary}15`
                               : colors.background,
-                            borderWidth: 1,
-                            borderColor: selectedClients.includes(
-                              client.clerkId
-                            )
-                              ? colors.primary
-                              : colors.border,
                           }}
                         >
                           <View
-                            className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                            className="w-11 h-11 rounded-full items-center justify-center"
                             style={{ backgroundColor: colors.primary }}
                           >
-                            <Text className="text-white font-bold">
+                            <Text className="text-white font-bold text-lg">
                               {client.fullName?.charAt(0) || "C"}
                             </Text>
                           </View>
-                          <View className="flex-1">
+                          <View className="flex-1 ml-3">
                             <Text
                               className="font-semibold"
                               style={{ color: colors.text }}
@@ -1219,7 +1136,7 @@ export default function ManagePlansScreen() {
                     </View>
                   ) : (
                     <View
-                      className="p-4 rounded-xl items-center"
+                      className="p-6 rounded-xl items-center"
                       style={{ backgroundColor: colors.background }}
                     >
                       <Text style={{ color: colors.textSecondary }}>
@@ -1233,25 +1150,29 @@ export default function ManagePlansScreen() {
               {/* Preview */}
               {discountPercentage && (
                 <View
-                  className="rounded-xl p-4 mb-6 flex-row items-center"
+                  className="rounded-2xl p-5 mb-6 flex-row items-center"
                   style={{ backgroundColor: `${colors.success}15` }}
                 >
-                  <Ionicons name="gift" size={32} color={colors.success} />
-                  <View className="ml-3 flex-1">
+                  <View
+                    className="w-14 h-14 rounded-full items-center justify-center"
+                    style={{ backgroundColor: `${colors.success}25` }}
+                  >
+                    <Ionicons name="gift" size={28} color={colors.success} />
+                  </View>
+                  <View className="ml-4 flex-1">
                     <Text
-                      className="font-bold text-lg"
+                      className="font-bold text-2xl"
                       style={{ color: colors.success }}
                     >
-                      {discountPercentage}% Discount
+                      {discountPercentage}% OFF
                     </Text>
                     <Text
                       className="text-sm"
                       style={{ color: colors.textSecondary }}
                     >
-                      Will be sent to{" "}
                       {discountType === "all"
-                        ? "all clients"
-                        : `${selectedClients.length} selected client(s)`}
+                        ? "For all clients"
+                        : `For ${selectedClients.length} selected client(s)`}
                     </Text>
                   </View>
                 </View>
@@ -1265,7 +1186,7 @@ export default function ManagePlansScreen() {
                   !discountPercentage ||
                   (discountType === "specific" && selectedClients.length === 0)
                 }
-                className="rounded-xl py-4 flex-row items-center justify-center"
+                className="rounded-xl py-4 flex-row items-center justify-center mb-4"
                 style={{
                   backgroundColor:
                     !discountPercentage ||

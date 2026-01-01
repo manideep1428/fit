@@ -243,118 +243,116 @@ export default function NotificationHistory({
         </View>
 
         {/* Filter Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="px-4 py-3"
-          contentContainerStyle={{ gap: 12 }}
-          style={{ backgroundColor: colors.background }}
-        >
-          <FilterChip label="All" filter="all" />
-          <FilterChip label="Unread" filter="unread" />
-          <FilterChip label="Bookings" filter="bookings" />
-          <FilterChip label="Trainers" filter="trainers" />
-        </ScrollView>
+        <View style={{ backgroundColor: colors.background }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="px-4 py-3"
+            contentContainerStyle={{ gap: 12 }}
+          >
+            <FilterChip label="All" filter="all" />
+            <FilterChip label="Unread" filter="unread" />
+            <FilterChip label="Bookings" filter="bookings" />
+            <FilterChip label="Trainers" filter="trainers" />
+          </ScrollView>
+        </View>
 
         {/* Notifications List */}
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            flexGrow:
-              !notifications || filteredNotifications.length === 0 ? 1 : 0,
-          }}
-        >
-          {!notifications ? (
-            <View className="items-center justify-start pt-12">
-              <ActivityIndicator size="large" color={colors.primary} />
+        {!notifications ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : filteredNotifications.length === 0 ? (
+          <View className="flex-1 items-center justify-center">
+            <View
+              className="w-20 h-20 rounded-full items-center justify-center mb-4"
+              style={{ backgroundColor: `${colors.primary}20` }}
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={40}
+                color={colors.primary}
+              />
             </View>
-          ) : filteredNotifications.length === 0 ? (
-            <View className="flex-1 items-center justify-center">
-              <View
-                className="w-20 h-20 rounded-full items-center justify-center mb-4"
-                style={{ backgroundColor: `${colors.primary}20` }}
-              >
-                <Ionicons
-                  name="notifications-outline"
-                  size={40}
-                  color={colors.primary}
-                />
+            <Text
+              className="text-lg font-bold mb-2"
+              style={{ color: colors.text }}
+            >
+              No notifications
+            </Text>
+            <Text
+              className="text-center px-8"
+              style={{ color: colors.textSecondary }}
+            >
+              {activeFilter === "all"
+                ? "You'll see your notifications here when you receive them"
+                : `No ${activeFilter} notifications`}
+            </Text>
+          </View>
+        ) : (
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingBottom: insets.bottom + 20,
+            }}
+          >
+            {/* New Section */}
+            {newNotifications.length > 0 && (
+              <View>
+                <View className="px-4 pb-2 pt-4">
+                  <Text
+                    className="text-lg font-bold leading-tight"
+                    style={{ color: colors.text }}
+                  >
+                    New
+                  </Text>
+                </View>
+                {newNotifications.map((notification: any, index: number) => (
+                  <NotificationItem
+                    key={notification._id}
+                    notification={notification}
+                    isLast={
+                      index === newNotifications.length - 1 &&
+                      earlierNotifications.length === 0
+                    }
+                  />
+                ))}
               </View>
-              <Text
-                className="text-lg font-bold mb-2"
-                style={{ color: colors.text }}
-              >
-                No notifications
-              </Text>
-              <Text
-                className="text-center px-8"
-                style={{ color: colors.textSecondary }}
-              >
-                {activeFilter === "all"
-                  ? "You'll see your notifications here when you receive them"
-                  : `No ${activeFilter} notifications`}
-              </Text>
-            </View>
-          ) : (
-            <View>
-              {/* New Section */}
-              {newNotifications.length > 0 && (
-                <View>
-                  <View className="px-4 pb-2 pt-4">
-                    <Text
-                      className="text-lg font-bold leading-tight"
-                      style={{ color: colors.text }}
-                    >
-                      New
-                    </Text>
-                  </View>
-                  {newNotifications.map((notification: any, index: number) => (
+            )}
+
+            {/* Earlier Section */}
+            {earlierNotifications.length > 0 && (
+              <View style={{ marginTop: newNotifications.length > 0 ? 16 : 0 }}>
+                <View className="px-4 pb-2 pt-2">
+                  <Text
+                    className="text-lg font-bold leading-tight"
+                    style={{ color: colors.text }}
+                  >
+                    Earlier
+                  </Text>
+                </View>
+                {earlierNotifications.map(
+                  (notification: any, index: number) => (
                     <NotificationItem
                       key={notification._id}
                       notification={notification}
-                      isLast={
-                        index === newNotifications.length - 1 &&
-                        earlierNotifications.length === 0
-                      }
+                      isLast={index === earlierNotifications.length - 1}
                     />
-                  ))}
-                </View>
-              )}
-
-              {/* Earlier Section */}
-              {earlierNotifications.length > 0 && (
-                <View className="mt-4">
-                  <View className="px-4 pb-2 pt-2">
-                    <Text
-                      className="text-lg font-bold leading-tight"
-                      style={{ color: colors.text }}
-                    >
-                      Earlier
-                    </Text>
-                  </View>
-                  {earlierNotifications.map(
-                    (notification: any, index: number) => (
-                      <NotificationItem
-                        key={notification._id}
-                        notification={notification}
-                        isLast={index === earlierNotifications.length - 1}
-                      />
-                    )
-                  )}
-                </View>
-              )}
-
-              {/* End of list indicator */}
-              <View className="items-center justify-center py-8 opacity-50">
-                <View
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: colors.border }}
-                />
+                  )
+                )}
               </View>
+            )}
+
+            {/* End of list indicator */}
+            <View className="items-center justify-center py-8 opacity-50">
+              <View
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: colors.border }}
+              />
             </View>
-          )}
-        </ScrollView>
+          </ScrollView>
+        )}
       </View>
     </Modal>
   );
