@@ -304,6 +304,16 @@ export default defineSchema({
     .index("by_client", ["clientId"])
     .index("by_trainer_client", ["trainerId", "clientId"]),
 
+  // FAQ questions - trainer templates for common questions
+  faqQuestions: defineTable({
+    trainerId: v.string(), // Clerk ID - trainer who created the FAQ
+    question: v.string(),
+    isActive: v.boolean(),
+    order: v.optional(v.number()), // For ordering FAQs
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_trainer", ["trainerId"]),
+
   // Legacy packages table (for backward compatibility - will be deprecated)
   packages: defineTable({
     trainerId: v.string(),

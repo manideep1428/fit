@@ -127,7 +127,7 @@ export default function TrainerSetupScreen() {
 
           showToast.success("Resuming where you left off!");
         } catch (error) {
-          console.error("Error loading saved progress:", error);
+          console.error("Error loading saved progress:", error instanceof Error ? error.message : 'Unknown error');
         }
       }
 
@@ -157,7 +157,7 @@ export default function TrainerSetupScreen() {
           formData,
         });
       } catch (error) {
-        console.error("Error saving progress:", error);
+        console.error("Error saving progress:", error instanceof Error ? error.message : 'Unknown error');
       }
     };
 
@@ -219,7 +219,7 @@ export default function TrainerSetupScreen() {
       const { storageId } = await result.json();
       return storageId;
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error("Error uploading image:", error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   };
@@ -343,7 +343,7 @@ export default function TrainerSetupScreen() {
       // Show availability dialog instead of navigating immediately
       setShowAvailabilityDialog(true);
     } catch (error) {
-      console.error("Error setting up profile:", error);
+      console.error("Error setting up profile:", error instanceof Error ? error.message : 'Unknown error');
       showToast.error("Failed to setup profile. Please try again.");
       setLoading(false);
     }

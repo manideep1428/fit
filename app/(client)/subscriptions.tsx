@@ -133,7 +133,7 @@ export default function ClientSubscriptionsScreen() {
               showToast.success("Request sent!");
               router.back();
             } catch (error) {
-              console.error("Error subscribing:", error);
+              console.error("Error subscribing:", error instanceof Error ? error.message : 'Unknown error');
               showToast.error("Subscribe failed");
             } finally {
               setPurchasing(false);

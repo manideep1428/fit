@@ -255,7 +255,7 @@ export default function AvailabilityScreen() {
             
             setTimeout(() => router.back(), 500);
         } catch (error: any) {
-            console.error('Error saving availability:', error);
+            console.error('Error saving availability:', error instanceof Error ? error.message : 'Unknown error');
             Toast.show({
                 type: 'error',
                 text1: 'Error',

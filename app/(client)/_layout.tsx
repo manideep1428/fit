@@ -15,13 +15,18 @@ export default function TabLayout() {
   const colors = getColors(colorScheme === "dark");
   const shadows = colorScheme === "dark" ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
 
   // Fetch unread notification count
   const unreadCount = useQuery(
     api.notifications.getUnreadCount,
     user?.id ? { userId: user.id } : "skip"
   );
+
+  // Don't render tabs if user is signing out
+  if (isLoaded && !user) {
+    return null;
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -99,7 +104,7 @@ export default function TabLayout() {
                     }}
                   >
                     <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "bold" }}>
-                      {unreadCount > 9 ? "9+" : String(unreadCount)}
+                      {unreadCount > 9 ? "9+" : `${unreadCount}`}
                     </Text>
                   </View>
                 )}
@@ -141,12 +146,6 @@ export default function TabLayout() {
         />
         <Tabs.Screen
           name="find-trainers"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="add-trainer"
           options={{
             href: null,
           }}
@@ -198,18 +197,14 @@ export default function TabLayout() {
           options={{
             href: null,
           }}
-        />   <Tabs.Screen
+        />
+        <Tabs.Screen
           name="trainer-details"
           options={{
             href: null,
           }}
         />
-      </Tabs>   <Tabs.Screen
-          name="goal-list"
-          options={{
-            href: null,
-          }}
-        />
+      </Tabs>
     </View>
   );
 }

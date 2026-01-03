@@ -52,7 +52,7 @@ export default function QuestionListScreen() {
             try {
               await deleteQuestion({ questionId });
             } catch (error) {
-              console.error("Error deleting question:", error);
+              console.error("Error deleting question:", error instanceof Error ? error.message : 'Unknown error');
             }
           },
         },

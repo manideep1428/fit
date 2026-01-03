@@ -101,7 +101,7 @@ export default function ProfileScreen() {
 
       Alert.alert("Success", "Profile picture updated!");
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error("Error uploading image:", error instanceof Error ? error.message : 'Unknown error');
       Alert.alert("Error", "Failed to upload image. Please try again.");
     } finally {
       setUploadingImage(false);
@@ -462,6 +462,42 @@ export default function ProfileScreen() {
                   thumbColor="#FFF"
                 />
               </View>
+
+              {/* FAQ Questions */}
+              <TouchableOpacity
+                onPress={() => router.push("/(trainer)/faq-questions" as any)}
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: "#10B98120" }}
+                  >
+                    <Ionicons
+                      name="help-circle-outline"
+                      size={20}
+                      color="#10B981"
+                    />
+                  </View>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
+                    FAQ Questions
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
             </View>
           </View>
 

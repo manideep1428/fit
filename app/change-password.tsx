@@ -59,7 +59,7 @@ export default function ChangePasswordScreen() {
       showToast.success('Password changed');
       router.back();
     } catch (error: any) {
-      console.error('Error changing password:', error);
+      console.error('Error changing password:', error instanceof Error ? error.message : 'Unknown error');
       showToast.error(error.errors?.[0]?.message || 'Wrong current password');
     } finally {
       setChangingPassword(false);

@@ -166,7 +166,7 @@ export default function EditGoalScreen() {
         router.back();
       }, 1500);
     } catch (error) {
-      console.error('Error updating goal:', error);
+      console.error('Error updating goal:', error instanceof Error ? error.message : 'Unknown error');
       Alert.alert('Error', 'Failed to update goal. Please try again.');
     } finally {
       setLoading(false);

@@ -100,7 +100,7 @@ export default function AddProgressScreen() {
 
       router.back();
     } catch (error) {
-      console.error('Error adding progress:', error);
+      console.error('Error adding progress:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setLoading(false);
     }

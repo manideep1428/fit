@@ -73,7 +73,7 @@ export default function TrainerSubscriptionsScreen() {
       );
       router.back();
     } catch (error) {
-      console.error("Subscription error:", error);
+      console.error("Subscription error:", error instanceof Error ? error.message : 'Unknown error');
       showToast.error("Subscribe failed");
     }
   };

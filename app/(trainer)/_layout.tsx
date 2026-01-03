@@ -16,7 +16,7 @@ export default function TabLayout() {
   const colors = getColors(colorScheme === "dark");
   const shadows = colorScheme === "dark" ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
 
   // Check if trainer profile is complete
   useTrainerProfileCheck();
@@ -26,6 +26,11 @@ export default function TabLayout() {
     api.notifications.getUnreadCount,
     user?.id ? { userId: user.id } : "skip"
   );
+
+  // Don't render tabs if user is signing out
+  if (isLoaded && !user) {
+    return null;
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -87,7 +92,7 @@ export default function TabLayout() {
                   size={24}
                   color={color}
                 />
-                {unreadCount && typeof unreadCount === "number" && unreadCount > 0 && (
+                {typeof unreadCount === "number" && unreadCount > 0 && (
                   <View
                     style={{
                       position: "absolute",
@@ -103,7 +108,7 @@ export default function TabLayout() {
                     }}
                   >
                     <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "bold" }}>
-                      {unreadCount > 9 ? "9+" : String(unreadCount)}
+                      {unreadCount > 9 ? "9+" : `${unreadCount}`}
                     </Text>
                   </View>
                 )}
@@ -215,12 +220,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="create-payment-request"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
           name="session-history"
           options={{
             href: null,
@@ -233,12 +232,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="subscriptions-admin"
-          options={{
-            href: null,
-          }}
-        />
-        <Tabs.Screen
           name="packages"
           options={{
             href: null,
@@ -246,6 +239,12 @@ export default function TabLayout() {
         />
         <Tabs.Screen
           name="subscriptions"
+          options={{
+            href: null,
+          }}
+        />
+         <Tabs.Screen
+          name="faq-questions"
           options={{
             href: null,
           }}
@@ -270,6 +269,12 @@ export default function TabLayout() {
         />
         <Tabs.Screen
           name="question-list"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="client-questions"
           options={{
             href: null,
           }}

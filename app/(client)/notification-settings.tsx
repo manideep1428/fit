@@ -54,7 +54,7 @@ export default function NotificationSettingsScreen() {
       });
       router.back();
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error('Error saving settings:', error instanceof Error ? error.message : 'Unknown error');
       alert('Failed to save settings');
     } finally {
       setLoading(false);

@@ -33,7 +33,6 @@ const CURRENCIES = [
   { code: "EUR", symbol: "€" },
 ];
 
-
 const PLAN_COLORS = [
   { gradient: ["#667eea", "#764ba2"], accent: "#667eea" },
   { gradient: ["#f093fb", "#f5576c"], accent: "#f5576c" },
@@ -197,9 +196,7 @@ export default function ManagePlansScreen() {
               `${discountPlan?.name || "Plan"} special discount`,
           });
         }
-        showToast.success(
-          `Sent to ${selectedClients.length} client(s)`
-        );
+        showToast.success(`Sent to ${selectedClients.length} client(s)`);
       }
       setShowDiscountModal(false);
       resetDiscountForm();
@@ -849,7 +846,7 @@ export default function ManagePlansScreen() {
                 />
               </View>
               {/* Preview Card */}
-              {name && monthlyPrice && (
+              {name.length > 0 && monthlyPrice.length > 0 && (
                 <View className="rounded-2xl overflow-hidden mb-6">
                   <LinearGradient
                     colors={["#667eea", "#764ba2"]}
@@ -862,16 +859,18 @@ export default function ManagePlansScreen() {
                       <Text className="text-white font-bold text-lg">
                         {name}
                       </Text>
-                      {discount && parseFloat(discount) > 0 && (
-                        <View className="px-2 py-0.5 rounded-full bg-white">
-                          <Text
-                            className="text-xs font-bold"
-                            style={{ color: "#667eea" }}
-                          >
-                            {discount}% OFF
-                          </Text>
-                        </View>
-                      )}
+                      {typeof discount === "string" &&
+                        discount !== "" &&
+                        parseFloat(discount) > 0 && (
+                          <View className="px-2 py-0.5 rounded-full bg-white">
+                            <Text
+                              className="text-xs font-bold"
+                              style={{ color: "#667eea" }}
+                            >
+                              {discount}% OFF
+                            </Text>
+                          </View>
+                        )}
                     </View>
                     <View className="flex-row items-end">
                       {discount && parseFloat(discount) > 0 && (
@@ -1148,7 +1147,7 @@ export default function ManagePlansScreen() {
               )}
 
               {/* Preview */}
-              {discountPercentage && (
+             {discountPercentage.length > 0 && (
                 <View
                   className="rounded-2xl p-5 mb-6 flex-row items-center"
                   style={{ backgroundColor: `${colors.success}15` }}

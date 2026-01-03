@@ -125,7 +125,7 @@ export default function BookTrainerScreen() {
         setShowCalendarModal(true);
       }
     } catch (error) {
-      console.error("Error creating booking:", error);
+      console.error("Error creating booking:", error instanceof Error ? error.message : 'Unknown error');
       Toast.show({
         type: "error",
         text1: "Booking Failed",

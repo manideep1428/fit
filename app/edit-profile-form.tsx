@@ -64,7 +64,7 @@ export default function EditProfileFormScreen() {
       showToast.success('Profile updated');
       router.back();
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('Error updating profile:', error instanceof Error ? error.message : 'Unknown error');
       showToast.error('Update failed');
     } finally {
       setSaving(false);

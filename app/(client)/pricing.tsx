@@ -138,7 +138,7 @@ export default function ClientPricingScreen() {
               );
               router.back();
             } catch (error) {
-              console.error("Error subscribing:", error);
+              console.error("Error subscribing:", error instanceof Error ? error.message : 'Unknown error');
               showToast.error("Failed to subscribe");
             } finally {
               setPurchasing(false);

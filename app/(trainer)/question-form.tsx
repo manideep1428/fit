@@ -89,7 +89,7 @@ export default function QuestionFormScreen() {
       }
       router.back();
     } catch (error) {
-      console.error("Error saving question:", error);
+      console.error("Error saving question:", error instanceof Error ? error.message : 'Unknown error');
       showToast.error("Save failed");
     } finally {
       setSaving(false);
@@ -115,7 +115,7 @@ export default function QuestionFormScreen() {
       setQuestion("");
       setAnswer("");
     } catch (error) {
-      console.error("Error saving question:", error);
+      console.error("Error saving question:", error instanceof Error ? error.message : 'Unknown error');
       showToast.error("Save failed");
     } finally {
       setSaving(false);

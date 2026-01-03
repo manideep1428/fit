@@ -79,7 +79,7 @@ export const inviteClientByEmail = mutation({
         });
       }
 
-      return { status: "existing", userId: existingUser._id };
+      return { status: "existing", userId: existingUser._id, clientId: existingUser.clerkId };
     }
 
     // Create a pending client (without clerkId - will be set when they sign up)
@@ -102,7 +102,7 @@ export const inviteClientByEmail = mutation({
       addedAt: now,
     });
 
-    return { status: "invited", userId: pendingClientId };
+    return { status: "invited", userId: pendingClientId, clientId: `pending_${args.email}_${now}` };
   },
 });
 

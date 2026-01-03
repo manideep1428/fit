@@ -109,7 +109,7 @@ export default function ProfileScreen() {
 
       Alert.alert("Success", "Profile picture updated!");
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error("Error uploading image:", error instanceof Error ? error.message : 'Unknown error');
       Alert.alert("Error", "Failed to upload image. Please try again.");
     } finally {
       setUploadingImage(false);
@@ -160,7 +160,7 @@ export default function ProfileScreen() {
                   style={{ backgroundColor: colors.error }}
                 >
                   <Text className="text-white text-xs font-bold">
-                    {unreadCount > 9 ? "9+" : String(unreadCount)}
+                    {unreadCount > 9 ? "9+" : `${unreadCount}`}
                   </Text>
                 </View>
               )}

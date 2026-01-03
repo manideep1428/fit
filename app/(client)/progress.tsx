@@ -98,7 +98,7 @@ export default function ProgressScreen() {
                     style={{ backgroundColor: colors.error }}
                   >
                     <Text className="text-white text-xs font-bold">
-                      {unreadCount > 9 ? "9+" : String(unreadCount)}
+                      {unreadCount > 9 ? "9+" : `${unreadCount}`}
                     </Text>
                   </View>
                 )}

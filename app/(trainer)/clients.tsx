@@ -83,15 +83,14 @@ export default function ClientsScreen() {
                 onPress={() => setShowNotifications(true)}
               >
                 <Ionicons name="notifications" size={20} color={colors.text} />
-                {unreadCount &&
-                  typeof unreadCount === "number" &&
+                { typeof unreadCount === "number" &&
                   unreadCount > 0 && (
                     <View
                       className="absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center"
                       style={{ backgroundColor: colors.error }}
                     >
                       <Text className="text-white text-xs font-bold">
-                        {unreadCount > 9 ? "9+" : String(unreadCount)}
+                        {unreadCount > 9 ? "9+" : `${unreadCount}`}
                       </Text>
                     </View>
                   )}

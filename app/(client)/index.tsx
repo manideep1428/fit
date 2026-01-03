@@ -103,7 +103,7 @@ export default function ClientHomeScreen() {
               urls[trainer.clerkId] = url;
             }
           } catch (error) {
-            console.error("Error fetching trainer image:", error);
+            console.error("Error fetching trainer image:", error instanceof Error ? error.message : 'Unknown error');
           }
         }
       }
@@ -134,7 +134,7 @@ export default function ClientHomeScreen() {
       setAnswerText("");
       showToast.success("Answer submitted!");
     } catch (error) {
-      console.error("Error answering question:", error);
+      console.error("Error answering question:", error instanceof Error ? error.message : 'Unknown error');
       showToast.error("Failed to submit answer");
     } finally {
       setSubmittingAnswer(false);
@@ -576,7 +576,7 @@ export default function ClientHomeScreen() {
             </View>
           )}
 
-          {/* My Goals Carousel */}
+          {/* My Goals */}
           {goals && goals.length > 0 && (
             <View className="flex-col gap-3">
               <Text
@@ -585,12 +585,7 @@ export default function ClientHomeScreen() {
               >
                 My Goals
               </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                className="flex-row gap-3"
-                contentContainerStyle={{ paddingRight: 16 }}
-              >
+              <View className="flex-row flex-wrap" style={{ marginHorizontal: -6 }}>
                 {goals.map((goal: any, index: number) => {
                   // Progress is calculated from goal statistics (uses latest progress log)
                   const progress = goal.latestProgress || 0;
@@ -602,78 +597,90 @@ export default function ClientHomeScreen() {
                   ];
                   const iconColor = iconColors[index % iconColors.length];
 
+                  const count = goals.length;
+                  // Full width if: 1 item, or last item in odd count
+                  const isLastInOdd = count % 2 === 1 && index === count - 1;
+                  const isFullWidth = count === 1 || isLastInOdd;
+
                   return (
-                    <TouchableOpacity
+                    <View
                       key={goal._id}
-                      onPress={() =>
-                        router.push(
-                          `/(client)/progress-tracking?goalId=${goal._id}` as any
-                        )
-                      }
-                      className="min-w-[160px] rounded-xl p-4 flex-col gap-3"
                       style={{
-                        backgroundColor: colors.surface,
-                        ...shadows.small,
+                        width: isFullWidth ? '100%' : '50%',
+                        padding: 6,
                       }}
                     >
-                      <View className="flex-row justify-between items-start">
-                        <View
-                          className="rounded-lg p-2"
-                          style={{ backgroundColor: `${iconColor}20` }}
-                        >
-                          <Ionicons
-                            name={
-                              index === 0
-                                ? "scale"
-                                : index === 1
-                                  ? "water"
-                                  : "walk"
-                            }
-                            size={20}
-                            color={iconColor}
-                          />
-                        </View>
-                        <Text
-                          className="text-xs font-bold"
-                          style={{ color: colors.textSecondary }}
-                        >
-                          {Math.round(progress)}%
-                        </Text>
-                      </View>
-                      <View>
-                        <Text
-                          className="text-sm font-bold"
-                          style={{ color: colors.text }}
-                          numberOfLines={1}
-                        >
-                          {goal.description}
-                        </Text>
-                        {goal.targetWeight && (
+                      <TouchableOpacity
+                        onPress={() =>
+                          router.push(
+                            `/(client)/progress-tracking?goalId=${goal._id}` as any
+                          )
+                        }
+                        className="rounded-xl p-4 flex-col gap-3"
+                        style={{
+                          backgroundColor: colors.surface,
+                          ...shadows.small,
+                        }}
+                      >
+                        <View className="flex-row justify-between items-start">
+                          <View
+                            className="rounded-lg p-2"
+                            style={{ backgroundColor: `${iconColor}20` }}
+                          >
+                            <Ionicons
+                              name={
+                                index === 0
+                                  ? "scale"
+                                  : index === 1
+                                    ? "water"
+                                    : "walk"
+                              }
+                              size={20}
+                              color={iconColor}
+                            />
+                          </View>
                           <Text
-                            className="text-xs"
+                            className="text-xs font-bold"
                             style={{ color: colors.textSecondary }}
                           >
-                            {goal.latestWeight || goal.currentWeight}{goal.weightUnit} → {goal.targetWeight}
-                            {goal.weightUnit}
+                            {Math.round(progress)}%
                           </Text>
-                        )}
-                      </View>
-                      <View
-                        className="h-1.5 w-full rounded-full"
-                        style={{ backgroundColor: `${iconColor}20` }}
-                      >
+                        </View>
+                        <View>
+                          <Text
+                            className="text-sm font-bold"
+                            style={{ color: colors.text }}
+                            numberOfLines={1}
+                          >
+                            {goal.description}
+                          </Text>
+                          {goal.targetWeight && (
+                            <Text
+                              className="text-xs"
+                              style={{ color: colors.textSecondary }}
+                            >
+                              {goal.latestWeight || goal.currentWeight}{goal.weightUnit} → {goal.targetWeight}
+                              {goal.weightUnit}
+                            </Text>
+                          )}
+                        </View>
                         <View
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${progress}%`,
-                            backgroundColor: iconColor,
-                          }}
-                        />
-                      </View>
-                    </TouchableOpacity>
+                          className="h-1.5 w-full rounded-full"
+                          style={{ backgroundColor: `${iconColor}20` }}
+                        >
+                          <View
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${progress}%`,
+                              backgroundColor: iconColor,
+                            }}
+                          />
+                        </View>
+                      </TouchableOpacity>
+                    </View>
                   );
                 })}
-              </ScrollView>
+              </View>
             </View>
           )}
 
@@ -685,96 +692,112 @@ export default function ClientHomeScreen() {
             >
               My Trainers
             </Text>
-            <View className="flex-col gap-3">
-              {clientTrainers && clientTrainers.length > 0 ? (
-                clientTrainers.map((trainer: any) => (
-                  <TouchableOpacity
-                    key={trainer._id}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/(client)/trainer-details",
-                        params: {
-                          trainerId: trainer.clerkId,
-                          trainerName: trainer.fullName,
-                          trainerSpecialty:
-                            trainer.specialty || "Personal Trainer",
-                        },
-                      } as any)
-                    }
-                    className="w-full rounded-xl p-4 flex-row items-center gap-4"
-                    style={{
-                      backgroundColor: colors.surface,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                    }}
-                  >
+            {clientTrainers && clientTrainers.length > 0 ? (
+              <View className="flex-row flex-wrap" style={{ marginHorizontal: -6 }}>
+                {clientTrainers.map((trainer: any, index: number) => {
+                  const count = clientTrainers.length;
+                  // Full width if: 1 item, or odd count (last item in odd)
+                  const isLastInOdd = count % 2 === 1 && index === count - 1;
+                  const isFullWidth = count === 1 || isLastInOdd;
+                  
+                  return (
                     <View
-                      className="w-14 h-14 rounded-full overflow-hidden items-center justify-center"
+                      key={trainer._id}
                       style={{
-                        backgroundColor: colors.primary,
-                        borderWidth: 2,
-                        borderColor: `${colors.primary}33`,
+                        width: isFullWidth ? '100%' : '50%',
+                        padding: 6,
                       }}
                     >
-                      {trainerImageUrls[trainer.clerkId] ? (
-                        <Image
-                          source={{ uri: trainerImageUrls[trainer.clerkId] }}
-                          className="w-full h-full"
-                        />
-                      ) : (
-                        <Text className="text-white text-xl font-bold">
-                          {trainer.fullName?.[0] || "T"}
-                        </Text>
-                      )}
-                    </View>
-                    <View className="flex-1">
-                      <Text
-                        className="text-base font-bold"
-                        style={{ color: colors.text }}
-                        numberOfLines={1}
+                      <TouchableOpacity
+                        onPress={() =>
+                          router.push({
+                            pathname: "/(client)/trainer-details",
+                            params: {
+                              trainerId: trainer.clerkId,
+                              trainerName: trainer.fullName,
+                              trainerSpecialty:
+                                trainer.specialty || "Personal Trainer",
+                            },
+                          } as any)
+                        }
+                        className="rounded-xl p-4 flex-row items-center gap-3"
+                        style={{
+                          backgroundColor: colors.surface,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                        }}
                       >
-                        {trainer.fullName}
-                      </Text>
-                      <Text
-                        className="text-sm"
-                        style={{ color: colors.textSecondary }}
-                        numberOfLines={1}
-                      >
-                        {"Personal Trainer"}
-                      </Text>
+                        <View
+                          className="w-12 h-12 rounded-full overflow-hidden items-center justify-center"
+                          style={{
+                            backgroundColor: colors.primary,
+                            borderWidth: 2,
+                            borderColor: `${colors.primary}33`,
+                          }}
+                        >
+                          {trainerImageUrls[trainer.clerkId] ? (
+                            <Image
+                              source={{ uri: trainerImageUrls[trainer.clerkId] }}
+                              className="w-full h-full"
+                            />
+                          ) : (
+                            <Text className="text-white text-lg font-bold">
+                              {trainer.fullName?.[0] || "T"}
+                            </Text>
+                          )}
+                        </View>
+                        <View className="flex-1">
+                          <Text
+                            className="text-sm font-bold"
+                            style={{ color: colors.text }}
+                            numberOfLines={1}
+                          >
+                            {trainer.fullName}
+                          </Text>
+                          <Text
+                            className="text-xs"
+                            style={{ color: colors.textSecondary }}
+                            numberOfLines={1}
+                          >
+                            {"Personal Trainer"}
+                          </Text>
+                        </View>
+                        {isFullWidth && (
+                          <Ionicons
+                            name="chevron-forward"
+                            size={20}
+                            color={colors.textSecondary}
+                          />
+                        )}
+                      </TouchableOpacity>
                     </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                ))
-              ) : (
+                  );
+                })}
+              </View>
+            ) : (
+              <View
+                className="w-full rounded-xl p-4 flex-row items-center justify-center gap-3 h-[80px]"
+                style={{
+                  backgroundColor: `${colors.surface}80`,
+                  borderWidth: 1,
+                  borderStyle: "dashed",
+                  borderColor: colors.border,
+                }}
+              >
                 <View
-                  className="w-full rounded-xl p-4 flex-row items-center justify-center gap-3 h-[80px]"
-                  style={{
-                    backgroundColor: `${colors.surface}80`,
-                    borderWidth: 1,
-                    borderStyle: "dashed",
-                    borderColor: colors.border,
-                  }}
+                  className="w-10 h-10 items-center justify-center rounded-full"
+                  style={{ backgroundColor: colors.surface }}
                 >
-                  <View
-                    className="w-10 h-10 items-center justify-center rounded-full"
-                    style={{ backgroundColor: colors.surface }}
-                  >
-                    <Ionicons name="add" size={20} color={colors.text} />
-                  </View>
-                  <Text
-                    className="text-sm font-medium"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Find Trainer
-                  </Text>
+                  <Ionicons name="add" size={20} color={colors.text} />
                 </View>
-              )}
-            </View>
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Find Trainer
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </PullToRefresh>

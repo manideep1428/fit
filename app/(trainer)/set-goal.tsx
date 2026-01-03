@@ -121,7 +121,7 @@ export default function SetGoalScreen() {
 
       router.back();
     } catch (error) {
-      console.error('Error creating goal:', error);
+      console.error('Error creating goal:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setLoading(false);
     }

@@ -50,7 +50,7 @@ export default function PaymentRequestScreen() {
 
       router.back();
     } catch (error) {
-      console.error('Error marking payment as paid:', error);
+      console.error('Error marking payment as paid:', error instanceof Error ? error.message : 'Unknown error');
       alert('Failed to mark payment as paid. Please try again.');
     }
   };
