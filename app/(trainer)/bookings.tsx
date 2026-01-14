@@ -9,7 +9,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import CalendarView from '@/components/CalendarView';
 import { Ionicons } from '@expo/vector-icons';
-import GoogleCalendarAuth from '@/components/GoogleCalendarAuth';
 import Toast from 'react-native-toast-message';
 import { Id } from '@/convex/_generated/dataModel';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -25,7 +24,6 @@ export default function BookingsScreen() {
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'schedule' | 'bookings'>('bookings');
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     visible: boolean;
@@ -85,17 +83,41 @@ export default function BookingsScreen() {
   const currentBookings = enrichedBookings
     .filter((b: any) => {
       if (b.status === 'cancelled' || b.status === 'completed') return false;
-      const bookingDateTime = new Date(b.startTime);
+      // Combine date and startTime to create proper datetime
+      const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
       return bookingDateTime >= now;
     })
-    .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    .sort((a: any, b: any) => {
+      const dateTimeA = new Date(`${a.date}T${a.startTime}:00`);
+      const dateTimeB = new Date(`${b.date}T${b.startTime}:00`);
+      return dateTimeA.getTime() - dateTimeB.getTime();
+    });
+
+  // Sessions that are past but not marked as completed (need attention)
+  const incompleteBookings = enrichedBookings
+    .filter((b: any) => {
+      if (b.status === 'cancelled' || b.status === 'completed') return false;
+      const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
+      const endDateTime = new Date(bookingDateTime.getTime() + (b.duration || 60) * 60000);
+      return endDateTime < now;
+    })
+    .sort((a: any, b: any) => {
+      const dateTimeA = new Date(`${a.date}T${a.startTime}:00`);
+      const dateTimeB = new Date(`${b.date}T${b.startTime}:00`);
+      return dateTimeB.getTime() - dateTimeA.getTime();
+    });
     
   const pastBookings = enrichedBookings
     .filter((b: any) => {
-      const bookingDateTime = new Date(b.startTime);
+      // Combine date and startTime to create proper datetime
+      const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
       return bookingDateTime < now || b.status === 'completed';
     })
-    .sort((a: any, b: any) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+    .sort((a: any, b: any) => {
+      const dateTimeA = new Date(`${a.date}T${a.startTime}:00`);
+      const dateTimeB = new Date(`${b.date}T${b.startTime}:00`);
+      return dateTimeB.getTime() - dateTimeA.getTime();
+    });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -297,11 +319,13 @@ export default function BookingsScreen() {
         <PullToRefresh onRefresh={handleRefresh} contentContainerStyle={{ paddingBottom: 100 }}>
           {/* Session Stats Summary */}
           <View className="px-6 pt-2 pb-4">
-            <View
+            <TouchableOpacity
               className="rounded-2xl p-4 flex-row"
               style={{ backgroundColor: colors.surface, ...shadows.medium }}
+              onPress={() => router.push('/(trainer)/session-history' as any)}
+              activeOpacity={0.7}
             >
-              <View className="flex-1 items-center border-r" style={{ borderRightColor: colors.border }}>
+              <View className="flex-1 items-center">
                 <Text className="text-2xl font-bold" style={{ color: colors.primary }}>
                   {enrichedBookings.filter((b: any) => b.status === 'completed').length}
                 </Text>
@@ -309,7 +333,7 @@ export default function BookingsScreen() {
                   Completed
                 </Text>
               </View>
-              <View className="flex-1 items-center border-r" style={{ borderRightColor: colors.border }}>
+              <View className="flex-1 items-center">
                 <Text className="text-2xl font-bold" style={{ color: colors.success }}>
                   {currentBookings.length}
                 </Text>
@@ -325,8 +349,85 @@ export default function BookingsScreen() {
                   Pending
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="mt-3 rounded-xl py-3 items-center flex-row justify-center"
+              style={{ backgroundColor: colors.surfaceSecondary }}
+              onPress={() => router.push('/(trainer)/session-history' as any)}
+            >
+              <Ionicons name="list-outline" size={18} color={colors.primary} />
+              <Text className="text-sm font-semibold ml-2" style={{ color: colors.primary }}>
+                View All Sessions
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
           </View>
+
+          {/* Incomplete Sessions Warning */}
+          {incompleteBookings.length > 0 && (
+            <View className="px-6 pb-4">
+              <View
+                className="rounded-2xl p-4"
+                style={{ backgroundColor: `${colors.error}10`, borderWidth: 1, borderColor: colors.error }}
+              >
+                <View className="flex-row items-center mb-3">
+                  <View
+                    className="w-8 h-8 rounded-lg items-center justify-center mr-3"
+                    style={{ backgroundColor: colors.error }}
+                  >
+                    <Ionicons name="alert-circle" size={18} color="white" />
+                  </View>
+                  <Text className="text-base font-bold" style={{ color: colors.text }}>
+                    Needs Attention
+                  </Text>
+                  <View
+                    className="ml-2 px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: colors.error }}
+                  >
+                    <Text className="text-xs font-bold text-white">
+                      {incompleteBookings.length}
+                    </Text>
+                  </View>
+                </View>
+                <Text className="text-sm mb-3" style={{ color: colors.textSecondary }}>
+                  These sessions have ended but haven't been marked as completed
+                </Text>
+                {incompleteBookings.slice(0, 3).map((booking: any) => (
+                  <View
+                    key={booking._id}
+                    className="rounded-xl p-3 mb-2"
+                    style={{ backgroundColor: colors.surface }}
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-1">
+                        <Text className="text-sm font-bold" style={{ color: colors.text }}>
+                          {booking.clientName}
+                        </Text>
+                        <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+                          {new Date(`${booking.date}T${booking.startTime}:00`).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          })} at {new Date(`${booking.date}T${booking.startTime}:00`).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          })}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        className="rounded-lg px-3 py-2"
+                        style={{ backgroundColor: colors.success }}
+                        onPress={() => handleCompleteSession(booking._id, booking.clientName)}
+                      >
+                        <Text className="text-xs font-semibold text-white">Complete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Current Bookings */}
           <View className="px-6 pt-2">
@@ -469,109 +570,10 @@ export default function BookingsScreen() {
             )}
           </View>
 
-          {/* Divider with text */}
-          <View className="px-6 py-6">
-            <View className="flex-row items-center">
-              <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
-              <Text className="px-4 text-xs font-semibold uppercase" style={{ color: colors.textTertiary }}>
-                History
-              </Text>
-              <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
-            </View>
-          </View>
-
-          {/* Booking History */}
-          <View className="px-6">
-            <View className="flex-row items-center mb-4">
-              <View
-                className="w-8 h-8 rounded-lg items-center justify-center mr-3"
-                style={{ backgroundColor: colors.surfaceSecondary }}
-              >
-                <Ionicons name="time" size={16} color={colors.textTertiary} />
-              </View>
-              <Text className="text-lg font-bold" style={{ color: colors.text }}>
-                Past Sessions
-              </Text>
-            </View>
-
-            {pastBookings.length === 0 ? (
-              <View
-                className="py-10 items-center rounded-2xl"
-                style={{ backgroundColor: colors.surface, ...shadows.small }}
-              >
-                <Text className="text-base font-semibold" style={{ color: colors.textSecondary }}>
-                  No past bookings
-                </Text>
-              </View>
-            ) : (
-              <>
-                {pastBookings.slice(0, 3).map((booking: any) => (
-                  <View
-                    key={booking._id}
-                    className="rounded-2xl p-4 mb-3"
-                    style={{ backgroundColor: colors.surface, opacity: 0.7, ...shadows.small }}
-                  >
-                    <View className="flex-row items-start">
-                      <View className="flex-1">
-                        <Text className="text-base font-semibold" style={{ color: colors.text }}>
-                          {booking.clientName}
-                        </Text>
-                        <View className="flex-row items-center mt-1.5">
-                          <Ionicons name="fitness-outline" size={13} color={colors.textTertiary} />
-                          <Text className="text-sm ml-1.5" style={{ color: colors.textTertiary }}>
-                            {booking.scheduleName}
-                          </Text>
-                        </View>
-                        <View className="flex-row items-center mt-1">
-                          <Ionicons name="time-outline" size={13} color={colors.textTertiary} />
-                          <Text className="text-sm ml-1.5" style={{ color: colors.textTertiary }}>
-                            {new Date(booking.startTime).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text className="text-xs font-medium uppercase" style={{ color: colors.textTertiary }}>
-                        {booking.status === 'completed' ? 'Completed' : 'Past'}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-                {pastBookings.length > 3 && (
-                  <TouchableOpacity
-                    className="rounded-2xl py-4 items-center flex-row justify-center"
-                    style={{ backgroundColor: colors.surfaceSecondary }}
-                    onPress={() => router.push('/(trainer)/session-history' as any)}
-                  >
-                    <Ionicons name="time-outline" size={18} color={colors.primary} />
-                    <Text className="text-sm font-semibold ml-2" style={{ color: colors.primary }}>
-                      Show All {pastBookings.length} Sessions
-                    </Text>
-                    <Ionicons name="chevron-forward" size={16} color={colors.primary} style={{ marginLeft: 4 }} />
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
         </PullToRefresh>
       ) : (
         <CalendarView bookings={enrichedBookings} userRole="trainer" />
       )}
-
-      {/* Google Calendar Connect Modal */}
-      <Modal
-        visible={showCalendarModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCalendarModal(false)}
-      >
-        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View className="mx-4 mb-8">
-            <GoogleCalendarAuth
-              onConnected={() => setShowCalendarModal(false)}
-              onSkip={() => setShowCalendarModal(false)}
-            />
-          </View>
-        </View>
-      </Modal>
 
       {/* Confirm Dialog */}
       {confirmDialog && (

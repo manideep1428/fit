@@ -25,28 +25,39 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     });
   }
 
-  if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+  if (!Device.isDevice) {
+    console.log('Push notifications require a physical device');
+    return null;
+  }
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+  
+  console.log('Existing notification permission status:', existingStatus);
+  
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+    console.log('Requested notification permission, new status:', status);
+  }
+  
+  if (finalStatus !== 'granted') {
+    console.log('Notification permission not granted');
+    return null;
+  }
+  
+  try {
+    const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
+    console.log('Getting push token with project ID:', projectId);
     
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    
-    if (finalStatus !== 'granted') {
-      return null;
-    }
-    
-    try {
-      const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
-      const tokenData = await Notifications.getExpoPushTokenAsync(
-        projectId ? { projectId } : undefined
-      );
-      token = tokenData.data;
-    } catch (error) {
-      return null;
-    }
+    const tokenData = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined
+    );
+    token = tokenData.data;
+    console.log('Push token obtained:', token);
+  } catch (error) {
+    console.error('Error getting push token:', error);
+    return null;
   }
 
   return token;

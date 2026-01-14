@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { api } from "./_generated/api";
 
 // Get available time slots for a trainer on a specific date
 export const getAvailableSlots = query({
@@ -14,16 +15,21 @@ export const getAvailableSlots = query({
       throw new Error("Invalid duration. Only 45 minutes and 1 hour sessions are supported.");
     }
 
-    // Get day of week from date in GMT+1
-    const dateObj = new Date(args.date + "T00:00:00+01:00");
-    const dayOfWeek = dateObj.getUTCDay();
-
-    // Get trainer's availability for this day
-    const availability = await ctx.db
+    // Get trainer's availability for all days to get timezone
+    const allAvailability = await ctx.db
       .query("availability")
       .withIndex("by_trainer", (q) => q.eq("trainerId", args.trainerId))
-      .filter((q) => q.eq(q.field("dayOfWeek"), dayOfWeek))
-      .first();
+      .collect();
+
+    // Get timezone from first availability record (default to Europe/Oslo - Norway)
+    const timezone = allAvailability[0]?.timezone || "Europe/Oslo";
+
+    // Get day of week from date in trainer's timezone
+    const dateObj = new Date(args.date + "T12:00:00");
+    const dayOfWeek = dateObj.getDay();
+
+    // Get trainer's availability for this day
+    const availability = allAvailability.find((a) => a.dayOfWeek === dayOfWeek);
 
     if (!availability || !availability.enabled) {
       return [];
@@ -37,13 +43,13 @@ export const getAvailableSlots = query({
       .filter((q) => q.neq(q.field("status"), "cancelled"))
       .collect();
 
-    // Check if date is today to filter past times (in GMT+1)
+    // Check if date is today to filter past times (in trainer's timezone)
     const now = new Date();
-    const gmtPlus1Now = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
-    const todayGMT1 = new Date(gmtPlus1Now.getFullYear(), gmtPlus1Now.getMonth(), gmtPlus1Now.getDate());
+    const trainerNow = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
+    const todayInTimezone = new Date(trainerNow.getFullYear(), trainerNow.getMonth(), trainerNow.getDate());
     const targetDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-    const isToday = todayGMT1.getTime() === targetDate.getTime();
-    const currentTimeMinutes = isToday ? gmtPlus1Now.getHours() * 60 + gmtPlus1Now.getMinutes() : 0;
+    const isToday = todayInTimezone.getTime() === targetDate.getTime();
+    const currentTimeMinutes = isToday ? trainerNow.getHours() * 60 + trainerNow.getMinutes() : 0;
 
     // Handle both old schema (startTime/endTime) and new schema (timeRanges)
     let timeRanges: Array<{ startTime: string; endTime: string }> = [];
@@ -174,6 +180,16 @@ export const createBooking = mutation({
       bookingId,
       read: false,
       createdAt: now,
+    });
+
+    // Send push notifications
+    await ctx.scheduler.runAfter(0, api.pushNotifications.notifyBookingCreated, {
+      trainerId: args.trainerId,
+      clientId: args.clientId,
+      clientName: client?.fullName || "Client",
+      trainerName: trainer?.fullName || "Trainer",
+      date: args.date,
+      time: args.startTime,
     });
 
     return bookingId;
@@ -379,6 +395,21 @@ export const completeSession = mutation({
       bookingId: args.bookingId,
       read: false,
       createdAt: Date.now(),
+    });
+
+    // Get package name for notification
+    const packageInfo = await ctx.db
+      .query("packages")
+      .filter((q) => q.eq(q.field("_id"), activeSubscription.packageId))
+      .first();
+
+    // Send push notifications
+    await ctx.scheduler.runAfter(0, api.pushNotifications.notifySessionCompleted, {
+      trainerId: booking.trainerId,
+      clientId: booking.clientId,
+      clientName: client?.fullName || "Client",
+      packageName: packageInfo?.name || "Package",
+      remainingSessions: newRemaining,
     });
 
     return {

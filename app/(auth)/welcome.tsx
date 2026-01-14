@@ -7,8 +7,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, BorderRadius } from '@/constants/colors';
 import { AnimatedButton } from '@/components/AnimatedButton';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useQuery } from 'convex/react';
+import { useFocusEffect } from 'expo-router';
 import { api } from '@/convex/_generated/api';
 
 export default function WelcomeScreen() {
@@ -19,6 +20,14 @@ export default function WelcomeScreen() {
   const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
   const [isNavigating, setIsNavigating] = useState(false);
+  const [loadingButton, setLoadingButton] = useState<'trainer' | 'client' | 'signin' | null>(null);
+
+  // Reset loading state when screen comes back into focus
+  useFocusEffect(
+    useCallback(() => {
+      setLoadingButton(null);
+    }, [])
+  );
 
   // Query Convex for user data
   const convexUser = useQuery(
@@ -41,15 +50,12 @@ export default function WelcomeScreen() {
       const clerkRole = user.unsafeMetadata?.role as string | undefined;
       const role = convexRole || clerkRole;
 
-      // If user doesn't have a role yet, redirect to role selection
       if (!role) {
         router.replace('/(auth)/role-selection');
         return;
       }
 
-      // Redirect based on role
       if (role === 'trainer') {
-        // Check if trainer has completed profile setup
         const hasUsername = convexUser?.username || user.unsafeMetadata?.username;
         const hasSpecialty = convexUser?.specialty || user.unsafeMetadata?.specialty;
 
@@ -61,13 +67,11 @@ export default function WelcomeScreen() {
       } else if (role === 'client') {
         router.replace('/(client)');
       } else {
-        // If role is invalid, redirect to role selection
         router.replace('/(auth)/role-selection');
       }
     }
   }, [isAuthLoaded, isUserLoaded, isSignedIn, user, convexUser, router, isNavigating]);
 
-  // Show loading screen while checking authentication or navigating
   if (!isAuthLoaded || !isUserLoaded || (isSignedIn && user && (convexUser === undefined || isNavigating))) {
     return (
       <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
@@ -85,7 +89,7 @@ export default function WelcomeScreen() {
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
 
       {/* Top Image */}
-      <View className="w-full h-[60%]">
+      <View className="w-full h-[50%]">
         <Image
           source={require('@/assets/images/intro.jpg')}
           className="w-full h-full"
@@ -95,7 +99,7 @@ export default function WelcomeScreen() {
 
       {/* Rounded Container Overlay */}
       <View
-        className="flex-1 px-6 pt-8 pb-8 -mt-10"
+        className="flex-1 px-6 pt-6 pb-8 -mt-10"
         style={{
           backgroundColor: colors.surface,
           borderTopLeftRadius: BorderRadius.xxlarge,
@@ -107,7 +111,7 @@ export default function WelcomeScreen() {
           shadowRadius: 12,
         }}
       >
-        <View className="items-center mb-8">
+        <View className="items-center mb-6">
           <Text className="text-3xl font-bold mb-3" style={{ color: colors.text }}>
             Welcome
           </Text>
@@ -119,28 +123,49 @@ export default function WelcomeScreen() {
         {/* Buttons */}
         <View className="gap-4">
           <AnimatedButton
-            onPress={() => router.push('/(auth)/sign-up' as any)}
+            onPress={() => {
+              setLoadingButton('trainer');
+              router.push('/(auth)/sign-up' as any);
+            }}
             variant="primary"
             size="large"
             fullWidth
+            loading={loadingButton === 'trainer'}
+            disabled={loadingButton !== null}
           >
             I'm a Trainer
           </AnimatedButton>
 
           <AnimatedButton
-            onPress={() => router.push('/(auth)/client-signup' as any)}
+            onPress={() => {
+              setLoadingButton('client');
+              router.push('/(auth)/client-signup' as any);
+            }}
             variant="secondary"
             size="large"
             fullWidth
+            loading={loadingButton === 'client'}
+            disabled={loadingButton !== null}
           >
             I'm a Client
           </AnimatedButton>
 
+          <View className="flex-row items-center my-2">
+            <View className="flex-1 h-[1px]" style={{ backgroundColor: colors.border }} />
+            <Text className="mx-4 text-sm" style={{ color: colors.textSecondary }}>or</Text>
+            <View className="flex-1 h-[1px]" style={{ backgroundColor: colors.border }} />
+          </View>
+
           <AnimatedButton
-            onPress={() => router.push('/(auth)/sign-in' as any)}
+            onPress={() => {
+              setLoadingButton('signin');
+              router.push('/(auth)/sign-in' as any);
+            }}
             variant="outline"
             size="large"
             fullWidth
+            loading={loadingButton === 'signin'}
+            disabled={loadingButton !== null}
           >
             Sign In
           </AnimatedButton>

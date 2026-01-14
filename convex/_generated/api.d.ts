@@ -10,6 +10,7 @@
 
 import type * as availability from "../availability.js";
 import type * as bookings from "../bookings.js";
+import type * as email from "../email.js";
 import type * as faqQuestions from "../faqQuestions.js";
 import type * as goals from "../goals.js";
 import type * as migratePackages from "../migratePackages.js";
@@ -33,6 +34,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   availability: typeof availability;
   bookings: typeof bookings;
+  email: typeof email;
   faqQuestions: typeof faqQuestions;
   goals: typeof goals;
   migratePackages: typeof migratePackages;

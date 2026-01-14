@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Platform, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 import { useQuery, useMutation } from 'convex/react';
@@ -20,6 +20,18 @@ const DAYS = [
     'Thursday',
     'Friday',
     'Saturday',
+];
+
+const TIMEZONES = [
+    { value: 'Europe/Oslo', label: 'Norway (Oslo)' },
+    { value: 'Europe/London', label: 'UK (London)' },
+    { value: 'Europe/Paris', label: 'Central Europe (Paris)' },
+    { value: 'Europe/Berlin', label: 'Germany (Berlin)' },
+    { value: 'Europe/Stockholm', label: 'Sweden (Stockholm)' },
+    { value: 'America/New_York', label: 'US Eastern (New York)' },
+    { value: 'America/Los_Angeles', label: 'US Pacific (Los Angeles)' },
+    { value: 'Asia/Dubai', label: 'UAE (Dubai)' },
+    { value: 'Asia/Kolkata', label: 'India (Kolkata)' },
 ];
 
 interface TimeRange {
@@ -49,6 +61,8 @@ export default function AvailabilityScreen() {
     const saveAvailability = useMutation(api.availability.saveAvailability);
 
     const [schedule, setSchedule] = useState<DayAvailability[]>([]);
+    const [timezone, setTimezone] = useState('Europe/Oslo');
+    const [showTimezoneModal, setShowTimezoneModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -63,6 +77,11 @@ export default function AvailabilityScreen() {
 
     useEffect(() => {
         if (existingAvailability !== undefined) {
+            // Get timezone from first availability record
+            if (existingAvailability.length > 0 && existingAvailability[0].timezone) {
+                setTimezone(existingAvailability[0].timezone);
+            }
+            
             const newSchedule = DAYS.map((_, index) => {
                 const found = existingAvailability.find((a: any) => a.dayOfWeek === index);
                 
@@ -242,6 +261,7 @@ export default function AvailabilityScreen() {
                     timeRanges: day.timeRanges,
                     breaks: [],
                     sessionDuration: 60,
+                    timezone,
                 })
             ));
             
@@ -328,6 +348,34 @@ export default function AvailabilityScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 <View className="px-6 py-4">
+                    {/* Timezone Selector */}
+                    <TouchableOpacity
+                        onPress={() => setShowTimezoneModal(true)}
+                        className="rounded-2xl p-4 mb-4 flex-row items-center justify-between"
+                        style={{ 
+                            backgroundColor: colors.surface,
+                            ...shadows.small,
+                        }}
+                    >
+                        <View className="flex-row items-center flex-1">
+                            <View 
+                                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                                style={{ backgroundColor: colors.primary + '20' }}
+                            >
+                                <Ionicons name="globe-outline" size={20} color={colors.primary} />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                                    Timezone
+                                </Text>
+                                <Text className="text-base font-semibold" style={{ color: colors.text }}>
+                                    {TIMEZONES.find(tz => tz.value === timezone)?.label || timezone}
+                                </Text>
+                            </View>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                    </TouchableOpacity>
+
                     {schedule.map((day, dayIndex) => (
                         <View
                             key={dayIndex}
@@ -466,6 +514,59 @@ export default function AvailabilityScreen() {
                     />
                 )
             )}
+
+            {/* Timezone Selection Modal */}
+            <Modal
+                visible={showTimezoneModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowTimezoneModal(false)}
+            >
+                <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <View 
+                        className="rounded-t-3xl"
+                        style={{ 
+                            backgroundColor: colors.surface,
+                            paddingBottom: insets.bottom + 20,
+                            maxHeight: '70%',
+                        }}
+                    >
+                        <View className="flex-row justify-between items-center p-4 border-b" style={{ borderBottomColor: colors.border }}>
+                            <TouchableOpacity onPress={() => setShowTimezoneModal(false)}>
+                                <Text className="text-base" style={{ color: colors.textSecondary }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <Text className="font-semibold text-base" style={{ color: colors.text }}>Select Timezone</Text>
+                            <View style={{ width: 50 }} />
+                        </View>
+                        <ScrollView className="px-4 py-2">
+                            {TIMEZONES.map((tz) => (
+                                <TouchableOpacity
+                                    key={tz.value}
+                                    onPress={() => {
+                                        setTimezone(tz.value);
+                                        setShowTimezoneModal(false);
+                                    }}
+                                    className="flex-row items-center justify-between py-4 border-b"
+                                    style={{ borderBottomColor: colors.border }}
+                                >
+                                    <Text 
+                                        className="text-base"
+                                        style={{ 
+                                            color: timezone === tz.value ? colors.primary : colors.text,
+                                            fontWeight: timezone === tz.value ? '600' : '400',
+                                        }}
+                                    >
+                                        {tz.label}
+                                    </Text>
+                                    {timezone === tz.value && (
+                                        <Ionicons name="checkmark" size={22} color={colors.primary} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

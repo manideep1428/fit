@@ -2,11 +2,11 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Image,
   TextInput,
   Modal,
+  Dimensions,
 } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
@@ -22,6 +22,59 @@ import NotificationHistory from "@/components/NotificationHistory";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { showToast } from "@/utils/toast";
 import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
+
+// Circular Progress Ring Component
+const CircularProgress = ({
+  progress,
+  size = 80,
+  strokeWidth = 8,
+  color,
+  backgroundColor,
+}: {
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+  color: string;
+  backgroundColor: string;
+}) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  return (
+    <Svg width={size} height={size}>
+      <Defs>
+        <SvgGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor={color} stopOpacity="1" />
+          <Stop offset="100%" stopColor={`${color}99`} stopOpacity="1" />
+        </SvgGradient>
+      </Defs>
+      {/* Background Circle */}
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke={backgroundColor}
+        strokeWidth={strokeWidth}
+        fill="none"
+      />
+      {/* Progress Circle */}
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke="url(#progressGradient)"
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeDasharray={circumference}
+        strokeDashoffset={strokeDashoffset}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    </Svg>
+  );
+};
 
 export default function ClientHomeScreen() {
   const { user, isLoaded } = useUser();
@@ -576,111 +629,247 @@ export default function ClientHomeScreen() {
             </View>
           )}
 
-          {/* My Goals */}
+          {/* My Goals - Beautiful Graph Section */}
           {goals && goals.length > 0 && (
-            <View className="flex-col gap-3">
-              <Text
-                className="text-xl font-bold px-1"
-                style={{ color: colors.text }}
+            <View className="flex-col gap-4">
+              <View className="flex-row items-center justify-between px-1">
+                <Text
+                  className="text-xl font-bold"
+                  style={{ color: colors.text }}
+                >
+                  My Goals
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/(client)/progress-tracking" as any)}
+                >
+                  <Text
+                    className="text-sm font-medium"
+                    style={{ color: colors.primary }}
+                  >
+                    View All
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Goals Overview Card with Circular Charts */}
+              <View
+                className="rounded-2xl p-5"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.medium,
+                }}
               >
-                My Goals
-              </Text>
-              <View className="flex-row flex-wrap" style={{ marginHorizontal: -6 }}>
-                {goals.map((goal: any, index: number) => {
-                  // Progress is calculated from goal statistics (uses latest progress log)
-                  const progress = goal.latestProgress || 0;
+                {/* Circular Progress Charts Row */}
+                <View className="flex-row justify-around items-center mb-4">
+                  {goals.slice(0, 3).map((goal: any, index: number) => {
+                    const progress = Math.min(goal.latestProgress || 0, 100);
+                    const goalColors = [
+                      colors.primary,
+                      colors.success,
+                      colors.warning,
+                    ];
+                    const goalColor = goalColors[index % goalColors.length];
+                    const goalIcons: ("trophy" | "flame" | "fitness")[] = ["trophy", "flame", "fitness"];
+                    const goalIcon = goalIcons[index % goalIcons.length];
 
-                  const iconColors = [
-                    colors.warning,
-                    colors.primary,
-                    colors.success,
-                  ];
-                  const iconColor = iconColors[index % iconColors.length];
-
-                  const count = goals.length;
-                  // Full width if: 1 item, or last item in odd count
-                  const isLastInOdd = count % 2 === 1 && index === count - 1;
-                  const isFullWidth = count === 1 || isLastInOdd;
-
-                  return (
-                    <View
-                      key={goal._id}
-                      style={{
-                        width: isFullWidth ? '100%' : '50%',
-                        padding: 6,
-                      }}
-                    >
+                    return (
                       <TouchableOpacity
+                        key={goal._id}
                         onPress={() =>
                           router.push(
                             `/(client)/progress-tracking?goalId=${goal._id}` as any
                           )
                         }
-                        className="rounded-xl p-4 flex-col gap-3"
-                        style={{
-                          backgroundColor: colors.surface,
-                          ...shadows.small,
-                        }}
+                        className="items-center"
+                        activeOpacity={0.7}
                       >
-                        <View className="flex-row justify-between items-start">
-                          <View
-                            className="rounded-lg p-2"
-                            style={{ backgroundColor: `${iconColor}20` }}
-                          >
+                        <View className="relative items-center justify-center">
+                          <CircularProgress
+                            progress={progress}
+                            size={72}
+                            strokeWidth={6}
+                            color={goalColor}
+                            backgroundColor={`${goalColor}20`}
+                          />
+                          <View className="absolute items-center justify-center">
                             <Ionicons
-                              name={
-                                index === 0
-                                  ? "scale"
-                                  : index === 1
-                                    ? "water"
-                                    : "walk"
-                              }
+                              name={goalIcon}
                               size={20}
-                              color={iconColor}
+                              color={goalColor}
                             />
                           </View>
+                        </View>
+                        <Text
+                          className="text-lg font-bold mt-2"
+                          style={{ color: colors.text }}
+                        >
+                          {Math.round(progress)}%
+                        </Text>
+                        <Text
+                          className="text-xs text-center max-w-[80px]"
+                          style={{ color: colors.textSecondary }}
+                          numberOfLines={1}
+                        >
+                          {goal.description}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Divider */}
+                <View
+                  className="h-px w-full my-3"
+                  style={{ backgroundColor: `${colors.border}50` }}
+                />
+
+                {/* Overall Progress Summary */}
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <View
+                      className="w-8 h-8 rounded-full items-center justify-center"
+                      style={{ backgroundColor: `${colors.primary}15` }}
+                    >
+                      <Ionicons name="analytics" size={16} color={colors.primary} />
+                    </View>
+                    <View>
+                      <Text
+                        className="text-xs"
+                        style={{ color: colors.textSecondary }}
+                      >
+                        Overall Progress
+                      </Text>
+                      <Text
+                        className="text-sm font-bold"
+                        style={{ color: colors.text }}
+                      >
+                        {Math.round(
+                          goals.reduce((sum: number, g: any) => sum + (g.latestProgress || 0), 0) /
+                            goals.length
+                        )}
+                        % Average
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    className="px-3 py-1.5 rounded-full"
+                    style={{ backgroundColor: `${colors.success}15` }}
+                  >
+                    <Text
+                      className="text-xs font-bold"
+                      style={{ color: colors.success }}
+                    >
+                      {goals.length} Active {goals.length === 1 ? "Goal" : "Goals"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Individual Goal Cards */}
+              {goals.map((goal: any, index: number) => {
+                const progress = Math.min(goal.latestProgress || 0, 100);
+                const goalColors = [
+                  colors.primary,
+                  colors.success,
+                  colors.warning,
+                ];
+                const goalColor = goalColors[index % goalColors.length];
+
+                return (
+                  <TouchableOpacity
+                    key={goal._id}
+                    onPress={() =>
+                      router.push(
+                        `/(client)/progress-tracking?goalId=${goal._id}` as any
+                      )
+                    }
+                    className="rounded-xl p-4 flex-row items-center gap-4"
+                    style={{
+                      backgroundColor: colors.surface,
+                      borderLeftWidth: 4,
+                      borderLeftColor: goalColor,
+                      ...shadows.small,
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    {/* Mini Progress Ring */}
+                    <View className="relative items-center justify-center">
+                      <CircularProgress
+                        progress={progress}
+                        size={50}
+                        strokeWidth={5}
+                        color={goalColor}
+                        backgroundColor={`${goalColor}20`}
+                      />
+                      <Text
+                        className="absolute text-xs font-bold"
+                        style={{ color: goalColor }}
+                      >
+                        {Math.round(progress)}%
+                      </Text>
+                    </View>
+
+                    {/* Goal Details */}
+                    <View className="flex-1">
+                      <Text
+                        className="text-sm font-bold mb-1"
+                        style={{ color: colors.text }}
+                        numberOfLines={1}
+                      >
+                        {goal.description}
+                      </Text>
+                      {goal.targetWeight && (
+                        <View className="flex-row items-center gap-2">
                           <Text
-                            className="text-xs font-bold"
+                            className="text-xs"
                             style={{ color: colors.textSecondary }}
                           >
-                            {Math.round(progress)}%
+                            {goal.latestWeight || goal.currentWeight}
+                            {goal.weightUnit}
                           </Text>
-                        </View>
-                        <View>
-                          <Text
-                            className="text-sm font-bold"
-                            style={{ color: colors.text }}
-                            numberOfLines={1}
-                          >
-                            {goal.description}
-                          </Text>
-                          {goal.targetWeight && (
-                            <Text
-                              className="text-xs"
-                              style={{ color: colors.textSecondary }}
-                            >
-                              {goal.latestWeight || goal.currentWeight}{goal.weightUnit} → {goal.targetWeight}
-                              {goal.weightUnit}
-                            </Text>
-                          )}
-                        </View>
-                        <View
-                          className="h-1.5 w-full rounded-full"
-                          style={{ backgroundColor: `${iconColor}20` }}
-                        >
-                          <View
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${progress}%`,
-                              backgroundColor: iconColor,
-                            }}
+                          <Ionicons
+                            name="arrow-forward"
+                            size={12}
+                            color={colors.textSecondary}
                           />
+                          <Text
+                            className="text-xs font-semibold"
+                            style={{ color: goalColor }}
+                          >
+                            {goal.targetWeight}
+                            {goal.weightUnit}
+                          </Text>
                         </View>
-                      </TouchableOpacity>
+                      )}
+                      {/* Mini Progress Bar */}
+                      <View
+                        className="h-1.5 w-full rounded-full mt-2"
+                        style={{ backgroundColor: `${goalColor}20` }}
+                      >
+                        <View
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${progress}%`,
+                            backgroundColor: goalColor,
+                          }}
+                        />
+                      </View>
                     </View>
-                  );
-                })}
-              </View>
+
+                    {/* Arrow */}
+                    <View
+                      className="w-8 h-8 rounded-full items-center justify-center"
+                      style={{ backgroundColor: `${goalColor}10` }}
+                    >
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color={goalColor}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 

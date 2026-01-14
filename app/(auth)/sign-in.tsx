@@ -15,7 +15,7 @@ import { useSignIn, useSignUp } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { getColors, Shadows } from "@/constants/colors";
+import { BorderRadius, getColors, Shadows } from "@/constants/colors";
 import { showToast } from "@/utils/toast";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -363,18 +363,14 @@ export default function SignInScreen() {
                 Email
               </Text>
               <View
-                className="flex-row items-center px-4 py-3 rounded-xl"
+                className="flex-row items-center px-4 py-3"
                 style={{
                   backgroundColor: colors.surface,
                   borderWidth: 1,
                   borderColor: colors.border,
+                  borderRadius: BorderRadius.small
                 }}
               >
-                <Ionicons
-                  name="mail-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
                 <TextInput
                   value={email}
                   onChangeText={setEmail}
@@ -398,18 +394,14 @@ export default function SignInScreen() {
                 Password
               </Text>
               <View
-                className="flex-row items-center px-4 py-3 rounded-xl"
+                className="flex-row items-center px-4 py-3"
                 style={{
+                  borderRadius: BorderRadius.small,
                   backgroundColor: colors.surface,
                   borderWidth: 1,
                   borderColor: colors.border,
                 }}
               >
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
                 <TextInput
                   value={password}
                   onChangeText={setPassword}
@@ -450,8 +442,8 @@ export default function SignInScreen() {
           <TouchableOpacity
             onPress={handleSignIn}
             disabled={loading}
-            className="py-4 rounded-xl mb-6"
-            style={{ backgroundColor: colors.primary, ...shadows.medium }}
+            className="py-4 mb-6"
+            style={{ backgroundColor: colors.primary, borderRadius: BorderRadius.xxlarge, ...shadows.medium }}
           >
             {loading ? (
               <ActivityIndicator color="white" />

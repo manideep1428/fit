@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
@@ -15,6 +16,7 @@ export default function SessionHistoryScreen() {
     const colors = getColors(scheme === 'dark');
     const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
     const insets = useSafeAreaInsets();
+    const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
 
     const bookings = useQuery(
         api.bookings.getTrainerBookings,
@@ -41,14 +43,31 @@ export default function SessionHistoryScreen() {
         };
     });
 
-    // Get all past sessions sorted by date (newest first)
+    // Get all sessions sorted by date
     const now = new Date();
+    const upcomingSessions = enrichedBookings
+        .filter((b: any) => {
+            const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
+            return sessionDateTime >= now && b.status !== 'cancelled' && b.status !== 'completed';
+        })
+        .sort((a: any, b: any) => {
+            const dateA = new Date(`${a.date}T${a.startTime}:00`);
+            const dateB = new Date(`${b.date}T${b.startTime}:00`);
+            return dateA.getTime() - dateB.getTime();
+        });
+
     const pastSessions = enrichedBookings
         .filter((b: any) => {
-            const sessionDateTime = new Date(b.startTime);
+            const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
             return sessionDateTime < now || b.status === 'completed';
         })
-        .sort((a: any, b: any) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+        .sort((a: any, b: any) => {
+            const dateA = new Date(`${a.date}T${a.startTime}:00`);
+            const dateB = new Date(`${b.date}T${b.startTime}:00`);
+            return dateB.getTime() - dateA.getTime();
+        });
+
+    const displayedSessions = activeTab === 'upcoming' ? upcomingSessions : pastSessions;
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -80,12 +99,49 @@ export default function SessionHistoryScreen() {
                 </TouchableOpacity>
                 <View className="flex-1">
                     <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-                        Session History
+                        Sessions
                     </Text>
                     <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                        {pastSessions.length} past {pastSessions.length === 1 ? 'session' : 'sessions'}
+                        {activeTab === 'upcoming' ? upcomingSessions.length : pastSessions.length} {activeTab} {(activeTab === 'upcoming' ? upcomingSessions.length : pastSessions.length) === 1 ? 'session' : 'sessions'}
                     </Text>
                 </View>
+            </View>
+
+            {/* Tab Switcher */}
+            <View
+                className="mx-6 my-4 p-1.5 rounded-2xl flex-row"
+                style={{ backgroundColor: colors.surfaceSecondary }}
+            >
+                <TouchableOpacity
+                    className="flex-1 py-3 rounded-xl items-center"
+                    style={{
+                        backgroundColor: activeTab === 'upcoming' ? colors.surface : 'transparent',
+                        ...(activeTab === 'upcoming' ? shadows.small : {}),
+                    }}
+                    onPress={() => setActiveTab('upcoming')}
+                >
+                    <Text
+                        className="text-sm font-semibold"
+                        style={{ color: activeTab === 'upcoming' ? colors.primary : colors.textSecondary }}
+                    >
+                        Upcoming
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    className="flex-1 py-3 rounded-xl items-center"
+                    style={{
+                        backgroundColor: activeTab === 'past' ? colors.surface : 'transparent',
+                        ...(activeTab === 'past' ? shadows.small : {}),
+                    }}
+                    onPress={() => setActiveTab('past')}
+                >
+                    <Text
+                        className="text-sm font-semibold"
+                        style={{ color: activeTab === 'past' ? colors.primary : colors.textSecondary }}
+                    >
+                        Past
+                    </Text>
+                </TouchableOpacity>
             </View>
 
             <ScrollView
@@ -94,7 +150,7 @@ export default function SessionHistoryScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 <View className="px-6 pt-4">
-                    {pastSessions.length === 0 ? (
+                    {displayedSessions.length === 0 ? (
                         <View
                             className="py-16 items-center rounded-2xl"
                             style={{ backgroundColor: colors.surface, ...shadows.medium }}
@@ -103,17 +159,17 @@ export default function SessionHistoryScreen() {
                                 className="w-20 h-20 rounded-2xl items-center justify-center mb-4"
                                 style={{ backgroundColor: colors.surfaceSecondary }}
                             >
-                                <Ionicons name="time-outline" size={36} color={colors.textTertiary} />
+                                <Ionicons name={activeTab === 'upcoming' ? "calendar-outline" : "time-outline"} size={36} color={colors.textTertiary} />
                             </View>
                             <Text className="text-lg font-semibold" style={{ color: colors.textSecondary }}>
-                                No session history
+                                No {activeTab} sessions
                             </Text>
                             <Text className="text-sm mt-2 text-center px-8" style={{ color: colors.textTertiary }}>
-                                Your completed sessions will appear here
+                                {activeTab === 'upcoming' ? 'Your upcoming sessions will appear here' : 'Your completed sessions will appear here'}
                             </Text>
                         </View>
                     ) : (
-                        pastSessions.map((session: any, index: number) => (
+                        displayedSessions.map((session: any) => (
                             <View
                                 key={session._id}
                                 className="rounded-2xl p-4 mb-3 overflow-hidden"
@@ -168,7 +224,7 @@ export default function SessionHistoryScreen() {
                                         <View className="flex-row items-center mt-1.5">
                                             <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
                                             <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
-                                                {new Date(session.startTime).toLocaleDateString('en-US', {
+                                                {new Date(`${session.date}T${session.startTime}:00`).toLocaleDateString('en-US', {
                                                     weekday: 'short',
                                                     month: 'short',
                                                     day: 'numeric',
@@ -180,7 +236,7 @@ export default function SessionHistoryScreen() {
                                         <View className="flex-row items-center mt-1">
                                             <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
                                             <Text className="text-sm ml-1.5" style={{ color: colors.textTertiary }}>
-                                                {new Date(session.startTime).toLocaleTimeString('en-US', {
+                                                {new Date(`${session.date}T${session.startTime}:00`).toLocaleTimeString('en-US', {
                                                     hour: 'numeric',
                                                     minute: '2-digit',
                                                     hour12: true,

@@ -24,22 +24,30 @@ export function useNotifications() {
     // Register for push notifications
     registerForPushNotificationsAsync().then((token) => {
       if (token && user.id) {
+        console.log('Push token obtained:', token);
         savePushToken({
           clerkId: user.id,
           expoPushToken: token,
-        }).catch(() => {
-          // Silently handle errors - user might not exist yet
+        }).then(() => {
+          console.log('Push token saved successfully');
+        }).catch((error) => {
+          console.error('Failed to save push token:', error);
         });
+      } else {
+        console.log('No push token obtained - device may be simulator or permissions denied');
       }
+    }).catch((error) => {
+      console.error('Error registering for push notifications:', error);
     });
 
     // Listen for notifications while app is foregrounded
-    notificationListener.current = Notifications.addNotificationReceivedListener(() => {
-      // Notification received - handled silently
+    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+      console.log('Notification received:', notification);
     });
 
     // Listen for user interactions with notifications
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      console.log('Notification response:', response);
       // Handle navigation based on notification data
       const data = response.notification.request.content.data;
       // You can add navigation logic here based on data

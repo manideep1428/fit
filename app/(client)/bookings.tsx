@@ -18,7 +18,6 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getColors, Shadows } from "@/constants/colors";
 import CalendarView from "@/components/CalendarView";
 import { Ionicons } from "@expo/vector-icons";
-import GoogleCalendarAuth from "@/components/GoogleCalendarAuth";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import Toast from "react-native-toast-message";
@@ -54,7 +53,6 @@ export default function BookingsScreen() {
   const [activeTab, setActiveTab] = useState<"schedule" | "bookings">(
     "bookings"
   );
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -659,12 +657,24 @@ export default function BookingsScreen() {
           {/* Past Sessions Section */}
           {pastBookings.length > 0 && (
             <View className="px-4 pb-8">
-              <Text
-                className="text-lg font-bold mb-4 opacity-80"
-                style={{ color: colors.text }}
-              >
-                Past Sessions
-              </Text>
+              <View className="flex-row items-center justify-between mb-4">
+                <Text
+                  className="text-lg font-bold opacity-80"
+                  style={{ color: colors.text }}
+                >
+                  Past Sessions
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/(client)/session-history" as any)}
+                >
+                  <Text
+                    className="text-sm font-semibold"
+                    style={{ color: colors.primary }}
+                  >
+                    View All
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               <View className="gap-3">
                 {pastBookings.slice(0, 5).map((booking: any) => (
@@ -756,26 +766,6 @@ export default function BookingsScreen() {
           <Ionicons name="add" size={28} color="#FFF" />
         </TouchableOpacity>
       </View>
-
-      {/* Google Calendar Connect Modal */}
-      <Modal
-        visible={showCalendarModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCalendarModal(false)}
-      >
-        <View
-          className="flex-1 justify-end"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <View className="mx-4 mb-8">
-            <GoogleCalendarAuth
-              onConnected={() => setShowCalendarModal(false)}
-              onSkip={() => setShowCalendarModal(false)}
-            />
-          </View>
-        </View>
-      </Modal>
 
       {/* Notification History Modal */}
       <NotificationHistory

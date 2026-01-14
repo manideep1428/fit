@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
-import { useQuery } from 'convex/react';
+import { useQuery, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getColors, Shadows } from '@/constants/colors';
 import { useState } from 'react';
 import NotificationHistory from '@/components/NotificationHistory';
+import { showToast } from '@/utils/toast';
 
 export default function ClientsScreen() {
   const { user } = useUser();
@@ -18,6 +19,9 @@ export default function ClientsScreen() {
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState<string | null>(null);
+
+  const resendInviteEmail = useAction(api.email.resendClientInviteEmail);
 
   const clients = useQuery(
     api.users.getTrainerClients,
@@ -27,6 +31,12 @@ export default function ClientsScreen() {
   const bookings = useQuery(
     api.bookings.getTrainerBookings,
     user?.id ? { trainerId: user.id } : 'skip'
+  );
+
+  // Fetch trainer profile for name
+  const trainerProfile = useQuery(
+    api.users.getUserByClerkId,
+    user?.id ? { clerkId: user.id } : 'skip'
   );
 
   // Fetch unread notification count
@@ -60,6 +70,33 @@ export default function ClientsScreen() {
     });
 
     return sorted[0].date;
+  };
+
+  // Handle resend invite
+  const handleResendInvite = async (clientEmail: string, clientName: string) => {
+    if (!trainerProfile?.fullName) {
+      showToast.error('Unable to send invite');
+      return;
+    }
+
+    setResendingEmail(clientEmail);
+    try {
+      const result = await resendInviteEmail({
+        clientEmail,
+        clientName,
+        trainerName: trainerProfile.fullName,
+      });
+
+      if (result.success) {
+        showToast.success(`Invite sent to ${clientEmail}`);
+      } else {
+        showToast.error(result.error || 'Failed to send invite');
+      }
+    } catch (error: any) {
+      showToast.error(error.message || 'Failed to send invite');
+    } finally {
+      setResendingEmail(null);
+    }
   };
 
   return (
@@ -210,9 +247,34 @@ export default function ClientsScreen() {
                         </Text>
                       )}
                       {isPending ? (
-                        <Text className="text-xs" style={{ color: colors.textTertiary }}>
-                          Waiting for client to sign in
-                        </Text>
+                        <View>
+                          <View 
+                            className="flex-row items-center mt-1 px-2 py-1 rounded-lg self-start"
+                            style={{ backgroundColor: `${colors.primary}15` }}
+                          >
+                            <Ionicons name="mail-outline" size={12} color={colors.primary} />
+                            <Text className="text-xs ml-1 font-medium" style={{ color: colors.primary }}>
+                              You're invited
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            className="flex-row items-center mt-2 px-3 py-2 rounded-lg self-start"
+                            style={{ backgroundColor: colors.primary }}
+                            onPress={() => handleResendInvite(client.email, client.fullName)}
+                            disabled={resendingEmail === client.email}
+                          >
+                            {resendingEmail === client.email ? (
+                              <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                              <>
+                                <Ionicons name="send-outline" size={14} color="#FFF" />
+                                <Text className="text-xs ml-1.5 font-semibold text-white">
+                                  Resend Invite
+                                </Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </View>
                       ) : (
                         <View className="flex-row items-center gap-3">
                           <View className="flex-row items-center">

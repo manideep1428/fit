@@ -112,6 +112,21 @@ export default function TrainerHomeScreen() {
       return dateA.getTime() - dateB.getTime();
     });
 
+  // Filter sessions that are past but not marked as completed (need attention)
+  const incompleteBookings = enrichedBookings
+    .filter((b: any) => {
+      if (b.status === 'cancelled' || b.status === 'completed') return false;
+      const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
+      // Add duration to get end time
+      const endDateTime = new Date(bookingDateTime.getTime() + (b.duration || 60) * 60000);
+      return endDateTime < now;
+    })
+    .sort((a: any, b: any) => {
+      const dateA = new Date(`${a.date}T${a.startTime}:00`);
+      const dateB = new Date(`${b.date}T${b.startTime}:00`);
+      return dateB.getTime() - dateA.getTime();
+    });
+
   return (
     <PullToRefresh
       onRefresh={handleRefresh}
@@ -234,6 +249,57 @@ export default function TrainerHomeScreen() {
               >
                 <Text className="text-xs font-semibold text-white">
                   Set Now
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </AnimatedCard>
+        )}
+
+        {/* Incomplete Sessions Warning */}
+        {incompleteBookings.length > 0 && (
+          <AnimatedCard
+            delay={250}
+            style={{
+              marginBottom: 20,
+              backgroundColor: `${colors.error}10`,
+              borderWidth: 1,
+              borderColor: colors.error,
+            }}
+            elevation="small"
+            borderRadius="large"
+          >
+            <View className="flex-row items-center">
+              <View
+                className="w-10 h-10 rounded-full justify-center items-center mr-3"
+                style={{ backgroundColor: colors.error }}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={22}
+                  color="white"
+                />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-sm font-bold mb-0.5"
+                  style={{ color: colors.text }}
+                >
+                  {incompleteBookings.length} Session{incompleteBookings.length > 1 ? 's' : ''} Need Attention
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Past sessions not marked as completed
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => router.push("/(trainer)/bookings" as any)}
+                className="px-4 py-2 rounded-lg"
+                style={{ backgroundColor: colors.error }}
+              >
+                <Text className="text-xs font-semibold text-white">
+                  Review
                 </Text>
               </TouchableOpacity>
             </View>

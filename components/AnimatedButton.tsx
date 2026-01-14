@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Text, Pressable, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -6,6 +6,8 @@ import { getColors, BorderRadius, Shadows } from '@/constants/colors';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 type ButtonSize = 'small' | 'medium' | 'large';
+
+
 
 interface AnimatedButtonProps {
     children: React.ReactNode;
@@ -37,7 +39,7 @@ export function AnimatedButton({
 }: AnimatedButtonProps) {
     const { isDark } = useTheme();
     const colors = getColors(isDark);
-
+    const [isloading , setIsLoading ]  = useState<Boolean>(false)
     const handlePress = () => {
         if (disabled || loading) return;
         if (haptic) {
@@ -70,7 +72,7 @@ export function AnimatedButton({
 
     const getVariantStyles = (): { container: ViewStyle; text: TextStyle } => {
         const baseContainer: ViewStyle = {
-            borderRadius: BorderRadius.medium,
+            borderRadius: BorderRadius.xxlarge,
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'row',
@@ -122,6 +124,7 @@ export function AnimatedButton({
 
     return (
         <Pressable
+        className='rounded-2xl'
             onPress={handlePress}
             disabled={disabled || loading}
             style={[

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
@@ -14,6 +15,7 @@ export default function SessionHistoryScreen() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
 
     const bookings = useQuery(
         api.bookings.getClientBookings,
@@ -40,11 +42,22 @@ export default function SessionHistoryScreen() {
         };
     });
 
-    // Get all past sessions sorted by date (newest first)
+    // Get all sessions sorted by date
     const now = new Date();
     // Set time to start of current hour to avoid timezone issues
     now.setMinutes(0, 0, 0);
     
+    const upcomingSessions = enrichedBookings
+        .filter((b: any) => {
+            const sessionDate = new Date(`${b.date}T${b.startTime}:00`);
+            return sessionDate >= now && b.status !== 'cancelled';
+        })
+        .sort((a: any, b: any) => {
+            const dateA = new Date(`${a.date}T${a.startTime}:00`);
+            const dateB = new Date(`${b.date}T${b.startTime}:00`);
+            return dateA.getTime() - dateB.getTime();
+        });
+
     const pastSessions = enrichedBookings
         .filter((b: any) => {
             const sessionDate = new Date(`${b.date}T${b.startTime}:00`);
@@ -56,13 +69,15 @@ export default function SessionHistoryScreen() {
             return dateB.getTime() - dateA.getTime();
         });
 
+    const displayedSessions = activeTab === 'upcoming' ? upcomingSessions : pastSessions;
+
     // Calculate total sessions
     const totalSessions = pastSessions.length;
     const completedSessions = pastSessions.filter((s: any) => s.status === 'confirmed').length;
 
   // Group sessions by month
   const groupedSessions: { [key: string]: any[] } = {};
-  pastSessions.forEach((session: any) => {
+  displayedSessions.forEach((session: any) => {
     const date = new Date(session.date);
     const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     if (!groupedSessions[monthYear]) {
@@ -96,19 +111,56 @@ export default function SessionHistoryScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text className="text-lg font-bold tracking-tight" style={{ color: colors.text }}>
-          Session History
+          Sessions
         </Text>
         <View className="w-10" />
+      </View>
+
+      {/* Tab Switcher */}
+      <View
+        className="mx-4 my-4 p-1.5 rounded-2xl flex-row"
+        style={{ backgroundColor: colors.surfaceSecondary }}
+      >
+        <TouchableOpacity
+          className="flex-1 py-3 rounded-xl items-center"
+          style={{
+            backgroundColor: activeTab === 'upcoming' ? colors.surface : 'transparent',
+            ...(activeTab === 'upcoming' ? shadows.small : {}),
+          }}
+          onPress={() => setActiveTab('upcoming')}
+        >
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: activeTab === 'upcoming' ? colors.primary : colors.textSecondary }}
+          >
+            Upcoming
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="flex-1 py-3 rounded-xl items-center"
+          style={{
+            backgroundColor: activeTab === 'past' ? colors.surface : 'transparent',
+            ...(activeTab === 'past' ? shadows.small : {}),
+          }}
+          onPress={() => setActiveTab('past')}
+        >
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: activeTab === 'past' ? colors.primary : colors.textSecondary }}
+          >
+            Past
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Summary Header */}
         <View className="items-center gap-1 pt-6 pb-4">
           <Text className="text-3xl font-bold" style={{ color: colors.text }}>
-            {totalSessions} Sessions
+            {displayedSessions.length} Sessions
           </Text>
           <Text className="text-sm" style={{ color: colors.textSecondary }}>
-            Last 6 months
+            {activeTab === 'upcoming' ? 'Scheduled' : 'Last 6 months'}
           </Text>
         </View>
 
@@ -172,7 +224,7 @@ export default function SessionHistoryScreen() {
         </View>
 
         {/* Session List by Month */}
-        {pastSessions.length === 0 ? (
+        {displayedSessions.length === 0 ? (
           <View className="px-4">
             <View
               className="py-16 items-center rounded-2xl"
@@ -183,12 +235,12 @@ export default function SessionHistoryScreen() {
                 ...shadows.small,
               }}
             >
-              <Ionicons name="time-outline" size={48} color={colors.textTertiary} />
+              <Ionicons name={activeTab === 'upcoming' ? "calendar-outline" : "time-outline"} size={48} color={colors.textTertiary} />
               <Text className="text-lg font-semibold mt-3" style={{ color: colors.textSecondary }}>
-                No session history
+                No {activeTab} sessions
               </Text>
               <Text className="text-sm mt-2 text-center px-8" style={{ color: colors.textTertiary }}>
-                Your completed sessions will appear here
+                {activeTab === 'upcoming' ? 'Your upcoming sessions will appear here' : 'Your completed sessions will appear here'}
               </Text>
             </View>
           </View>

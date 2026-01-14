@@ -57,6 +57,7 @@ export default defineSchema({
       })
     ),
     sessionDuration: v.number(), // in minutes (45, 60, 90)
+    timezone: v.optional(v.string()), // Default: "Europe/Oslo" (Norway)
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_trainer", ["trainerId"]),
