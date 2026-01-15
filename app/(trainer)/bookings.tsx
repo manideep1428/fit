@@ -322,7 +322,7 @@ export default function BookingsScreen() {
             <TouchableOpacity
               className="rounded-2xl p-4 flex-row"
               style={{ backgroundColor: colors.surface, ...shadows.medium }}
-              onPress={() => router.push('/(trainer)/session-history' as any)}
+              onPress={() => router.push('/(trainer)/session-history?from=bookings' as any)}
               activeOpacity={0.7}
             >
               <View className="flex-1 items-center">
@@ -353,7 +353,7 @@ export default function BookingsScreen() {
             <TouchableOpacity
               className="mt-3 rounded-xl py-3 items-center flex-row justify-center"
               style={{ backgroundColor: colors.surfaceSecondary }}
-              onPress={() => router.push('/(trainer)/session-history' as any)}
+              onPress={() => router.push('/(trainer)/session-history?from=bookings' as any)}
             >
               <Ionicons name="list-outline" size={18} color={colors.primary} />
               <Text className="text-sm font-semibold ml-2" style={{ color: colors.primary }}>
@@ -593,6 +593,7 @@ export default function BookingsScreen() {
       <NotificationHistory
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
+        userRole="trainer"
       />
     </View>
   );

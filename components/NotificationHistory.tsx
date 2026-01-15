@@ -8,9 +8,11 @@ import {
   Alert,
   Modal,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "@clerk/clerk-expo";
 import { useQuery, useMutation } from "convex/react";
+import { useRouter } from "expo-router";
 import { api } from "@/convex/_generated/api";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getColors, Shadows } from "@/constants/colors";
@@ -26,6 +28,7 @@ import { LinearGradient } from "expo-linear-gradient";
 interface NotificationHistoryProps {
   visible: boolean;
   onClose: () => void;
+  userRole?: "trainer" | "client";
 }
 
 type FilterType = "all" | "unread" | "bookings" | "trainers";
@@ -33,13 +36,23 @@ type FilterType = "all" | "unread" | "bookings" | "trainers";
 export default function NotificationHistory({
   visible,
   onClose,
+  userRole,
 }: NotificationHistoryProps) {
   const { user } = useUser();
+  const router = useRouter();
   const scheme = useColorScheme();
   const colors = getColors(scheme === "dark");
   const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
   const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+
+  // Fetch current user to get role if not provided
+  const currentUser = useQuery(
+    api.users.getUserByClerkId,
+    user?.id ? { clerkId: user.id } : "skip"
+  );
+
+  const role = userRole || currentUser?.role || "client";
 
   // Fetch notifications
   const notifications = useQuery(
@@ -50,14 +63,133 @@ export default function NotificationHistory({
   // Mutations
   const markAsRead = useMutation(api.notifications.markAsRead);
   const markAllAsRead = useMutation(api.notifications.markAllAsRead);
+  const deleteAllNotifications = useMutation(api.notifications.deleteAllNotifications);
+
+  // Menu state
+  const [showMenu, setShowMenu] = useState(false);
+
+  const handleMarkAllAsRead = async () => {
+    setShowMenu(false);
+    if (!user?.id) return;
+    try {
+      await markAllAsRead({ userId: user.id });
+      Toast.show({
+        type: "success",
+        text1: "All notifications marked as read",
+        position: "top",
+        visibilityTime: 2000,
+      });
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to mark notifications as read",
+        position: "top",
+        visibilityTime: 2000,
+      });
+    }
+  };
+
+  const handleDeleteAll = () => {
+    setShowMenu(false);
+    Alert.alert(
+      "Delete All Notifications",
+      "Are you sure you want to delete all notifications? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!user?.id) return;
+            try {
+              await deleteAllNotifications({ userId: user.id });
+              Toast.show({
+                type: "success",
+                text1: "All notifications deleted",
+                position: "top",
+                visibilityTime: 2000,
+              });
+            } catch (error) {
+              Toast.show({
+                type: "error",
+                text1: "Failed to delete notifications",
+                position: "top",
+                visibilityTime: 2000,
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleNotificationPress = async (notification: any) => {
+    // Mark as read first
     if (!notification.read) {
       try {
         await markAsRead({ notificationId: notification._id });
       } catch (error) {
         console.error("Error marking notification as read:", error);
       }
+    }
+
+    // Close the modal and navigate based on notification type
+    onClose();
+
+    const routePrefix = role === "trainer" ? "/(trainer)" : "/(client)";
+
+    // Navigate based on notification type
+    switch (notification.type) {
+      case "booking_created":
+      case "booking_cancelled":
+      case "booking_reminder":
+        // Navigate to bookings screen
+        router.push(`${routePrefix}/bookings` as any);
+        break;
+
+      case "subscription_created":
+      case "subscription_request":
+      case "subscription_request_sent":
+      case "subscription_approved":
+      case "subscription_ending":
+      case "subscription_expired":
+        // Navigate to subscriptions screen
+        if (role === "trainer") {
+          router.push("/(trainer)/subscriptions" as any);
+        } else {
+          router.push("/(client)/my-subscriptions" as any);
+        }
+        break;
+
+      case "session_completed":
+        // Navigate to session history
+        router.push(`${routePrefix}/session-history` as any);
+        break;
+
+      case "trainer_added":
+        // For clients, go to find trainers or bookings
+        if (role === "client") {
+          router.push("/(client)/bookings" as any);
+        } else {
+          router.push("/(trainer)/clients" as any);
+        }
+        break;
+
+      case "discount_added":
+      case "discount_updated":
+      case "discount_removed":
+        // Navigate to packages/pricing
+        if (role === "trainer") {
+          router.push("/(trainer)/packages" as any);
+        } else {
+          router.push("/(client)/pricing" as any);
+        }
+        break;
+
+      default:
+        // Default to bookings
+        router.push(`${routePrefix}/bookings` as any);
+        break;
     }
   };
 
@@ -235,12 +367,64 @@ export default function NotificationHistory({
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text
-            className="text-lg font-bold tracking-tight flex-1 text-center pr-10"
+            className="text-lg font-bold tracking-tight flex-1 text-center"
             style={{ color: colors.text }}
           >
             Notifications
           </Text>
+          <View className="relative">
+            <TouchableOpacity
+              className="w-10 h-10 items-center justify-center rounded-full"
+              onPress={() => setShowMenu(!showMenu)}
+            >
+              <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
+            </TouchableOpacity>
+
+            {/* Dropdown Menu */}
+            {showMenu && (
+              <View
+                className="absolute right-0 top-12 rounded-xl py-2 z-50"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.medium,
+                  minWidth: 180,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <TouchableOpacity
+                  className="flex-row items-center px-4 py-3"
+                  onPress={handleMarkAllAsRead}
+                >
+                  <Ionicons name="checkmark-done-outline" size={20} color={colors.primary} />
+                  <Text className="ml-3 text-sm font-medium" style={{ color: colors.text }}>
+                    Mark all as read
+                  </Text>
+                </TouchableOpacity>
+                <View className="h-px mx-3" style={{ backgroundColor: colors.border }} />
+                <TouchableOpacity
+                  className="flex-row items-center px-4 py-3"
+                  onPress={handleDeleteAll}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.error} />
+                  <Text className="ml-3 text-sm font-medium" style={{ color: colors.error }}>
+                    Delete all
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
+
+        {/* Menu Backdrop */}
+        {showMenu && (
+          <TouchableOpacity
+            className="absolute inset-0 z-40"
+            style={{ top: insets.top + 60 }}
+            activeOpacity={1}
+            onPress={() => setShowMenu(false)}
+          />
+        )}
 
         {/* Filter Chips */}
         <View style={{ backgroundColor: colors.background }}>

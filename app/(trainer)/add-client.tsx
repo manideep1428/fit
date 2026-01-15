@@ -165,7 +165,8 @@ export default function AddClientScreen() {
         );
       }
 
-      router.back();
+      // Navigate back to clients page
+      router.push("/(trainer)/clients" as any);
     } catch (error: any) {
       console.error("Error inviting client:", error instanceof Error ? error.message : 'Unknown error');
       showToast.error(error.message || "Failed to invite client");
@@ -185,7 +186,7 @@ export default function AddClientScreen() {
       {/* Header */}
       <View className="px-4 pt-16 pb-4 flex-row items-center justify-between">
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push("/(trainer)/clients" as any)}
           className="w-12 h-12 items-center justify-center"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -388,79 +389,6 @@ export default function AddClientScreen() {
               </View>
             )}
           </TouchableOpacity>
-
-          {/* Existing Clients Section */}
-          {existingClients && existingClients.length > 0 && (
-            <View className="mt-4 mb-8">
-              <Text
-                className="text-sm font-semibold mb-3"
-                style={{ color: colors.textSecondary }}
-              >
-                Your Clients ({existingClients.length})
-              </Text>
-              {existingClients.slice(0, 5).map((client: any) => (
-                <View
-                  key={client?._id}
-                  className="flex-row items-center p-3 rounded-xl mb-2"
-                  style={{ backgroundColor: colors.surface }}
-                >
-                  <View
-                    className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                    style={{ backgroundColor: colors.primary }}
-                  >
-                    <Text className="text-white font-bold">
-                      {client?.fullName?.[0] || "C"}
-                    </Text>
-                  </View>
-                  <View className="flex-1">
-                    <Text className="font-medium" style={{ color: colors.text }}>
-                      {client?.fullName || "Client"}
-                    </Text>
-                    <Text
-                      className="text-xs"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      {client?.email}
-                    </Text>
-                    {client?.phoneNumber && (
-                      <Text
-                        className="text-xs mt-0.5"
-                        style={{ color: colors.textSecondary }}
-                      >
-                        {client.phoneNumber}
-                      </Text>
-                    )}
-                  </View>
-                  {client?.clerkId?.startsWith("pending_") && (
-                    <View
-                      className="px-2 py-1 rounded-full"
-                      style={{ backgroundColor: `${colors.warning}20` }}
-                    >
-                      <Text
-                        className="text-xs font-medium"
-                        style={{ color: colors.warning }}
-                      >
-                        Pending
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              ))}
-              {existingClients.length > 5 && (
-                <TouchableOpacity
-                  className="py-3 items-center"
-                  onPress={() => router.push("/(trainer)/clients" as any)}
-                >
-                  <Text
-                    className="text-sm font-medium"
-                    style={{ color: colors.primary }}
-                  >
-                    View all {existingClients.length} clients
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

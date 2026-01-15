@@ -57,7 +57,7 @@ export default function ChangePasswordScreen() {
       });
 
       showToast.success('Password changed');
-      router.back();
+      router.push('/edit-profile' as any);
     } catch (error: any) {
       console.error('Error changing password:', error instanceof Error ? error.message : 'Unknown error');
       showToast.error(error.errors?.[0]?.message || 'Wrong current password');
@@ -81,7 +81,7 @@ export default function ChangePasswordScreen() {
       {/* Header */}
       <View className="px-4 pt-16 pb-4 flex-row items-center justify-between border-b" style={{ borderBottomColor: colors.border }}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push('/edit-profile' as any)}
           className="w-10 h-10 items-center justify-center"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />

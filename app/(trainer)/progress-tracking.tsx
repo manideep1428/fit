@@ -64,7 +64,7 @@ export default function ProgressTrackingScreen() {
           }}
         >
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push(`/(trainer)/client-detail?clientId=${clientId}` as any)}
             className="w-10 h-10 items-center justify-center rounded-full"
             style={{ backgroundColor: colors.surface }}
           >
@@ -186,7 +186,7 @@ export default function ProgressTrackingScreen() {
                         onPress: async () => {
                           try {
                             await deleteGoal({ goalId: goalId as any });
-                            router.back();
+                            router.push(`/(trainer)/client-detail?clientId=${clientId}` as any);
                           } catch (error) {
                             Alert.alert('Error', 'Failed to delete goal');
                           }

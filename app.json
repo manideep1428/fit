@@ -19,6 +19,9 @@
           "remote-notification"
         ],
         "UIViewControllerBasedStatusBarAppearance": true
+      },
+      "entitlements": {
+        "aps-environment": "production"
       }
     },
     "android": {
@@ -34,14 +37,17 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "WAKE_LOCK"
-      ]
+        "WAKE_LOCK",
+        "POST_NOTIFICATIONS"
+      ],
+      "useNextNotificationsApi": true
     },
     "notification": {
       "icon": "./assets/images/icon.png",
       "color": "#3B82F6",
       "androidMode": "default",
-      "androidCollapsedTitle": "#{unread_notifications} new notifications"
+      "androidCollapsedTitle": "#{unread_notifications} new notifications",
+      "iosDisplayInForeground": true
     },
     "web": {
       "output": "static",
@@ -69,7 +75,8 @@
           "sounds": [
             "./assets/sound/notification.wav"
           ],
-          "mode": "production"
+          "mode": "production",
+          "iosDisplayInForeground": true
         }
       ],
       "expo-font",

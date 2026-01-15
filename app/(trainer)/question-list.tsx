@@ -93,7 +93,7 @@ export default function QuestionListScreen() {
       >
         <View className="flex-row items-center justify-between">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push('/(trainer)/profile' as any)}
             className="w-10 h-10 items-center justify-center rounded-full"
             style={{ backgroundColor: colors.surfaceSecondary }}
           >

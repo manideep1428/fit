@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { getColors, Shadows } from '@/constants/colors';
 export default function SessionHistoryScreen() {
     const { user } = useUser();
     const router = useRouter();
+    const { from } = useLocalSearchParams();
     const scheme = useColorScheme();
     const colors = getColors(scheme === 'dark');
     const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
@@ -93,7 +94,19 @@ export default function SessionHistoryScreen() {
                 <TouchableOpacity
                     className="w-10 h-10 rounded-full items-center justify-center mr-4"
                     style={{ backgroundColor: colors.surfaceSecondary }}
-                    onPress={() => router.back()}
+                    onPress={() => {
+                        // Navigate back based on where we came from
+                        if (from === 'bookings') {
+                            router.push('/(trainer)/bookings' as any);
+                        } else if (from === 'clients') {
+                            router.push('/(trainer)/clients' as any);
+                        } else if (router.canGoBack()) {
+                            router.back();
+                        } else {
+                            // Default to bookings page
+                            router.push('/(trainer)/bookings' as any);
+                        }
+                    }}
                 >
                     <Ionicons name="arrow-back" size={20} color={colors.text} />
                 </TouchableOpacity>

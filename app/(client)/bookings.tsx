@@ -665,7 +665,7 @@ export default function BookingsScreen() {
                   Past Sessions
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push("/(client)/session-history" as any)}
+                  onPress={() => router.push("/(client)/session-history?from=bookings" as any)}
                 >
                   <Text
                     className="text-sm font-semibold"
@@ -771,6 +771,7 @@ export default function BookingsScreen() {
       <NotificationHistory
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
+        userRole="client"
       />
     </View>
   );

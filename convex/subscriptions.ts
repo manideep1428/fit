@@ -155,7 +155,7 @@ export const getClientSubscriptions = query({
       subscriptions.map(async (sub) => {
         // Try new plan first, then fall back to old package
         let planName = "Unknown Plan";
-        let planCurrency = "INR";
+        let planCurrency = "NOK";
 
         if (sub.planId) {
           const plan = await ctx.db.get(sub.planId);
@@ -206,7 +206,7 @@ export const getTrainerSubscriptions = query({
       subscriptions.map(async (sub) => {
         // Try new plan first, then fall back to old package
         let planName = "Unknown Plan";
-        let planCurrency = "INR";
+        let planCurrency = "NOK";
 
         if (sub.planId) {
           const plan = await ctx.db.get(sub.planId);
@@ -547,7 +547,7 @@ export const getSubscriptionById = query({
 
     // Try new plan first, then fall back to old package
     let planName = "Unknown Plan";
-    let planCurrency = "INR";
+    let planCurrency = "NOK";
 
     if (subscription.planId) {
       const plan = await ctx.db.get(subscription.planId);

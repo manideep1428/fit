@@ -120,7 +120,7 @@ export default function TrainerDetailsScreen() {
         style={{ paddingTop: insets.top + 8 }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push('/(client)/index' as any)}
           className="w-10 h-10 rounded-full items-center justify-center"
           style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
         >
@@ -408,7 +408,7 @@ export default function TrainerDetailsScreen() {
             </Text>
             <View className="flex-row gap-3">
               <TouchableOpacity
-                onPress={() => router.push("/(client)/session-history" as any)}
+                onPress={() => router.push("/(client)/session-history?from=trainer-details" as any)}
                 className="flex-1 rounded-2xl p-4 flex-row items-center"
                 style={{ backgroundColor: colors.surface, ...shadows.small }}
               >

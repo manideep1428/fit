@@ -151,11 +151,11 @@ export default function ClientPricingScreen() {
 
   const getCurrencySymbol = (currency: string) => {
     const symbols: { [key: string]: string } = {
-      INR: "₹",
+      NOK: "kr ",
       USD: "$",
       EUR: "€",
       GBP: "£",
-      NOK: "kr",
+      INR: "₹",
     };
     return symbols[currency] || currency;
   };

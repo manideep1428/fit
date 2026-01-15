@@ -329,7 +329,7 @@ export default function ClientHomeScreen() {
           {/* Progress Hero Card */}
           {totalSessions > 0 && (
             <TouchableOpacity
-              onPress={() => router.push("/(client)/session-history" as any)}
+              onPress={() => router.push("/(client)/session-history?from=home" as any)}
               activeOpacity={0.9}
             >
               <LinearGradient

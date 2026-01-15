@@ -273,7 +273,7 @@ export default function AvailabilityScreen() {
                 visibilityTime: 2000,
             });
             
-            setTimeout(() => router.back(), 500);
+            setTimeout(() => router.push('/(trainer)/profile' as any), 500);
         } catch (error: any) {
             console.error('Error saving availability:', error instanceof Error ? error.message : 'Unknown error');
             Toast.show({
@@ -311,7 +311,7 @@ export default function AvailabilityScreen() {
                 }}
             >
                 <TouchableOpacity
-                    onPress={() => router.back()}
+                    onPress={() => router.push('/(trainer)/profile' as any)}
                     className="w-10 h-10 items-center justify-center rounded-full"
                     style={{ backgroundColor: colors.surfaceSecondary }}
                 >

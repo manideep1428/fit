@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-expo';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -6,10 +6,11 @@ import * as Notifications from 'expo-notifications';
 import { registerForPushNotificationsAsync } from '@/utils/pushNotifications';
 
 export function useNotifications() {
-  const { user } = useUser();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const savePushToken = useMutation(api.users.savePushToken);
-  const notificationListener = useRef<any>(null);
-  const responseListener = useRef<any>(null);
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const tokenRegistered = useRef(false);
 
   // Check if user exists in Convex before trying to save push token
   const convexUser = useQuery(
@@ -17,28 +18,34 @@ export function useNotifications() {
     user?.id ? { clerkId: user.id } : 'skip'
   );
 
-  useEffect(() => {
-    // Only register for push notifications if user exists in Convex
-    if (!user?.id || !convexUser) return;
-
-    // Register for push notifications
-    registerForPushNotificationsAsync().then((token) => {
-      if (token && user.id) {
+  const registerToken = useCallback(async () => {
+    if (!user?.id || !convexUser || tokenRegistered.current) return;
+    
+    try {
+      const token = await registerForPushNotificationsAsync();
+      
+      if (token) {
         console.log('Push token obtained:', token);
-        savePushToken({
+        await savePushToken({
           clerkId: user.id,
           expoPushToken: token,
-        }).then(() => {
-          console.log('Push token saved successfully');
-        }).catch((error) => {
-          console.error('Failed to save push token:', error);
         });
+        console.log('Push token saved successfully');
+        tokenRegistered.current = true;
       } else {
         console.log('No push token obtained - device may be simulator or permissions denied');
       }
-    }).catch((error) => {
+    } catch (error) {
       console.error('Error registering for push notifications:', error);
-    });
+    }
+  }, [user?.id, convexUser, savePushToken]);
+
+  useEffect(() => {
+    // Wait for Clerk to load and user to exist in Convex
+    if (!isUserLoaded || !user?.id || !convexUser) return;
+
+    // Register for push notifications
+    registerToken();
 
     // Listen for notifications while app is foregrounded
     notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
@@ -61,5 +68,10 @@ export function useNotifications() {
         responseListener.current.remove();
       }
     };
-  }, [user?.id, convexUser]);
+  }, [isUserLoaded, user?.id, convexUser, registerToken]);
+
+  // Reset token registration flag when user changes
+  useEffect(() => {
+    tokenRegistered.current = false;
+  }, [user?.id]);
 }

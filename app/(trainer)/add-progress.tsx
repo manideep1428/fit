@@ -98,7 +98,7 @@ export default function AddProgressScreen() {
         read: false,
       });
 
-      router.back();
+      router.push(`/(trainer)/progress-tracking?goalId=${goalId}&clientId=${clientId}` as any);
     } catch (error) {
       console.error('Error adding progress:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
@@ -127,7 +127,7 @@ export default function AddProgressScreen() {
         }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push(`/(trainer)/progress-tracking?goalId=${goalId}&clientId=${clientId}` as any)}
           className="w-10 h-10 items-center justify-center rounded-full"
           style={{ backgroundColor: colors.surface }}
         >

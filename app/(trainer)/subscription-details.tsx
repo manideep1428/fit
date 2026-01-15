@@ -53,7 +53,7 @@ export default function SubscriptionDetailsScreen() {
                   subscription.paymentMethod === "offline" ? "pending" : "paid",
               });
               showToast.success("Renewed");
-              router.back();
+              router.push('/(trainer)/subscriptions' as any);
             } catch (error) {
               showToast.error("Renew failed");
             }
@@ -77,7 +77,7 @@ export default function SubscriptionDetailsScreen() {
             try {
               await cancelSubscription({ subscriptionId: subscription._id });
               showToast.success("Cancelled");
-              router.back();
+              router.push('/(trainer)/subscriptions' as any);
             } catch (error) {
               showToast.error("Cancel failed");
             }
@@ -89,11 +89,11 @@ export default function SubscriptionDetailsScreen() {
 
   const formatCurrency = (amount: number | undefined, currency: string) => {
     const symbols: { [key: string]: string } = {
-      INR: "₹",
+      NOK: "kr ",
       USD: "$",
       EUR: "€",
       GBP: "£",
-      NOK: "kr",
+      INR: "₹",
     };
     const safeAmount = amount || 0;
     return `${symbols[currency] || currency}${safeAmount.toFixed(0)}`;
@@ -104,7 +104,6 @@ export default function SubscriptionDetailsScreen() {
       <View className="flex-1" style={{ backgroundColor: colors.background }}>
         <StatusBar style={scheme === "dark" ? "light" : "dark"} />
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </View>
     );
@@ -124,7 +123,7 @@ export default function SubscriptionDetailsScreen() {
       {/* Header */}
       <View className="px-4 pb-4" style={{ paddingTop: insets.top + 12 }}>
         <View className="flex-row items-center mb-4">
-          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <TouchableOpacity onPress={() => router.push('/(trainer)/subscriptions' as any)} className="mr-3">
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text className="text-2xl font-bold" style={{ color: colors.text }}>

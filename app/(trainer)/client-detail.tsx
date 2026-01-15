@@ -93,7 +93,7 @@ export default function ClientDetailScreen() {
         {/* Header */}
         <View className="px-4 pt-16 pb-4 flex-row items-center justify-between">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push('/(trainer)/clients' as any)}
             className="w-12 h-12 items-center justify-center"
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />

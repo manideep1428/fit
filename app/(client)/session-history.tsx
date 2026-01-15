@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 export default function SessionHistoryScreen() {
   const { user } = useUser();
   const router = useRouter();
+  const { from } = useLocalSearchParams();
   const scheme = useColorScheme();
   const colors = getColors(scheme === 'dark');
   const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
@@ -106,7 +107,23 @@ export default function SessionHistoryScreen() {
       >
         <TouchableOpacity
           className="p-2 rounded-full"
-          onPress={() => router.back()}
+          onPress={() => {
+            // Navigate back based on where we came from
+            if (from === 'home') {
+              router.push('/(client)/index' as any);
+            } else if (from === 'bookings') {
+              router.push('/(client)/bookings' as any);
+            } else if (from === 'profile') {
+              router.push('/(client)/profile' as any);
+            } else if (from === 'trainer-details') {
+              router.back(); // For trainer-details, use back since it's a modal-like screen
+            } else if (router.canGoBack()) {
+              router.back();
+            } else {
+              // Default to home page
+              router.push('/(client)/index' as any);
+            }
+          }}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>

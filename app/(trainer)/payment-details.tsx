@@ -22,7 +22,6 @@ import { Id } from "@/convex/_generated/dataModel";
 export default function PaymentDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { user } = useUser();
   const scheme = useColorScheme();
   const colors = getColors(scheme === "dark");
   const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
@@ -33,10 +32,7 @@ export default function PaymentDetailsScreen() {
     id ? { subscriptionId: id as Id<"clientSubscriptions"> } : "skip"
   ) as any;
 
-  const packages = useQuery(
-    api.packages.getTrainerPackages,
-    user?.id ? { trainerId: user.id } : "skip"
-  );
+
 
   const markOfflinePaymentPaid = useMutation(
     api.subscriptions.markOfflinePaymentPaid
@@ -58,7 +54,7 @@ export default function PaymentDetailsScreen() {
                 subscriptionId: subscription._id,
               });
               showToast.success("Approved");
-              router.back();
+              router.replace("/(trainer)/payments");
             } catch (error) {
               showToast.error("Approve failed");
             }
@@ -82,7 +78,7 @@ export default function PaymentDetailsScreen() {
             try {
               await cancelSubscription({ subscriptionId: subscription._id });
               showToast.success("Cancelled");
-              router.back();
+              router.replace("/(trainer)/payments");
             } catch (error) {
               showToast.error("Cancel failed");
             }
@@ -94,13 +90,7 @@ export default function PaymentDetailsScreen() {
 
   const formatCurrency = (amount: number | undefined) => {
     const safeAmount = amount || 0;
-    return `$${safeAmount.toLocaleString()}`;
-  };
-
-  const getPackageName = (packageId: any) => {
-    if (!packages) return "Loading...";
-    const pkg = packages.find((p: any) => p._id === packageId);
-    return pkg?.name || "Unknown Package";
+    return safeAmount.toLocaleString();
   };
 
   const getStatusColor = (status: string) => {
@@ -116,22 +106,26 @@ export default function PaymentDetailsScreen() {
     }
   };
 
-  if (!subscription || !packages) {
+  if (!subscription) {
     return (
       <View className="flex-1" style={{ backgroundColor: colors.background }}>
         <StatusBar style={scheme === "dark" ? "light" : "dark"} />
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </View>
     );
   }
 
   const isPending = subscription.paymentStatus === "pending";
-  const progressPercentage =
-    (subscription.remainingSessions / subscription.totalSessions) * 100;
+  const totalSessions = subscription.sessionsPerMonth || subscription.totalSessions || 0;
+  const remainingSessions = subscription.remainingSessions || 0;
+  const usedSessions = Math.max(0, totalSessions - remainingSessions);
+  const progressPercentage = totalSessions > 0 ? (remainingSessions / totalSessions) * 100 : 0;
   const isExpiringSoon =
-    subscription.remainingSessions <= 3 && subscription.status === "active";
+    remainingSessions <= 3 && subscription.status === "active";
+  const displayAmount = subscription.totalAmount || subscription.monthlyAmount || subscription.finalAmount || 0;
+  const currency = subscription.planCurrency || "NOK";
+  const currencySymbol = currency === "NOK" ? "kr " : currency === "INR" ? "₹" : "$";
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -147,7 +141,7 @@ export default function PaymentDetailsScreen() {
       {/* Header */}
       <View className="px-4 pb-4" style={{ paddingTop: insets.top + 12 }}>
         <View className="flex-row items-center mb-4">
-          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <TouchableOpacity onPress={() => router.push('/(trainer)/payments' as any)} className="mr-3">
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text className="text-2xl font-bold" style={{ color: colors.text }}>
@@ -217,13 +211,13 @@ export default function PaymentDetailsScreen() {
                   color: isPending ? colors.warning : colors.primary,
                 }}
               >
-                {formatCurrency(subscription.finalAmount)}
+                {currencySymbol}{formatCurrency(displayAmount)}
               </Text>
               <Text
                 className="text-xs mt-1"
                 style={{ color: colors.textSecondary }}
               >
-                {getPackageName(subscription.packageId)}
+                {subscription.planName}
               </Text>
             </View>
           </View>
@@ -252,7 +246,7 @@ export default function PaymentDetailsScreen() {
                 className="text-3xl font-bold mb-1"
                 style={{ color: colors.primary }}
               >
-                {subscription.remainingSessions}
+                {remainingSessions}
               </Text>
               <Text className="text-xs" style={{ color: colors.textSecondary }}>
                 Sessions Remaining
@@ -276,7 +270,7 @@ export default function PaymentDetailsScreen() {
                 className="text-3xl font-bold mb-1"
                 style={{ color: colors.success }}
               >
-                {subscription.totalSessions - subscription.remainingSessions}
+                {usedSessions}
               </Text>
               <Text className="text-xs" style={{ color: colors.textSecondary }}>
                 Sessions Used
@@ -300,8 +294,8 @@ export default function PaymentDetailsScreen() {
                 className="text-sm font-bold"
                 style={{ color: colors.primary }}
               >
-                {subscription.totalSessions - subscription.remainingSessions} /{" "}
-                {subscription.totalSessions}
+                {usedSessions} /{" "}
+                {totalSessions}
               </Text>
             </View>
             <View
@@ -332,7 +326,7 @@ export default function PaymentDetailsScreen() {
                   className="text-xs ml-2"
                   style={{ color: colors.warning }}
                 >
-                  Only {subscription.remainingSessions} sessions remaining
+                  Only {remainingSessions} sessions remaining
                 </Text>
               </View>
             )}

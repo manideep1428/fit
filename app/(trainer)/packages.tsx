@@ -490,7 +490,7 @@ export default function ManagePlansScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push('/(trainer)/profile' as any)}
           className="w-11 h-11 rounded-full items-center justify-center"
           style={{ backgroundColor: colors.surface }}
         >

@@ -19,6 +19,7 @@ import { showToast } from "@/utils/toast";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
 import NotificationHistory from "@/components/NotificationHistory";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function TrainerSubscriptionsScreen() {
   const router = useRouter();
@@ -143,11 +144,11 @@ export default function TrainerSubscriptionsScreen() {
 
   const formatCurrency = (amount: number | undefined, currency: string) => {
     const symbols: { [key: string]: string } = {
-      INR: "₹",
+      NOK: "kr ",
       USD: "$",
       EUR: "€",
       GBP: "£",
-      NOK: "kr",
+      INR: "₹",
     };
     const safeAmount = amount || 0;
     return `${symbols[currency] || currency}${safeAmount.toFixed(0)}`;
@@ -176,7 +177,7 @@ export default function TrainerSubscriptionsScreen() {
         }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push('/(trainer)/payments' as any)}
           className="w-12 h-12 rounded-full items-center justify-center -ml-2"
           style={{
             backgroundColor: "transparent",
@@ -220,87 +221,95 @@ export default function TrainerSubscriptionsScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="flex-row gap-3 p-4"
+          className="flex-row gap-3 px-4 pt-4 pb-2"
           contentContainerStyle={{ paddingRight: 16 }}
         >
           <View
-            className="min-w-[140px] flex-1 flex-col gap-2 rounded-xl p-5"
+            className="min-w-[150px] flex-1 flex-col gap-3 rounded-2xl p-5"
             style={{
               backgroundColor: colors.surface,
               borderWidth: 1,
               borderColor: colors.border,
-              ...shadows.small,
+              ...shadows.medium,
             }}
           >
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="people" size={18} color={colors.primary} />
+            <View
+              className="w-10 h-10 rounded-xl items-center justify-center"
+              style={{ backgroundColor: `${colors.primary}15` }}
+            >
+              <Ionicons name="people" size={20} color={colors.primary} />
+            </View>
+            <View>
               <Text
-                className="text-sm font-medium"
+                className="text-xs font-semibold mb-1"
                 style={{ color: colors.textSecondary }}
               >
-                Active
+                Active Clients
               </Text>
-            </View>
-            <View className="flex-row items-baseline gap-1">
               <Text
-                className="text-2xl font-bold"
+                className="text-3xl font-black"
                 style={{ color: colors.text }}
               >
                 {stats?.activeCount || 0}
               </Text>
-              <Text
-                className="text-sm font-normal"
-                style={{ color: colors.textSecondary }}
-              >
-                Clients
-              </Text>
             </View>
           </View>
 
           <View
-            className="min-w-[140px] flex-1 flex-col gap-2 rounded-xl p-5"
+            className="min-w-[150px] flex-1 flex-col gap-3 rounded-2xl p-5"
             style={{
               backgroundColor: colors.surface,
               borderWidth: 1,
               borderColor: colors.border,
-              ...shadows.small,
+              ...shadows.medium,
             }}
           >
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="time" size={18} color={colors.warning} />
+            <View
+              className="w-10 h-10 rounded-xl items-center justify-center"
+              style={{ backgroundColor: `${colors.warning}15` }}
+            >
+              <Ionicons name="time" size={20} color={colors.warning} />
+            </View>
+            <View>
               <Text
-                className="text-sm font-medium"
+                className="text-xs font-semibold mb-1"
                 style={{ color: colors.textSecondary }}
               >
                 Pending
               </Text>
+              <Text
+                className="text-3xl font-black"
+                style={{ color: colors.text }}
+              >
+                {stats?.pendingCount || 0}
+              </Text>
             </View>
-            <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-              {stats?.pendingCount || 0}
-            </Text>
           </View>
 
           <View
-            className="min-w-[140px] flex-1 flex-col gap-2 rounded-xl p-5"
+            className="min-w-[150px] flex-1 flex-col gap-3 rounded-2xl p-5"
             style={{
               backgroundColor: colors.surface,
               borderWidth: 1,
               borderColor: colors.border,
-              ...shadows.small,
+              ...shadows.medium,
             }}
           >
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="cash" size={18} color={colors.success} />
+            <View
+              className="w-10 h-10 rounded-xl items-center justify-center"
+              style={{ backgroundColor: `${colors.success}15` }}
+            >
+              <Ionicons name="cash" size={20} color={colors.success} />
+            </View>
+            <View>
               <Text
-                className="text-sm font-medium"
+                className="text-xs font-semibold mb-1"
                 style={{ color: colors.textSecondary }}
               >
                 Total
               </Text>
-            </View>
-            <View className="flex-row items-baseline gap-1">
               <Text
-                className="text-2xl font-bold"
+                className="text-3xl font-black"
                 style={{ color: colors.text }}
               >
                 {stats?.totalCount || 0}
@@ -311,23 +320,28 @@ export default function TrainerSubscriptionsScreen() {
 
         {/* Pending Payments */}
         {pendingSubscriptions.length > 0 && (
-          <View>
-            <View className="flex-row items-center justify-between px-4 pb-2 pt-4">
-              <Text
-                className="text-lg font-bold"
-                style={{ color: colors.text }}
-              >
-                Pending Payments
-              </Text>
-              <View
-                className="px-2 py-1 rounded-full"
-                style={{ backgroundColor: `${colors.warning}20` }}
-              >
-                <Text
-                  className="text-xs font-bold"
-                  style={{ color: colors.warning }}
+          <View className="mt-2">
+            <View className="flex-row items-center justify-between px-4 pb-3 pt-5">
+              <View className="flex-row items-center">
+                <View
+                  className="w-9 h-9 rounded-xl items-center justify-center mr-3"
+                  style={{ backgroundColor: `${colors.warning}15` }}
                 >
-                  Action Needed
+                  <Ionicons name="time" size={18} color={colors.warning} />
+                </View>
+                <Text
+                  className="text-xl font-black"
+                  style={{ color: colors.text }}
+                >
+                  Pending Payments
+                </Text>
+              </View>
+              <View
+                className="px-3 py-1.5 rounded-full min-w-[28px] items-center"
+                style={{ backgroundColor: colors.warning }}
+              >
+                <Text className="text-white text-xs font-black">
+                  {pendingSubscriptions.length}
                 </Text>
               </View>
             </View>
@@ -336,81 +350,125 @@ export default function TrainerSubscriptionsScreen() {
               {pendingSubscriptions.map((sub: any) => (
                 <View
                   key={sub._id}
-                  className="flex-col gap-4 rounded-xl p-4"
+                  className="rounded-3xl overflow-hidden"
                   style={{
                     backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    ...shadows.small,
+                    ...shadows.medium,
                   }}
                 >
-                  <View className="flex-row items-start justify-between gap-4">
-                    <View className="flex-row items-center gap-3 flex-1">
+                  {/* Gradient Top Accent */}
+                  <LinearGradient
+                    colors={[colors.warning, `${colors.warning}99`]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    className="h-1.5"
+                  />
+                  
+                  <View className="p-5">
+                    {/* Header */}
+                    <View className="flex-row items-center mb-4">
                       <View
-                        className="w-12 h-12 rounded-full items-center justify-center"
+                        className="w-14 h-14 rounded-2xl items-center justify-center mr-4"
                         style={{
-                          backgroundColor: colors.primary,
-                          borderWidth: 2,
-                          borderColor: colors.surface,
-                          ...shadows.small,
+                          backgroundColor: `${colors.warning}12`,
+                          borderWidth: 1,
+                          borderColor: `${colors.warning}20`,
                         }}
                       >
-                        <Text className="text-white text-lg font-bold">
+                        <Text
+                          className="text-xl font-bold"
+                          style={{ color: colors.warning }}
+                        >
                           {sub.clientName?.[0] || "C"}
                         </Text>
                       </View>
                       <View className="flex-1">
                         <Text
-                          className="text-base font-bold"
+                          className="text-lg font-bold mb-1"
                           style={{ color: colors.text }}
                         >
                           {sub.clientName}
                         </Text>
+                        <View className="flex-row items-center">
+                          <View
+                            className="w-2 h-2 rounded-full mr-2"
+                            style={{ backgroundColor: colors.warning }}
+                          />
+                          <Text
+                            className="text-sm"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {sub.planName} • {sub.sessionsPerMonth} Sessions
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Amount Card */}
+                    <View
+                      className="rounded-2xl p-4 mb-4 flex-row items-center justify-between"
+                      style={{ backgroundColor: `${colors.warning}08` }}
+                    >
+                      <View>
                         <Text
-                          className="text-sm"
+                          className="text-xs font-medium mb-1"
                           style={{ color: colors.textSecondary }}
                         >
-                          {sub.planName} • {sub.sessionsPerMonth} Sessions
+                          Amount to Approve
+                        </Text>
+                        <Text
+                          className="text-3xl font-black"
+                          style={{ color: colors.warning }}
+                        >
+                          {formatCurrency(sub.totalAmount, sub.planCurrency)}
+                        </Text>
+                      </View>
+                      <View
+                        className="px-3 py-1.5 rounded-full"
+                        style={{ backgroundColor: `${colors.warning}20` }}
+                      >
+                        <Text
+                          className="text-xs font-bold"
+                          style={{ color: colors.warning }}
+                        >
+                          AWAITING
                         </Text>
                       </View>
                     </View>
-                    <Text
-                      className="text-lg font-bold"
-                      style={{ color: colors.text }}
-                    >
-                      {formatCurrency(sub.totalAmount, sub.planCurrency)}
-                    </Text>
-                  </View>
 
-                  <View className="flex-row gap-2 w-full">
-                    <TouchableOpacity
-                      onPress={() => handleReject(sub)}
-                      className="flex-1 h-10 rounded-lg items-center justify-center"
-                      style={{
-                        backgroundColor: colors.surface,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                      }}
-                    >
-                      <Text
-                        className="text-sm font-medium"
-                        style={{ color: colors.text }}
+                    {/* Action Buttons */}
+                    <View className="flex-row gap-3">
+                      <TouchableOpacity
+                        onPress={() => handleReject(sub)}
+                        className="flex-1 h-12 rounded-xl items-center justify-center flex-row"
+                        style={{
+                          backgroundColor: `${colors.error}10`,
+                          borderWidth: 1,
+                          borderColor: `${colors.error}20`,
+                        }}
                       >
-                        Reject
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleApprove(sub)}
-                      className="flex-[2] h-10 rounded-lg items-center justify-center"
-                      style={{
-                        backgroundColor: colors.primary,
-                        ...shadows.medium,
-                      }}
-                    >
-                      <Text className="text-sm font-bold text-white">
-                        Approve Payment
-                      </Text>
-                    </TouchableOpacity>
+                        <Ionicons name="close" size={18} color={colors.error} />
+                        <Text
+                          className="text-sm font-bold ml-2"
+                          style={{ color: colors.error }}
+                        >
+                          Reject
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleApprove(sub)}
+                        className="flex-[2] h-12 rounded-xl items-center justify-center flex-row"
+                        style={{
+                          backgroundColor: colors.success,
+                          ...shadows.medium,
+                        }}
+                      >
+                        <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                        <Text className="text-sm font-bold text-white ml-2">
+                          Approve Payment
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               ))}
@@ -419,13 +477,21 @@ export default function TrainerSubscriptionsScreen() {
         )}
 
         {/* Active Subscriptions */}
-        <View>
-          <Text
-            className="text-lg font-bold px-4 pb-2 pt-4"
-            style={{ color: colors.text }}
-          >
-            Active Subscriptions
-          </Text>
+        <View className="mt-2">
+          <View className="flex-row items-center px-4 pb-3 pt-5">
+            <View
+              className="w-9 h-9 rounded-xl items-center justify-center mr-3"
+              style={{ backgroundColor: `${colors.success}15` }}
+            >
+              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+            </View>
+            <Text
+              className="text-xl font-black"
+              style={{ color: colors.text }}
+            >
+              Active Subscriptions
+            </Text>
+          </View>
 
           {!subscriptions ? (
             <View className="py-8 items-center">
@@ -433,19 +499,35 @@ export default function TrainerSubscriptionsScreen() {
             </View>
           ) : activeSubscriptions.length === 0 ? (
             <View
-              className="mx-4 rounded-xl p-8 items-center"
-              style={{ backgroundColor: colors.surface, ...shadows.small }}
+              className="mx-4 rounded-3xl p-10 items-center"
+              style={{ 
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                ...shadows.medium 
+              }}
             >
-              <Ionicons
-                name="calendar-outline"
-                size={48}
-                color={colors.textTertiary}
-              />
+              <View
+                className="w-20 h-20 rounded-2xl items-center justify-center mb-5"
+                style={{ backgroundColor: `${colors.primary}12` }}
+              >
+                <Ionicons
+                  name="people-outline"
+                  size={36}
+                  color={colors.primary}
+                />
+              </View>
               <Text
-                className="mt-3 font-semibold"
+                className="text-xl font-black mb-2"
+                style={{ color: colors.text }}
+              >
+                No Active Subscriptions
+              </Text>
+              <Text
+                className="text-sm text-center leading-5"
                 style={{ color: colors.textSecondary }}
               >
-                No active subscriptions
+                Active client subscriptions will appear here
               </Text>
             </View>
           ) : (
@@ -461,101 +543,171 @@ export default function TrainerSubscriptionsScreen() {
                 return (
                   <View
                     key={sub._id}
-                    className="rounded-xl p-4"
+                    className="rounded-3xl overflow-hidden"
                     style={{
                       backgroundColor: colors.surface,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      ...shadows.small,
+                      ...shadows.medium,
                     }}
                   >
-                    <View className="flex-row justify-between items-start mb-3">
-                      <View className="flex-row items-center gap-3 flex-1">
+                    {/* Gradient Top Accent */}
+                    <LinearGradient
+                      colors={[colors.success, `${colors.success}99`]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      className="h-1"
+                    />
+                    
+                    <View className="p-5">
+                      {/* Header */}
+                      <View className="flex-row items-center mb-4">
                         <View
-                          className="w-10 h-10 rounded-full items-center justify-center"
-                          style={{ backgroundColor: colors.primary }}
+                          className="w-14 h-14 rounded-2xl items-center justify-center mr-4"
+                          style={{ 
+                            backgroundColor: `${colors.primary}10`,
+                            borderWidth: 1,
+                            borderColor: `${colors.primary}15`,
+                          }}
                         >
-                          <Text className="text-white text-base font-bold">
+                          <Text
+                            className="text-xl font-bold"
+                            style={{ color: colors.primary }}
+                          >
                             {sub.clientName?.[0] || "C"}
                           </Text>
                         </View>
                         <View className="flex-1">
                           <Text
-                            className="font-bold"
+                            className="text-lg font-bold mb-1"
                             style={{ color: colors.text }}
                           >
                             {sub.clientName}
+                          </Text>
+                          <View className="flex-row items-center">
+                            <Text
+                              className="text-sm"
+                              style={{ color: colors.textSecondary }}
+                            >
+                              Ends{" "}
+                              {new Date(sub.currentPeriodEnd).toLocaleDateString(
+                                "en-US",
+                                { month: "short", day: "numeric" }
+                              )}
+                            </Text>
+                            <View
+                              className="w-1 h-1 rounded-full mx-2"
+                              style={{ backgroundColor: colors.textTertiary }}
+                            />
+                            <Text
+                              className="text-sm font-semibold"
+                              style={{ color: colors.primary }}
+                            >
+                              {formatCurrency(sub.totalAmount, sub.planCurrency)}/mo
+                            </Text>
+                          </View>
+                        </View>
+                        <View className="flex-row gap-2">
+                          <TouchableOpacity
+                            onPress={() => handleRenew(sub)}
+                            className="w-10 h-10 rounded-xl items-center justify-center"
+                            style={{ backgroundColor: `${colors.primary}10` }}
+                          >
+                            <Ionicons
+                              name="refresh"
+                              size={18}
+                              color={colors.primary}
+                            />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handleCancel(sub)}
+                            className="w-10 h-10 rounded-xl items-center justify-center"
+                            style={{ backgroundColor: `${colors.error}10` }}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={18}
+                              color={colors.error}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {/* Stats Row */}
+                      <View
+                        className="flex-row rounded-2xl p-3 mb-3"
+                        style={{ backgroundColor: `${colors.primary}06` }}
+                      >
+                        <View className="flex-1 items-center border-r" style={{ borderRightColor: colors.border }}>
+                          <Text
+                            className="text-2xl font-black"
+                            style={{ color: colors.primary }}
+                          >
+                            {sessionsUsed}
                           </Text>
                           <Text
                             className="text-xs"
                             style={{ color: colors.textSecondary }}
                           >
-                            Ends{" "}
-                            {new Date(sub.currentPeriodEnd).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                              }
-                            )}{" "}
-                            •{" "}
-                            {formatCurrency(sub.totalAmount, sub.planCurrency)}
-                            /mo
+                            Used
+                          </Text>
+                        </View>
+                        <View className="flex-1 items-center border-r" style={{ borderRightColor: colors.border }}>
+                          <Text
+                            className="text-2xl font-black"
+                            style={{ color: colors.success }}
+                          >
+                            {sub.remainingSessions}
+                          </Text>
+                          <Text
+                            className="text-xs"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            Remaining
+                          </Text>
+                        </View>
+                        <View className="flex-1 items-center">
+                          <Text
+                            className="text-2xl font-black"
+                            style={{ color: colors.text }}
+                          >
+                            {sub.sessionsPerMonth}
+                          </Text>
+                          <Text
+                            className="text-xs"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            Total
                           </Text>
                         </View>
                       </View>
-                      <View className="flex-row gap-2">
-                        <TouchableOpacity
-                          onPress={() => handleRenew(sub)}
-                          className="w-8 h-8 rounded-full items-center justify-center"
-                          style={{ backgroundColor: `${colors.primary}15` }}
-                        >
-                          <Ionicons
-                            name="refresh"
-                            size={16}
-                            color={colors.primary}
-                          />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => handleCancel(sub)}
-                          className="w-8 h-8 rounded-full items-center justify-center"
-                          style={{ backgroundColor: `${colors.error}15` }}
-                        >
-                          <Ionicons
-                            name="trash"
-                            size={16}
-                            color={colors.error}
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
 
-                    <View className="flex-col gap-2">
-                      <View className="flex-row justify-between">
-                        <Text
-                          className="text-sm font-medium"
-                          style={{ color: colors.textSecondary }}
-                        >
-                          Progress
-                        </Text>
-                        <Text
-                          className="text-sm font-bold"
-                          style={{ color: colors.primary }}
-                        >
-                          {sessionsUsed}/{sub.sessionsPerMonth} Sessions
-                        </Text>
-                      </View>
-                      <View
-                        className="h-2 w-full rounded-full overflow-hidden"
-                        style={{ backgroundColor: `${colors.primary}20` }}
-                      >
+                      {/* Progress Bar */}
+                      <View>
+                        <View className="flex-row justify-between mb-2">
+                          <Text
+                            className="text-xs font-medium"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            Session Progress
+                          </Text>
+                          <Text
+                            className="text-xs font-bold"
+                            style={{ color: colors.primary }}
+                          >
+                            {Math.round(progress)}%
+                          </Text>
+                        </View>
                         <View
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${progress}%`,
-                            backgroundColor: colors.primary,
-                          }}
-                        />
+                          className="h-2.5 w-full rounded-full overflow-hidden"
+                          style={{ backgroundColor: `${colors.primary}12` }}
+                        >
+                          <LinearGradient
+                            colors={[colors.primary, `${colors.primary}CC`]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            className="h-full rounded-full"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -567,40 +719,48 @@ export default function TrainerSubscriptionsScreen() {
 
         {/* Past Subscriptions */}
         {pastSubscriptions.length > 0 && (
-          <View>
-            <Text
-              className="text-lg font-bold px-4 pb-2 pt-4"
-              style={{ color: colors.text }}
-            >
-              Past Subscriptions
-            </Text>
+          <View className="mt-2">
+            <View className="flex-row items-center px-4 pb-3 pt-5">
+              <View
+                className="w-9 h-9 rounded-xl items-center justify-center mr-3"
+                style={{ backgroundColor: `${colors.textTertiary}15` }}
+              >
+                <Ionicons name="archive" size={18} color={colors.textTertiary} />
+              </View>
+              <Text
+                className="text-xl font-black"
+                style={{ color: colors.text }}
+              >
+                Past Subscriptions
+              </Text>
+            </View>
 
-            <View className="px-4 pt-2 flex-col gap-4 pb-8">
+            <View className="px-4 pt-2 flex-col gap-3 pb-8">
               {pastSubscriptions.map((sub: any) => (
                 <View
                   key={sub._id}
-                  className="flex-row items-center justify-between rounded-xl p-4 opacity-70"
+                  className="flex-row items-center justify-between rounded-2xl p-4 opacity-60"
                   style={{
-                    backgroundColor: `${colors.surface}66`,
+                    backgroundColor: colors.surface,
                     borderWidth: 1,
                     borderColor: colors.border,
                   }}
                 >
                   <View className="flex-row items-center gap-3 flex-1">
                     <View
-                      className="w-10 h-10 rounded-full items-center justify-center"
-                      style={{ backgroundColor: colors.textTertiary }}
+                      className="w-12 h-12 rounded-xl items-center justify-center"
+                      style={{ backgroundColor: `${colors.textTertiary}20` }}
                     >
                       <Text
-                        className="text-base font-bold"
-                        style={{ color: colors.surface }}
+                        className="text-lg font-bold"
+                        style={{ color: colors.textTertiary }}
                       >
                         {sub.clientName?.[0] || "C"}
                       </Text>
                     </View>
                     <View className="flex-1">
                       <Text
-                        className="font-bold"
+                        className="font-bold text-base mb-0.5"
                         style={{ color: colors.text }}
                       >
                         {sub.clientName}
@@ -613,16 +773,17 @@ export default function TrainerSubscriptionsScreen() {
                         {new Date(sub.updatedAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
+                          year: "numeric",
                         })}
                       </Text>
                     </View>
                   </View>
                   <View
-                    className="px-2 py-1 rounded"
-                    style={{ backgroundColor: `${colors.textTertiary}20` }}
+                    className="px-3 py-1.5 rounded-lg"
+                    style={{ backgroundColor: `${colors.textTertiary}15` }}
                   >
                     <Text
-                      className="text-xs font-medium"
+                      className="text-xs font-semibold"
                       style={{ color: colors.textSecondary }}
                     >
                       {sub.planName}

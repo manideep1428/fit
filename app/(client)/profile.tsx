@@ -298,7 +298,7 @@ export default function ProfileScreen() {
             </Text>
             <View className="gap-2">
               <TouchableOpacity
-                onPress={() => router.push("/(client)/session-history")}
+                onPress={() => router.push("/(client)/session-history?from=profile")}
                 className="rounded-xl p-4 flex-row items-center justify-between"
                 style={{
                   backgroundColor: colors.surface,

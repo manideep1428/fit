@@ -59,7 +59,7 @@ export default function GoalListScreen() {
       >
         <View className="flex-row items-center justify-between">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push('/(trainer)/client-detail?clientId=${clientId}' as any)}
             className="w-10 h-10 items-center justify-center rounded-full"
             style={{ backgroundColor: colors.surfaceSecondary }}
           >

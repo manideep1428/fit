@@ -16,6 +16,7 @@ import { useUser } from "@clerk/clerk-expo";
 import { useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NotificationHistory from "@/components/NotificationHistory";
+import { LinearGradient } from "expo-linear-gradient";
 
 type TabType = "active" | "pending" | "total";
 
@@ -42,11 +43,11 @@ export default function MySubscriptionsScreen() {
 
   const formatCurrency = (amount: number | undefined, currency: string) => {
     const symbols: { [key: string]: string } = {
-      INR: "₹",
+      NOK: "kr ",
       USD: "$",
       EUR: "€",
       GBP: "£",
-      NOK: "kr",
+      INR: "₹",
     };
     const safeAmount = amount || 0;
     return `${symbols[currency] || currency}${safeAmount.toFixed(0)}`;
@@ -70,168 +71,248 @@ export default function MySubscriptionsScreen() {
   const renderSubscriptionCard : any = (sub: any, isPending: boolean = false) => (
     <View
       key={sub._id}
-      className="rounded-2xl p-4 mb-3"
+      className="rounded-3xl mb-4 overflow-hidden"
       style={{
-        backgroundColor: isPending ? `${colors.warning}08` : colors.surface,
-        borderWidth: 1,
-        borderColor: isPending ? `${colors.warning}30` : colors.border,
-        ...shadows,
+        backgroundColor: colors.surface,
+        ...shadows.large,
       }}
     >
-      <View className="flex-row items-start justify-between mb-2">
-        <View className="flex-1">
-          <Text
-            className="text-base font-bold mb-1"
-            style={{ color: colors.text }}
-          >
-            {sub.trainerName}
-          </Text>
+      {/* Gradient Top Accent */}
+      <LinearGradient
+        colors={isPending 
+          ? [colors.warning, `${colors.warning}99`] 
+          : [colors.success, `${colors.success}99`]
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        className={isPending ? "h-1.5" : "h-1"}
+      />
+      
+      <View className="p-5">
+        {/* Header */}
+        <View className="flex-row items-center mb-4">
           <View
-            className="px-2.5 py-1 rounded-lg self-start mb-2"
-            style={{ backgroundColor: `${colors.primary}15` }}
+            className="w-14 h-14 rounded-2xl items-center justify-center mr-4"
+            style={{ 
+              backgroundColor: isPending ? `${colors.warning}12` : `${colors.primary}10`,
+              borderWidth: 1,
+              borderColor: isPending ? `${colors.warning}20` : `${colors.primary}15`,
+            }}
           >
             <Text
-              className="text-xs font-semibold"
-              style={{ color: colors.primary }}
+              className="text-xl font-bold"
+              style={{ color: isPending ? colors.warning : colors.primary }}
             >
-              {sub.planName}
+              {sub.trainerName?.[0] || "T"}
             </Text>
           </View>
-          <Text className="text-sm" style={{ color: colors.textSecondary }}>
-            {sub.sessionsPerMonth} sessions/month
-          </Text>
-        </View>
-        <View className="items-end">
-          <Text className="text-xs" style={{ color: colors.textSecondary }}>
-            {sub.billingMonths === 1 ? "per month" : `${sub.billingMonths} months`}
-          </Text>
-          <Text
-            className="text-xl font-bold"
-            style={{ color: colors.text }}
-          >
-            {formatCurrency(sub.totalAmount, sub.planCurrency)}
-          </Text>
-        </View>
-      </View>
-
-      {sub.discount > 0 && (
-        <View
-          className="px-3 py-1.5 rounded-lg self-start mb-3"
-          style={{ backgroundColor: `${colors.success}15` }}
-        >
-          <Text
-            className="text-sm font-semibold"
-            style={{ color: colors.success }}
-          >
-            {sub.discount}% discount applied
-          </Text>
-        </View>
-      )}
-
-      {isPending && (
-        <View
-          className="p-3 rounded-xl flex-row items-center"
-          style={{ backgroundColor: `${colors.warning}12` }}
-        >
-          <Ionicons name="hourglass-outline" size={18} color={colors.warning} />
-          <Text
-            className="text-xs ml-2 flex-1"
-            style={{ color: colors.textSecondary }}
-          >
-            Waiting for trainer approval. You'll be notified once approved.
-          </Text>
-        </View>
-      )}
-
-      {!isPending && sub.status === "active" && (
-        <>
-          <View className="flex-row gap-2 mb-3">
-            <View
-              className="flex-1 rounded-xl p-3"
-              style={{ backgroundColor: `${colors.primary}10` }}
+          <View className="flex-1">
+            <Text
+              className="text-lg font-bold mb-1"
+              style={{ color: colors.text }}
             >
-              <Text
-                className="text-xl font-bold"
-                style={{ color: colors.primary }}
+              {sub.trainerName}
+            </Text>
+            <View className="flex-row items-center">
+              <View
+                className="px-2 py-0.5 rounded-md mr-2"
+                style={{ backgroundColor: `${colors.primary}12` }}
               >
-                {sub.remainingSessions}
-              </Text>
+                <Text
+                  className="text-xs font-semibold"
+                  style={{ color: colors.primary }}
+                >
+                  {sub.planName}
+                </Text>
+              </View>
               <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                Sessions left
-              </Text>
-            </View>
-            <View
-              className="flex-1 rounded-xl p-3"
-              style={{ backgroundColor: `${colors.primary}10` }}
-            >
-              <Text className="text-sm font-bold" style={{ color: colors.primary }}>
-                {sub.currentPeriodEnd
-                  ? new Date(sub.currentPeriodEnd).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  : "N/A"}
-              </Text>
-              <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                Expires
+                {sub.sessionsPerMonth} sessions/mo
               </Text>
             </View>
           </View>
+        </View>
 
-          <TouchableOpacity
-            onPress={() =>
-              router.push({
-                pathname: "/(client)/book-trainer",
-                params: {
-                  trainerId: sub.trainerId,
-                  trainerName: sub.trainerName || "Trainer",
-                  trainerSpecialty: sub.trainerSpecialty || "Personal Trainer",
-                },
-              } as any)
-            }
-            className="rounded-xl py-3 flex-row items-center justify-center"
-            style={{ backgroundColor: colors.primary }}
+        {/* Amount Card */}
+        <View
+          className="rounded-2xl p-4 mb-4 flex-row items-center justify-between"
+          style={{ backgroundColor: isPending ? `${colors.warning}08` : `${colors.primary}06` }}
+        >
+          <View>
+            <Text
+              className="text-xs font-medium mb-1"
+              style={{ color: colors.textSecondary }}
+            >
+              {sub.billingMonths === 1 ? "Monthly" : `${sub.billingMonths} Months`}
+            </Text>
+            <Text
+              className="text-3xl font-black"
+              style={{ color: isPending ? colors.warning : colors.text }}
+            >
+              {formatCurrency(sub.totalAmount, sub.planCurrency)}
+            </Text>
+          </View>
+          {sub.discount > 0 && (
+            <View
+              className="px-3 py-1.5 rounded-full"
+              style={{ backgroundColor: `${colors.success}15` }}
+            >
+              <Text
+                className="text-xs font-bold"
+                style={{ color: colors.success }}
+              >
+                {sub.discount}% OFF
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {isPending ? (
+          <View
+            className="p-4 rounded-2xl flex-row items-center"
+            style={{ backgroundColor: `${colors.warning}10` }}
           >
-            <Ionicons name="calendar" size={18} color="#FFF" />
-            <Text className="text-white font-semibold ml-2">Book a Session</Text>
-          </TouchableOpacity>
-        </>
-      )}
+            <View
+              className="w-10 h-10 rounded-full items-center justify-center mr-3"
+              style={{ backgroundColor: `${colors.warning}20` }}
+            >
+              <Ionicons name="hourglass" size={18} color={colors.warning} />
+            </View>
+            <View className="flex-1">
+              <Text
+                className="text-sm font-semibold mb-0.5"
+                style={{ color: colors.text }}
+              >
+                Awaiting Approval
+              </Text>
+              <Text
+                className="text-xs"
+                style={{ color: colors.textSecondary }}
+              >
+                You'll be notified once your trainer approves
+              </Text>
+            </View>
+          </View>
+        ) : sub.status === "active" && (
+          <>
+            {/* Stats Row */}
+            <View
+              className="flex-row rounded-2xl p-3 mb-4"
+              style={{ backgroundColor: `${colors.primary}06` }}
+            >
+              <View className="flex-1 items-center border-r" style={{ borderRightColor: colors.border }}>
+                <Text
+                  className="text-2xl font-black"
+                  style={{ color: colors.success }}
+                >
+                  {sub.remainingSessions}
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Sessions Left
+                </Text>
+              </View>
+              <View className="flex-1 items-center">
+                <Text
+                  className="text-sm font-bold"
+                  style={{ color: colors.primary }}
+                >
+                  {sub.currentPeriodEnd
+                    ? new Date(sub.currentPeriodEnd).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "N/A"}
+                </Text>
+                <Text
+                  className="text-xs"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Expires
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/(client)/book-trainer",
+                  params: {
+                    trainerId: sub.trainerId,
+                    trainerName: sub.trainerName || "Trainer",
+                    trainerSpecialty: sub.trainerSpecialty || "Personal Trainer",
+                  },
+                } as any)
+              }
+              className="rounded-xl py-3.5 flex-row items-center justify-center"
+              style={{ backgroundColor: colors.primary, ...shadows.medium }}
+            >
+              <Ionicons name="calendar" size={18} color="#FFF" />
+              <Text className="text-white font-bold ml-2">Book a Session</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
     </View>
   );
 
   const renderPastCard = (sub: any) => (
     <View
       key={sub._id}
-      className="rounded-2xl p-4 mb-3 flex-row items-center justify-between"
+      className="rounded-2xl mb-3 overflow-hidden"
       style={{
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.border,
+        opacity: 0.8,
       }}
     >
-      <View className="flex-1">
-        <Text className="text-base font-semibold" style={{ color: colors.text }}>
-          {sub.planName}
-        </Text>
-        <Text className="text-xs" style={{ color: colors.textSecondary }}>
-          {sub.sessionsPerMonth} sessions/month • {formatCurrency(sub.totalAmount, sub.planCurrency)}
-        </Text>
-      </View>
-      <View
-        className="px-3 py-1.5 rounded-lg"
-        style={{
-          backgroundColor: `${colors.warning}15`,
-          borderWidth: 1,
-          borderColor: `${colors.warning}30`,
-        }}
-      >
-        <Text
-          className="text-xs font-bold"
-          style={{ color: colors.warning }}
+      <View className="p-4 flex-row items-center justify-between">
+        <View className="flex-row items-center flex-1">
+          <View
+            className="w-12 h-12 rounded-xl items-center justify-center mr-3"
+            style={{ backgroundColor: `${colors.textTertiary}15` }}
+          >
+            <Text
+              className="text-lg font-bold"
+              style={{ color: colors.textTertiary }}
+            >
+              {sub.trainerName?.[0] || "T"}
+            </Text>
+          </View>
+          <View className="flex-1">
+            <Text className="text-base font-semibold" style={{ color: colors.text }}>
+              {sub.planName}
+            </Text>
+            <Text className="text-xs" style={{ color: colors.textSecondary }}>
+              {sub.sessionsPerMonth} sessions • {formatCurrency(sub.totalAmount, sub.planCurrency)}
+            </Text>
+          </View>
+        </View>
+        <View
+          className="px-3 py-1.5 rounded-lg"
+          style={{
+            backgroundColor: sub.status === "expired" 
+              ? `${colors.error}12` 
+              : sub.status === "cancelled" 
+                ? `${colors.textTertiary}15` 
+                : `${colors.warning}12`,
+          }}
         >
-          {sub.status === "expired" ? "EXPIRED" : sub.status === "cancelled" ? "CANCELLED" : "PENDING APPROVAL"}
-        </Text>
+          <Text
+            className="text-xs font-bold"
+            style={{ 
+              color: sub.status === "expired" 
+                ? colors.error 
+                : sub.status === "cancelled" 
+                  ? colors.textTertiary 
+                  : colors.warning 
+            }}
+          >
+            {sub.status === "expired" ? "EXPIRED" : sub.status === "cancelled" ? "CANCELLED" : "PENDING"}
+          </Text>
+        </View>
       </View>
     </View>
   );

@@ -110,7 +110,7 @@ export default function FaqQuestionsScreen() {
         }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push('/(trainer)/profile' as any)}
           style={{
             width: 40,
             height: 40,

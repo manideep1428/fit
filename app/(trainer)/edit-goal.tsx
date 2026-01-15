@@ -163,7 +163,7 @@ export default function EditGoalScreen() {
       setShowSuccessMessage(true);
       setTimeout(() => {
         setShowSuccessMessage(false);
-        router.back();
+        router.push(`/(trainer)/client-detail?clientId=${clientId}` as any);
       }, 1500);
     } catch (error) {
       console.error('Error updating goal:', error instanceof Error ? error.message : 'Unknown error');
@@ -197,7 +197,7 @@ export default function EditGoalScreen() {
         }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push(`/(trainer)/client-detail?clientId=${clientId}` as any)}
           className="w-10 h-10 items-center justify-center rounded-full"
           style={{ backgroundColor: colors.surface }}
         >

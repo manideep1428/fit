@@ -6,9 +6,10 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -40,6 +41,7 @@ export default function ClientQuestionsScreen() {
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Get FAQ questions
   const faqs = useQuery(
@@ -66,10 +68,14 @@ export default function ClientQuestionsScreen() {
 
   const saveQuestions = async (updatedQuestions: QuestionAnswer[]) => {
     try {
+      setIsSaving(true);
       const key = `${STORAGE_KEY}_${clientEmail || "new"}`;
       await AsyncStorage.setItem(key, JSON.stringify(updatedQuestions));
+      // Small delay to show saving indicator
+      setTimeout(() => setIsSaving(false), 300);
     } catch (error) {
       console.error("Error saving questions:", error);
+      setIsSaving(false);
     }
   };
 
@@ -127,7 +133,8 @@ export default function ClientQuestionsScreen() {
   };
 
   const handleDone = () => {
-    router.back();
+    // Navigate back to add-client screen
+    router.push("/(trainer)/add-client" as any);
   };
 
   const availableFaqs = faqs?.filter(
@@ -140,45 +147,58 @@ export default function ClientQuestionsScreen() {
 
       {/* Header */}
       <View
-        className="px-4 pt-16 pb-4"
+        className="px-5 pt-14 pb-5"
         style={{
           backgroundColor: colors.surface,
           borderBottomWidth: 1,
           borderBottomColor: colors.border,
-          ...shadows.small,
+          ...shadows.medium,
         }}
       >
-        <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center justify-between mb-3">
           <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center rounded-full"
+            onPress={() => router.push("/(trainer)/add-client" as any)}
+            className="w-11 h-11 items-center justify-center rounded-full"
             style={{ backgroundColor: colors.surfaceSecondary }}
           >
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
 
-          <View className="flex-1 mx-3">
+          <View className="flex-1 mx-4">
             <Text
-              className="text-lg font-bold text-center"
+              className="text-xl font-bold text-center"
               style={{ color: colors.text }}
             >
-              Client Questions
-            </Text>
-            <Text
-              className="text-sm text-center"
-              style={{ color: colors.textSecondary }}
-            >
-              {questions.length} question{questions.length !== 1 ? "s" : ""} added
+              Onboarding Questions
             </Text>
           </View>
 
           <TouchableOpacity
             onPress={handleDone}
-            className="px-4 py-2 rounded-full"
+            className="px-5 py-2.5 rounded-full flex-row items-center"
             style={{ backgroundColor: colors.primary }}
           >
-            <Text className="text-white font-semibold">Done</Text>
+            <Ionicons name="checkmark" size={18} color="#FFF" />
+            <Text className="text-white font-semibold ml-1">Done</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Stats Row */}
+        <View className="flex-row items-center justify-center mt-2">
+          <View className="flex-row items-center px-4 py-2 rounded-full" style={{ backgroundColor: colors.surfaceSecondary }}>
+            <Ionicons name="chatbubbles" size={16} color={colors.primary} />
+            <Text className="text-sm font-semibold ml-2" style={{ color: colors.text }}>
+              {questions.length} {questions.length === 1 ? "Question" : "Questions"}
+            </Text>
+          </View>
+          {isSaving && (
+            <View className="flex-row items-center ml-3 px-3 py-2 rounded-full" style={{ backgroundColor: `${colors.success}15` }}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+              <Text className="text-xs font-medium ml-1.5" style={{ color: colors.success }}>
+                Saved
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -186,130 +206,164 @@ export default function ClientQuestionsScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
-        <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
+        <ScrollView className="flex-1 px-5 py-5" showsVerticalScrollIndicator={false}>
           {/* Info Card */}
           <View
-            className="p-4 rounded-xl mb-4"
-            style={{ backgroundColor: `${colors.primary}15` }}
+            className="p-4 rounded-2xl mb-5"
+            style={{ 
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: `${colors.primary}30`,
+              ...shadows.small 
+            }}
           >
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="information-circle" size={20} color={colors.primary} />
-              <Text className="text-sm font-semibold ml-2" style={{ color: colors.text }}>
-                Onboarding Questions
-              </Text>
+            <View className="flex-row items-start">
+              <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${colors.primary}15` }}>
+                <Ionicons name="bulb" size={20} color={colors.primary} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-semibold mb-1" style={{ color: colors.text }}>
+                  Gather Client Information
+                </Text>
+                <Text className="text-xs leading-5" style={{ color: colors.textSecondary }}>
+                  Add questions to collect important details from your client. All changes are auto-saved and will be included when you add the client.
+                </Text>
+              </View>
             </View>
-            <Text className="text-sm" style={{ color: colors.textSecondary }}>
-              Add questions to gather information from your client. Questions are auto-saved and will be stored with the client profile when you add them.
-            </Text>
           </View>
 
           {/* Add Question Form */}
           {showAddForm ? (
             <View
-              className="rounded-xl p-4 mb-4"
+              className="rounded-2xl p-5 mb-5"
               style={{ backgroundColor: colors.surface, ...shadows.medium }}
             >
-              <Text className="text-sm font-semibold mb-3" style={{ color: colors.text }}>
-                New Question
-              </Text>
-              <TextInput
-                value={newQuestion}
-                onChangeText={setNewQuestion}
-                placeholder="Enter your question..."
-                placeholderTextColor={colors.textTertiary}
-                className="px-4 py-3 rounded-xl mb-3"
-                style={{
-                  backgroundColor: colors.background,
-                  color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-                multiline
-              />
-              <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
-                Answer (optional)
-              </Text>
-              <TextInput
-                value={newAnswer}
-                onChangeText={setNewAnswer}
-                placeholder="Enter client's answer..."
-                placeholderTextColor={colors.textTertiary}
-                className="px-4 py-3 rounded-xl mb-4"
-                style={{
-                  backgroundColor: colors.background,
-                  color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  minHeight: 80,
-                  textAlignVertical: "top",
-                }}
-                multiline
-              />
-              <View className="flex-row gap-2">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-base font-bold" style={{ color: colors.text }}>
+                  Create New Question
+                </Text>
                 <TouchableOpacity
                   onPress={() => {
                     setShowAddForm(false);
                     setNewQuestion("");
                     setNewAnswer("");
                   }}
-                  className="flex-1 py-3 rounded-xl items-center"
+                  className="w-8 h-8 rounded-full items-center justify-center"
                   style={{ backgroundColor: colors.surfaceSecondary }}
                 >
-                  <Text style={{ color: colors.text, fontWeight: "500" }}>Cancel</Text>
+                  <Ionicons name="close" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
+              </View>
+
+              <Text className="text-xs font-semibold mb-2 uppercase" style={{ color: colors.textSecondary }}>
+                Question *
+              </Text>
+              <TextInput
+                value={newQuestion}
+                onChangeText={setNewQuestion}
+                placeholder="e.g., What are your fitness goals?"
+                placeholderTextColor={colors.textTertiary}
+                className="px-4 py-3.5 rounded-xl mb-4"
+                style={{
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  borderWidth: 1,
+                  borderColor: newQuestion.trim() ? colors.primary : colors.border,
+                  fontSize: 15,
+                }}
+                multiline
+                autoFocus
+              />
+
+              <Text className="text-xs font-semibold mb-2 uppercase" style={{ color: colors.textSecondary }}>
+                Pre-fill Answer (Optional)
+              </Text>
+              <TextInput
+                value={newAnswer}
+                onChangeText={setNewAnswer}
+                placeholder="Leave blank for client to answer..."
+                placeholderTextColor={colors.textTertiary}
+                className="px-4 py-3.5 rounded-xl mb-5"
+                style={{
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  minHeight: 90,
+                  textAlignVertical: "top",
+                  fontSize: 15,
+                }}
+                multiline
+              />
+
+              <View className="flex-row gap-2.5">
                 <TouchableOpacity
                   onPress={handleSaveAndAddAnother}
                   disabled={!newQuestion.trim()}
-                  className="flex-1 py-3 rounded-xl items-center"
+                  className="flex-1 py-3.5 rounded-xl items-center flex-row justify-center"
                   style={{
-                    backgroundColor: newQuestion.trim() ? colors.surfaceSecondary : colors.border,
-                    borderWidth: 1,
+                    backgroundColor: colors.surfaceSecondary,
+                    borderWidth: 1.5,
                     borderColor: newQuestion.trim() ? colors.primary : colors.border,
+                    opacity: newQuestion.trim() ? 1 : 0.5,
                   }}
                 >
-                  <Text style={{ color: newQuestion.trim() ? colors.primary : colors.textTertiary, fontWeight: "600" }}>
-                    Save & Add More
+                  <Ionicons name="add" size={18} color={newQuestion.trim() ? colors.primary : colors.textTertiary} />
+                  <Text style={{ color: newQuestion.trim() ? colors.primary : colors.textTertiary, fontWeight: "600", marginLeft: 6 }}>
+                    Add Another
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSaveQuestion}
+                  disabled={!newQuestion.trim()}
+                  className="flex-1 py-3.5 rounded-xl items-center flex-row justify-center"
+                  style={{
+                    backgroundColor: newQuestion.trim() ? colors.primary : colors.border,
+                    opacity: newQuestion.trim() ? 1 : 0.5,
+                  }}
+                >
+                  <Ionicons name="checkmark" size={18} color="#FFF" />
+                  <Text style={{ color: "#FFF", fontWeight: "600", marginLeft: 6 }}>
+                    Save
                   </Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={handleSaveQuestion}
-                disabled={!newQuestion.trim()}
-                className="py-3 rounded-xl items-center mt-2"
-                style={{
-                  backgroundColor: newQuestion.trim() ? colors.primary : colors.border,
-                }}
-              >
-                <Text style={{ color: "#FFF", fontWeight: "600" }}>Save Question</Text>
-              </TouchableOpacity>
             </View>
           ) : (
-            <View className="flex-row gap-2 mb-4">
+            <View className="mb-5">
               {/* Add Custom Question Button */}
               <TouchableOpacity
                 onPress={() => setShowAddForm(true)}
-                className="flex-1 flex-row items-center justify-center py-3 rounded-xl"
-                style={{ backgroundColor: colors.primary }}
+                className="flex-row items-center justify-center py-4 rounded-xl mb-3"
+                style={{ backgroundColor: colors.primary, ...shadows.small }}
               >
-                <Ionicons name="add-circle-outline" size={20} color="#FFF" />
-                <Text className="text-white font-semibold ml-2">Add Question</Text>
+                <Ionicons name="add-circle" size={22} color="#FFF" />
+                <Text className="text-white font-bold ml-2 text-base">Create Custom Question</Text>
               </TouchableOpacity>
 
               {/* FAQ Picker Button */}
               {faqs && faqs.length > 0 && availableFaqs && availableFaqs.length > 0 && (
                 <TouchableOpacity
                   onPress={() => setShowFaqPicker(!showFaqPicker)}
-                  className="flex-row items-center justify-center py-3 px-4 rounded-xl"
+                  className="flex-row items-center justify-center py-4 rounded-xl"
                   style={{
                     backgroundColor: colors.surface,
-                    borderWidth: 1,
+                    borderWidth: 1.5,
                     borderColor: colors.primary,
+                    ...shadows.small,
                   }}
                 >
-                  <Ionicons name="list" size={20} color={colors.primary} />
-                  <Text className="font-semibold ml-2" style={{ color: colors.primary }}>
-                    FAQs
+                  <Ionicons name={showFaqPicker ? "chevron-up" : "list"} size={20} color={colors.primary} />
+                  <Text className="font-bold ml-2 text-base" style={{ color: colors.primary }}>
+                    {showFaqPicker ? "Hide" : "Choose from"} FAQ Templates
                   </Text>
+                  {!showFaqPicker && availableFaqs.length > 0 && (
+                    <View className="ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: `${colors.primary}20` }}>
+                      <Text className="text-xs font-bold" style={{ color: colors.primary }}>
+                        {availableFaqs.length}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               )}
             </View>
@@ -318,59 +372,86 @@ export default function ClientQuestionsScreen() {
           {/* FAQ Picker List */}
           {showFaqPicker && availableFaqs && availableFaqs.length > 0 && (
             <View
-              className="rounded-xl p-3 mb-4"
-              style={{ backgroundColor: colors.surface, ...shadows.small }}
+              className="rounded-2xl p-4 mb-5"
+              style={{ backgroundColor: colors.surface, ...shadows.medium }}
             >
-              <Text className="text-xs font-semibold mb-2 px-1" style={{ color: colors.textSecondary }}>
-                SELECT FROM YOUR FAQS
-              </Text>
-              {availableFaqs.map((faq: any) => (
-                <TouchableOpacity
-                  key={faq._id}
-                  onPress={() => addFaqQuestion(faq.question)}
-                  className="flex-row items-center py-3 px-3 rounded-lg mb-1"
-                  style={{ backgroundColor: colors.background }}
-                >
-                  <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-                  <Text className="flex-1 ml-3 text-sm" style={{ color: colors.text }}>
-                    {faq.question}
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center">
+                  <Ionicons name="bookmark" size={18} color={colors.primary} />
+                  <Text className="text-sm font-bold ml-2" style={{ color: colors.text }}>
+                    Your FAQ Templates
                   </Text>
-                </TouchableOpacity>
-              ))}
+                </View>
+                <View className="px-2.5 py-1 rounded-full" style={{ backgroundColor: `${colors.primary}15` }}>
+                  <Text className="text-xs font-bold" style={{ color: colors.primary }}>
+                    {availableFaqs.length}
+                  </Text>
+                </View>
+              </View>
+              <View className="space-y-2">
+                {availableFaqs.map((faq: any, index: number) => (
+                  <TouchableOpacity
+                    key={faq._id}
+                    onPress={() => addFaqQuestion(faq.question)}
+                    className="flex-row items-center py-3.5 px-4 rounded-xl"
+                    style={{ 
+                      backgroundColor: colors.background,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      marginBottom: index < availableFaqs.length - 1 ? 8 : 0,
+                    }}
+                  >
+                    <View className="w-8 h-8 rounded-full items-center justify-center mr-3" style={{ backgroundColor: `${colors.primary}15` }}>
+                      <Ionicons name="add" size={18} color={colors.primary} />
+                    </View>
+                    <Text className="flex-1 text-sm leading-5" style={{ color: colors.text }}>
+                      {faq.question}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           )}
 
           {/* Questions List */}
           {questions.length > 0 ? (
             <View>
-              <Text className="text-xs font-semibold mb-2" style={{ color: colors.textSecondary }}>
-                ADDED QUESTIONS ({questions.length})
-              </Text>
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-xs font-bold uppercase tracking-wide" style={{ color: colors.textSecondary }}>
+                  Your Questions
+                </Text>
+                <View className="px-2.5 py-1 rounded-full" style={{ backgroundColor: `${colors.primary}15` }}>
+                  <Text className="text-xs font-bold" style={{ color: colors.primary }}>
+                    {questions.length}
+                  </Text>
+                </View>
+              </View>
               {questions.map((q, index) => (
                 <View
                   key={index}
-                  className="rounded-xl p-4 mb-3"
-                  style={{ backgroundColor: colors.surface, ...shadows.small }}
+                  className="rounded-2xl p-5 mb-4"
+                  style={{ backgroundColor: colors.surface, ...shadows.medium }}
                 >
-                  <View className="flex-row items-start justify-between mb-3">
-                    <View className="flex-row items-center flex-1">
+                  <View className="flex-row items-start justify-between mb-4">
+                    <View className="flex-row items-start flex-1">
                       <View
-                        className="w-8 h-8 rounded-full items-center justify-center mr-3"
-                        style={{ backgroundColor: `${colors.primary}15` }}
+                        className="w-9 h-9 rounded-full items-center justify-center mr-3"
+                        style={{ backgroundColor: `${colors.primary}20` }}
                       >
                         <Text className="text-sm font-bold" style={{ color: colors.primary }}>
                           {index + 1}
                         </Text>
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-semibold" style={{ color: colors.text }}>
+                        <Text className="text-base font-semibold leading-6" style={{ color: colors.text }}>
                           {q.question}
                         </Text>
                         {q.fromFaq && (
-                          <View className="flex-row items-center mt-1">
-                            <Ionicons name="bookmark" size={12} color={colors.textTertiary} />
-                            <Text className="text-xs ml-1" style={{ color: colors.textTertiary }}>
-                              From FAQ
+                          <View className="flex-row items-center mt-2 px-2.5 py-1 rounded-full self-start" style={{ backgroundColor: `${colors.primary}10` }}>
+                            <Ionicons name="bookmark" size={12} color={colors.primary} />
+                            <Text className="text-xs font-medium ml-1" style={{ color: colors.primary }}>
+                              FAQ Template
                             </Text>
                           </View>
                         )}
@@ -378,55 +459,62 @@ export default function ClientQuestionsScreen() {
                     </View>
                     <TouchableOpacity
                       onPress={() => removeQuestion(index)}
-                      className="w-8 h-8 rounded-full items-center justify-center ml-2"
+                      className="w-9 h-9 rounded-full items-center justify-center ml-2"
                       style={{ backgroundColor: `${colors.error}15` }}
                     >
-                      <Ionicons name="close" size={16} color={colors.error} />
+                      <Ionicons name="trash-outline" size={16} color={colors.error} />
                     </TouchableOpacity>
                   </View>
-                  <TextInput
-                    value={q.answer}
-                    onChangeText={(text) => updateAnswer(index, text)}
-                    placeholder="Enter client's answer..."
-                    placeholderTextColor={colors.textTertiary}
-                    multiline
-                    className="px-3 py-3 rounded-lg"
-                    style={{
-                      backgroundColor: colors.background,
-                      color: colors.text,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      minHeight: 70,
-                      textAlignVertical: "top",
-                    }}
-                  />
+                  
+                  <View className="pt-3 border-t" style={{ borderTopColor: colors.border }}>
+                    <Text className="text-xs font-semibold mb-2 uppercase" style={{ color: colors.textSecondary }}>
+                      Client's Answer
+                    </Text>
+                    <TextInput
+                      value={q.answer}
+                      onChangeText={(text) => updateAnswer(index, text)}
+                      placeholder="Client will answer this during onboarding..."
+                      placeholderTextColor={colors.textTertiary}
+                      multiline
+                      className="px-4 py-3.5 rounded-xl"
+                      style={{
+                        backgroundColor: colors.background,
+                        color: colors.text,
+                        borderWidth: 1,
+                        borderColor: q.answer ? colors.primary : colors.border,
+                        minHeight: 85,
+                        textAlignVertical: "top",
+                        fontSize: 14,
+                      }}
+                    />
+                  </View>
                 </View>
               ))}
             </View>
           ) : !showAddForm && (
             <View
-              className="rounded-xl p-6 items-center"
-              style={{ backgroundColor: colors.surface, ...shadows.small }}
+              className="rounded-2xl p-8 items-center"
+              style={{ backgroundColor: colors.surface, ...shadows.medium }}
             >
               <View
-                className="w-16 h-16 rounded-full items-center justify-center mb-3"
+                className="w-20 h-20 rounded-full items-center justify-center mb-4"
                 style={{ backgroundColor: `${colors.primary}10` }}
               >
-                <Ionicons name="chatbubbles-outline" size={32} color={colors.primary} />
+                <Ionicons name="chatbubbles-outline" size={36} color={colors.primary} />
               </View>
-              <Text className="text-base font-semibold mb-1" style={{ color: colors.text }}>
+              <Text className="text-lg font-bold mb-2" style={{ color: colors.text }}>
                 No Questions Yet
               </Text>
               <Text
-                className="text-sm text-center"
+                className="text-sm text-center leading-5"
                 style={{ color: colors.textSecondary }}
               >
-                Add questions from your FAQs or create custom ones to gather client information.
+                Create custom questions or choose from your FAQ templates to gather client information.
               </Text>
             </View>
           )}
 
-          <View className="h-8" />
+          <View className="h-10" />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

@@ -192,7 +192,7 @@ export default defineSchema({
     trainerId: v.string(), // Clerk ID
     clientId: v.string(), // Clerk ID
     amount: v.number(),
-    currency: v.string(), // "USD", "EUR", etc.
+    currency: v.string(), // "NOK", "USD", etc.
     description: v.string(),
     sessionDate: v.optional(v.string()), // "2024-12-31"
     bookingId: v.optional(v.id("bookings")),
@@ -217,7 +217,7 @@ export default defineSchema({
     description: v.string(),
     sessionsPerMonth: v.number(), // Number of sessions per month
     monthlyPrice: v.number(), // Monthly price
-    currency: v.string(), // "INR", "USD", etc.
+    currency: v.string(), // "NOK", "USD", etc.
     isVisible: v.boolean(), // Whether visible to clients
     isActive: v.boolean(), // Whether accepting new subscriptions
     discount: v.optional(v.number()), // Default discount percentage (0-100)

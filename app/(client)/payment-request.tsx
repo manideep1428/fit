@@ -48,7 +48,7 @@ export default function PaymentRequestScreen() {
         read: false,
       });
 
-      router.back();
+      router.push('/(client)/payment-request' as any);
     } catch (error) {
       console.error('Error marking payment as paid:', error instanceof Error ? error.message : 'Unknown error');
       alert('Failed to mark payment as paid. Please try again.');
@@ -78,7 +78,7 @@ export default function PaymentRequestScreen() {
         }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push('/(client)/index' as any)}
           className="w-10 h-10 items-center justify-center rounded-full"
           style={{ backgroundColor: colors.surface }}
         >

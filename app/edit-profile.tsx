@@ -73,7 +73,17 @@ export default function ProfileScreen() {
         {/* Header */}
         <View className="px-4 pt-16 pb-4 flex-row items-center justify-between">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              // Determine which profile to go back to based on user role
+              const segments = router.pathname?.split('/') || [];
+              if (segments.includes('(trainer)')) {
+                router.push('/(trainer)/profile' as any);
+              } else if (segments.includes('(client)')) {
+                router.push('/(client)/profile' as any);
+              } else {
+                router.push('/(trainer)/profile' as any);
+              }
+            }}
             className="w-10 h-10 items-center justify-center rounded-full"
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />

@@ -87,7 +87,7 @@ export default function QuestionFormScreen() {
         });
         showToast.success("Saved");
       }
-      router.back();
+      router.push('/(trainer)/faq-questions' as any);
     } catch (error) {
       console.error("Error saving question:", error instanceof Error ? error.message : 'Unknown error');
       showToast.error("Save failed");
@@ -155,7 +155,7 @@ export default function QuestionFormScreen() {
       >
         <View className="flex-row items-center justify-between">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push('/(trainer)/faq-questions' as any)}
             className="w-10 h-10 items-center justify-center rounded-full"
             style={{ backgroundColor: colors.surfaceSecondary }}
           >

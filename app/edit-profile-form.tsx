@@ -62,7 +62,7 @@ export default function EditProfileFormScreen() {
         specialty,
       });
       showToast.success('Profile updated');
-      router.back();
+      router.push('/edit-profile' as any);
     } catch (error) {
       console.error('Error updating profile:', error instanceof Error ? error.message : 'Unknown error');
       showToast.error('Update failed');
@@ -86,7 +86,7 @@ export default function EditProfileFormScreen() {
       {/* Header */}
       <View className="px-4 pt-16 pb-4 flex-row items-center justify-between border-b" style={{ borderBottomColor: colors.border }}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push('/edit-profile' as any)}
           className="w-10 h-10 items-center justify-center"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />

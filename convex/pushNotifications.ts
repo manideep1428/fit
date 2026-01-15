@@ -20,7 +20,15 @@ export const sendPushNotification = action({
     });
 
     if (!user?.expoPushToken) {
+      console.log(`No push token for user ${args.userId}`);
       return { success: false, error: "No push token" };
+    }
+
+    // Validate Expo push token format
+    if (!user.expoPushToken.startsWith('ExponentPushToken[') && 
+        !user.expoPushToken.startsWith('ExpoPushToken[')) {
+      console.log(`Invalid push token format for user ${args.userId}: ${user.expoPushToken}`);
+      return { success: false, error: "Invalid push token format" };
     }
 
     // Check notification settings
@@ -34,7 +42,12 @@ export const sendPushNotification = action({
         title: args.title,
         body: args.body,
         data: args.data || {},
+        priority: "high",
+        channelId: "default",
+        badge: 1,
       };
+
+      console.log(`Sending push notification to ${user.expoPushToken}:`, message);
 
       const response: any = await fetch(
         "https://exp.host/--/api/v2/push/send",
@@ -42,6 +55,7 @@ export const sendPushNotification = action({
           method: "POST",
           headers: {
             Accept: "application/json",
+            "Accept-Encoding": "gzip, deflate",
             "Content-Type": "application/json",
           },
           body: JSON.stringify(message),
@@ -49,6 +63,14 @@ export const sendPushNotification = action({
       );
 
       const result: any = await response.json();
+      
+      // Check for Expo push errors
+      if (result.data?.status === "error") {
+        console.error("Expo push error:", result.data.message, result.data.details);
+        return { success: false, error: result.data.message, result };
+      }
+      
+      console.log("Push notification sent successfully:", result);
       return { success: true, result };
     } catch (error) {
       console.error("Error sending push notification:", error);

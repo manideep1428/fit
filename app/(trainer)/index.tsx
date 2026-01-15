@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useQuery } from "convex/react";
@@ -65,6 +65,18 @@ export default function TrainerHomeScreen() {
     userData?.profileImageId ? { storageId: userData.profileImageId } : "skip"
   );
 
+  // Fetch subscription stats for revenue
+  const subscriptionStats = useQuery(
+    api.subscriptions.getTrainerSubscriptionStats,
+    user?.id ? { trainerId: user.id } : "skip"
+  );
+
+  // Fetch all trainer's clients
+  const trainerClients = useQuery(
+    api.users.getTrainerClients,
+    user?.id ? { trainerId: user.id } : "skip"
+  );
+
   // Pull to refresh handler
   const handleRefresh = useCallback(async () => {
     // Convex queries auto-refresh, but we add a small delay for UX
@@ -97,35 +109,67 @@ export default function TrainerHomeScreen() {
     };
   }) : [];
 
-  // Filter upcoming sessions properly
-  const now = new Date();
-  const upcomingBookings = enrichedBookings
-    .filter((b: any) => {
-      if (b.status === 'cancelled' || b.status === 'completed') return false;
-      // Combine date and startTime properly
-      const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
-      return bookingDateTime >= now;
-    })
-    .sort((a: any, b: any) => {
-      const dateA = new Date(`${a.date}T${a.startTime}:00`);
-      const dateB = new Date(`${b.date}T${b.startTime}:00`);
-      return dateA.getTime() - dateB.getTime();
+  // Calculate monthly stats
+  const monthlyStats = useMemo(() => {
+    if (!bookings) return { sessionsThisMonth: 0, completedThisMonth: 0 };
+    
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const thisMonthBookings = bookings.filter((b: any) => {
+      const bookingDate = new Date(b.date);
+      return bookingDate.getMonth() === currentMonth && 
+             bookingDate.getFullYear() === currentYear &&
+             b.status !== 'cancelled';
     });
+    
+    const completedThisMonth = thisMonthBookings.filter((b: any) => b.status === 'completed').length;
+    
+    return {
+      sessionsThisMonth: thisMonthBookings.length,
+      completedThisMonth,
+    };
+  }, [bookings]);
+
+  // Filter upcoming sessions properly - use current time for comparison
+  const upcomingBookings = useMemo(() => {
+    if (!enrichedBookings.length) return [];
+    
+    const now = new Date();
+    return enrichedBookings
+      .filter((b: any) => {
+        if (b.status === 'cancelled' || b.status === 'completed') return false;
+        // Combine date and startTime properly
+        const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
+        return bookingDateTime >= now;
+      })
+      .sort((a: any, b: any) => {
+        const dateA = new Date(`${a.date}T${a.startTime}:00`);
+        const dateB = new Date(`${b.date}T${b.startTime}:00`);
+        return dateA.getTime() - dateB.getTime();
+      });
+  }, [enrichedBookings]);
 
   // Filter sessions that are past but not marked as completed (need attention)
-  const incompleteBookings = enrichedBookings
-    .filter((b: any) => {
-      if (b.status === 'cancelled' || b.status === 'completed') return false;
-      const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
-      // Add duration to get end time
-      const endDateTime = new Date(bookingDateTime.getTime() + (b.duration || 60) * 60000);
-      return endDateTime < now;
-    })
-    .sort((a: any, b: any) => {
-      const dateA = new Date(`${a.date}T${a.startTime}:00`);
-      const dateB = new Date(`${b.date}T${b.startTime}:00`);
-      return dateB.getTime() - dateA.getTime();
-    });
+  const incompleteBookings = useMemo(() => {
+    if (!enrichedBookings.length) return [];
+    
+    const now = new Date();
+    return enrichedBookings
+      .filter((b: any) => {
+        if (b.status === 'cancelled' || b.status === 'completed') return false;
+        const bookingDateTime = new Date(`${b.date}T${b.startTime}:00`);
+        // Add duration to get end time
+        const endDateTime = new Date(bookingDateTime.getTime() + (b.duration || 60) * 60000);
+        return endDateTime < now;
+      })
+      .sort((a: any, b: any) => {
+        const dateA = new Date(`${a.date}T${a.startTime}:00`);
+        const dateB = new Date(`${b.date}T${b.startTime}:00`);
+        return dateB.getTime() - dateA.getTime();
+      });
+  }, [enrichedBookings]);
 
   return (
     <PullToRefresh
@@ -306,63 +350,133 @@ export default function TrainerHomeScreen() {
           </AnimatedCard>
         )}
 
-        {/* Stats Card with Gradient */}
-        {bookings && bookings.length > 0 && (
-          <GlassCard
-            style={{
-              marginBottom: 24,
-              backgroundColor: colors.primary,
-              borderWidth: 0,
-            }}
-            intensity="heavy"
-            borderRadius="xlarge"
-          >
-            <View>
-              <Text
-                className="text-sm font-semibold mb-3"
-                style={{ color: "rgba(255,255,255,0.9)" }}
-              >
-                Your Sessions
-              </Text>
-
-              <Text
-                className="text-5xl font-bold mb-5 text-white"
-                style={{ letterSpacing: -2 }}
-              >
-                {bookings.filter((b: any) => b.status !== "cancelled" && b.status !== "completed").length}
-              </Text>
-
-              <View className="flex-row justify-between items-center">
-                <View>
-                  <Text
-                    className="text-xs mb-1"
-                    style={{ color: "rgba(255,255,255,0.8)" }}
-                  >
-                    Upcoming
-                  </Text>
-                  <Text className="text-2xl font-bold text-white">
-                    {upcomingBookings.length}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  className="rounded-2xl px-6 py-3 justify-center"
-                  style={{ backgroundColor: "rgba(255,255,255,0.25)" }}
-                  onPress={() => router.push("/(trainer)/bookings" as any)}
+        {/* Stats Cards */}
+        <View className="mb-6">
+          <View className="flex-row mb-3">
+            {/* This Month Sessions */}
+            <AnimatedCard
+              delay={300}
+              style={{ flex: 1, marginRight: 8 }}
+              elevation="medium"
+              borderRadius="large"
+            >
+              <View className="items-center py-2">
+                <View
+                  className="w-12 h-12 rounded-full justify-center items-center mb-2"
+                  style={{ backgroundColor: `${colors.primary}15` }}
                 >
-                  <Text className="text-sm font-semibold text-white">
-                    View All
-                  </Text>
-                </TouchableOpacity>
+                  <Ionicons name="calendar" size={24} color={colors.primary} />
+                </View>
+                <Text
+                  className="text-2xl font-bold"
+                  style={{ color: colors.text }}
+                >
+                  {monthlyStats.sessionsThisMonth}
+                </Text>
+                <Text
+                  className="text-xs text-center"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Sessions This Month
+                </Text>
               </View>
-            </View>
-          </GlassCard>
-        )}
+            </AnimatedCard>
+
+            {/* Revenue This Month */}
+            <AnimatedCard
+              delay={350}
+              style={{ flex: 1, marginLeft: 8 }}
+              elevation="medium"
+              borderRadius="large"
+            >
+              <View className="items-center py-2">
+                <View
+                  className="w-12 h-12 rounded-full justify-center items-center mb-2"
+                  style={{ backgroundColor: `${colors.success}15` }}
+                >
+                  <Ionicons name="wallet" size={24} color={colors.success} />
+                </View>
+                <Text
+                  className="text-2xl font-bold"
+                  style={{ color: colors.text }}
+                >
+                  kr {subscriptionStats?.totalRevenue?.toLocaleString() || 0}
+                </Text>
+                <Text
+                  className="text-xs text-center"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Total Revenue
+                </Text>
+              </View>
+            </AnimatedCard>
+          </View>
+
+          <View className="flex-row">
+            {/* Total Clients */}
+            <AnimatedCard
+              delay={400}
+              style={{ flex: 1, marginRight: 8 }}
+              elevation="medium"
+              borderRadius="large"
+            >
+              <View className="items-center py-2">
+                <View
+                  className="w-12 h-12 rounded-full justify-center items-center mb-2"
+                  style={{ backgroundColor: `${colors.warning}15` }}
+                >
+                  <Ionicons name="people" size={24} color={colors.warning} />
+                </View>
+                <Text
+                  className="text-2xl font-bold"
+                  style={{ color: colors.text }}
+                >
+                  {trainerClients?.length || 0}
+                </Text>
+                <Text
+                  className="text-xs text-center"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Total Clients
+                </Text>
+              </View>
+            </AnimatedCard>
+
+            {/* Active Subscriptions */}
+            <AnimatedCard
+              delay={450}
+              style={{ flex: 1, marginLeft: 8 }}
+              elevation="medium"
+              borderRadius="large"
+            >
+              <View className="items-center py-2">
+                <View
+                  className="w-12 h-12 rounded-full justify-center items-center mb-2"
+                  style={{ backgroundColor: `${colors.info || colors.primary}15` }}
+                >
+                  <Ionicons name="card" size={24} color={colors.info || colors.primary} />
+                </View>
+                <Text
+                  className="text-2xl font-bold"
+                  style={{ color: colors.text }}
+                >
+                  {subscriptionStats?.activeCount || 0}
+                </Text>
+                <Text
+                  className="text-xs text-center"
+                  style={{ color: colors.textSecondary }}
+                >
+                  Active Subscriptions
+                </Text>
+              </View>
+            </AnimatedCard>
+          </View>
+        </View>
 
         {/* Quick Actions */}
         <View className="mb-6">
           <AnimatedCard
-            delay={350}
+            delay={500}
             elevation="medium"
             borderRadius="xlarge"
             onPress={() => router.push("/(trainer)/availability" as any)}
@@ -427,7 +541,7 @@ export default function TrainerHomeScreen() {
             </View>
           ) : upcomingBookings.length === 0 ? (
             <AnimatedCard
-              delay={450}
+              delay={550}
               style={{ alignItems: "center", paddingVertical: 40 }}
               elevation="medium"
               borderRadius="xlarge"
@@ -490,7 +604,7 @@ export default function TrainerHomeScreen() {
                 return (
                   <AnimatedCard
                     key={booking._id}
-                    delay={500 + index * 80}
+                    delay={600 + index * 80}
                     style={{ marginBottom: 12 }}
                     elevation="medium"
                     borderRadius="large"

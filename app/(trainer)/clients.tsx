@@ -158,7 +158,7 @@ export default function ClientsScreen() {
             <TouchableOpacity
               className="flex-1 rounded-2xl p-4"
               style={{ backgroundColor: colors.surface, ...shadows.medium }}
-              onPress={() => router.push('/(trainer)/session-history' as any)}
+              onPress={() => router.push('/(trainer)/session-history?from=clients' as any)}
               activeOpacity={0.7}
             >
               <Ionicons name="calendar" size={24} color={colors.primary} />
@@ -267,7 +267,6 @@ export default function ClientsScreen() {
                               <ActivityIndicator size="small" color="#FFF" />
                             ) : (
                               <>
-                                <Ionicons name="send-outline" size={14} color="#FFF" />
                                 <Text className="text-xs ml-1.5 font-semibold text-white">
                                   Resend Invite
                                 </Text>

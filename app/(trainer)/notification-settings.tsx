@@ -60,7 +60,7 @@ export default function NotificationSettingsScreen() {
         clerkId: user.id,
         settings,
       });
-      router.back();
+      router.push('/(trainer)/profile' as any);
     } catch (error) {
       alert("Failed to save settings");
     } finally {
@@ -138,7 +138,7 @@ export default function NotificationSettingsScreen() {
         }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push('/(trainer)/profile' as any)}
           style={{
             width: 40,
             height: 40,

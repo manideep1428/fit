@@ -71,7 +71,7 @@ export default function TrainerSubscriptionsScreen() {
           ? "Request sent!"
           : "Subscribed!"
       );
-      router.back();
+      router.push('/(client)/trainer-details' as any);
     } catch (error) {
       console.error("Subscription error:", error instanceof Error ? error.message : 'Unknown error');
       showToast.error("Subscribe failed");
@@ -80,11 +80,11 @@ export default function TrainerSubscriptionsScreen() {
 
   const formatCurrency = (amount: number, currency: string) => {
     const symbols: { [key: string]: string } = {
-      INR: "₹",
+      NOK: "kr ",
       USD: "$",
       EUR: "€",
       GBP: "£",
-      NOK: "kr",
+      INR: "₹",
     };
     return `${symbols[currency] || currency}${amount.toFixed(0)}`;
   };
@@ -123,7 +123,7 @@ export default function TrainerSubscriptionsScreen() {
         }}
       >
         <View className="flex-row items-center mb-4">
-          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <TouchableOpacity onPress={() => router.push('/(client)/trainer-details' as any)} className="mr-3">
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text

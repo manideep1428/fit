@@ -131,7 +131,7 @@ export default function ClientSubscriptionsScreen() {
               });
 
               showToast.success("Request sent!");
-              router.back();
+              router.push('/(client)/trainer-subscriptions' as any);
             } catch (error) {
               console.error("Error subscribing:", error instanceof Error ? error.message : 'Unknown error');
               showToast.error("Subscribe failed");
@@ -146,11 +146,11 @@ export default function ClientSubscriptionsScreen() {
 
   const getCurrencySymbol = (currency: string) => {
     const symbols: { [key: string]: string } = {
-      INR: "₹",
+      NOK: "kr ",
       USD: "$",
       EUR: "€",
       GBP: "£",
-      NOK: "kr",
+      INR: "₹",
     };
     return symbols[currency] || currency;
   };
@@ -183,7 +183,7 @@ export default function ClientSubscriptionsScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.push('/(client)/trainer-subscriptions' as any)}
           className="w-10 h-10 rounded-full items-center justify-center"
           style={{ backgroundColor: `${colors.text}10` }}
         >
@@ -328,23 +328,28 @@ export default function ClientSubscriptionsScreen() {
 
           {plans.length === 0 ? (
             <View
-              className="rounded-xl p-8 items-center"
-              style={{ backgroundColor: colors.surface, ...shadows.medium }}
+              className="rounded-3xl p-8 items-center"
+              style={{ backgroundColor: colors.surface, ...shadows.large }}
             >
-              <Ionicons
-                name="cube-outline"
-                size={48}
-                color={colors.textTertiary}
-              />
+              <View
+                className="w-20 h-20 rounded-full items-center justify-center mb-4"
+                style={{ backgroundColor: `${colors.primary}10` }}
+              >
+                <Ionicons
+                  name="cube-outline"
+                  size={40}
+                  color={colors.primary}
+                />
+              </View>
               <Text
-                className="mt-3 font-semibold"
-                style={{ color: colors.textSecondary }}
+                className="text-lg font-bold mb-2"
+                style={{ color: colors.text }}
               >
                 No packages available
               </Text>
               <Text
-                className="mt-1 text-sm text-center"
-                style={{ color: colors.textTertiary }}
+                className="text-sm text-center"
+                style={{ color: colors.textSecondary }}
               >
                 Contact your trainer to set up packages
               </Text>
@@ -359,124 +364,154 @@ export default function ClientSubscriptionsScreen() {
                   key={plan._id}
                   onPress={() => setSelectedPlan(plan)}
                   activeOpacity={0.8}
-                  className="rounded-xl p-5 mb-4"
+                  className="rounded-3xl mb-4 overflow-hidden"
                   style={{
                     backgroundColor: colors.surface,
                     borderWidth: 2,
                     borderColor: isSelected ? colors.primary : colors.border,
-                    ...shadows.medium,
+                    ...shadows.large,
                     ...(isSelected && {
                       shadowColor: colors.primary,
-                      shadowOpacity: 0.2,
+                      shadowOpacity: 0.15,
                     }),
                   }}
                 >
-                  {/* Selection Indicator */}
+                  {/* Selection Gradient Accent */}
                   {isSelected && (
-                    <View className="absolute top-4 right-4">
+                    <LinearGradient
+                      colors={[colors.primary, `${colors.primary}99`]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      className="h-1"
+                    />
+                  )}
+                  
+                  <View className="p-5">
+                    {/* Header */}
+                    <View className="flex-row items-start justify-between mb-4">
+                      <View className="flex-1 pr-4">
+                        <View className="flex-row items-center flex-wrap gap-2 mb-2">
+                          <Text
+                            className="text-xl font-bold"
+                            style={{ color: colors.text }}
+                          >
+                            {plan.name}
+                          </Text>
+                          {price.discount > 0 && (
+                            <View
+                              className="px-2.5 py-1 rounded-lg"
+                              style={{ backgroundColor: colors.success }}
+                            >
+                              <Text className="text-white text-xs font-bold">
+                                {price.discount}% OFF
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text
+                          className="text-sm"
+                          style={{ color: colors.textSecondary }}
+                        >
+                          {plan.description}
+                        </Text>
+                      </View>
+                      
+                      {/* Selection Indicator */}
                       <View
-                        className="w-6 h-6 rounded-full items-center justify-center"
-                        style={{ backgroundColor: colors.primary }}
+                        className="w-7 h-7 rounded-full items-center justify-center"
+                        style={{ 
+                          backgroundColor: isSelected ? colors.primary : `${colors.text}08`,
+                          borderWidth: isSelected ? 0 : 2,
+                          borderColor: colors.border,
+                        }}
                       >
-                        <Ionicons name="checkmark" size={16} color="#FFF" />
+                        {isSelected && (
+                          <Ionicons name="checkmark" size={16} color="#FFF" />
+                        )}
                       </View>
                     </View>
-                  )}
 
-                  {/* Header */}
-                  <View className="pr-8 mb-3">
-                    <View className="flex-row items-center flex-wrap gap-2">
-                      <Text
-                        className="text-lg font-bold"
-                        style={{ color: colors.text }}
-                      >
-                        {plan.name}
-                      </Text>
-                      {price.discount > 0 && (
-                        <View
-                          className="px-2.5 py-1 rounded-lg"
-                          style={{ backgroundColor: colors.success }}
+                    {/* Price Card */}
+                    <View
+                      className="rounded-2xl p-4 mb-4"
+                      style={{ backgroundColor: isSelected ? `${colors.primary}08` : `${colors.text}04` }}
+                    >
+                      <View className="flex-row items-baseline">
+                        {price.discount > 0 && (
+                          <Text
+                            className="text-lg font-medium line-through mr-2"
+                            style={{ color: colors.textTertiary }}
+                          >
+                            {getCurrencySymbol(plan.currency)}
+                            {price.original}
+                          </Text>
+                        )}
+                        <Text
+                          className="text-4xl font-black"
+                          style={{ color: isSelected ? colors.primary : colors.text }}
                         >
-                          <Text className="text-white text-xs font-bold tracking-wide">
-                            Save {price.discount}%
+                          {getCurrencySymbol(plan.currency)}
+                          {price.discounted.toFixed(0)}
+                        </Text>
+                        <Text
+                          className="text-base font-medium ml-1"
+                          style={{ color: colors.textSecondary }}
+                        >
+                          /month
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Features */}
+                    <View className="gap-3">
+                      <View className="flex-row items-center gap-3">
+                        <View
+                          className="w-8 h-8 rounded-lg items-center justify-center"
+                          style={{ backgroundColor: `${colors.primary}12` }}
+                        >
+                          <Ionicons
+                            name="barbell"
+                            size={16}
+                            color={colors.primary}
+                          />
+                        </View>
+                        <Text className="font-medium" style={{ color: colors.text }}>
+                          {plan.sessionsPerMonth} Sessions per month
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center gap-3">
+                        <View
+                          className="w-8 h-8 rounded-lg items-center justify-center"
+                          style={{ backgroundColor: `${colors.primary}12` }}
+                        >
+                          <Ionicons
+                            name="refresh"
+                            size={16}
+                            color={colors.primary}
+                          />
+                        </View>
+                        <Text className="font-medium" style={{ color: colors.text }}>
+                          Auto-renews monthly
+                        </Text>
+                      </View>
+                      {plan.features?.map((feature: string, index: number) => (
+                        <View key={index} className="flex-row items-center gap-3">
+                          <View
+                            className="w-8 h-8 rounded-lg items-center justify-center"
+                            style={{ backgroundColor: `${colors.success}12` }}
+                          >
+                            <Ionicons
+                              name="checkmark"
+                              size={16}
+                              color={colors.success}
+                            />
+                          </View>
+                          <Text className="font-medium" style={{ color: colors.text }}>
+                            {feature}
                           </Text>
                         </View>
-                      )}
+                      ))}
                     </View>
-                    <Text
-                      className="text-sm mt-1"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      {plan.description}
-                    </Text>
-                  </View>
-
-                  {/* Price */}
-                  <View className="flex-row items-baseline gap-2 mb-4">
-                    {price.discount > 0 && (
-                      <Text
-                        className="text-xl font-medium line-through"
-                        style={{ color: colors.textTertiary }}
-                      >
-                        {getCurrencySymbol(plan.currency)}
-                        {price.original}
-                      </Text>
-                    )}
-                    <Text
-                      className="text-4xl font-black tracking-tight"
-                      style={{ color: colors.text }}
-                    >
-                      {getCurrencySymbol(plan.currency)}
-                      {price.discounted.toFixed(0)}
-                    </Text>
-                    <Text
-                      className="text-base font-medium"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      /month
-                    </Text>
-                  </View>
-
-                  {/* Divider */}
-                  <View
-                    className="h-px w-full mb-4"
-                    style={{ backgroundColor: colors.border }}
-                  />
-
-                  {/* Features */}
-                  <View className="gap-3">
-                    <View className="flex-row items-center gap-3">
-                      <Ionicons
-                        name="barbell"
-                        size={20}
-                        color={
-                          isSelected ? colors.primary : colors.textSecondary
-                        }
-                      />
-                      <Text style={{ color: colors.text }}>
-                        {plan.sessionsPerMonth} Sessions/mo
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center gap-3">
-                      <Ionicons
-                        name="refresh"
-                        size={20}
-                        color={
-                          isSelected ? colors.primary : colors.textSecondary
-                        }
-                      />
-                      <Text style={{ color: colors.text }}>Renews Monthly</Text>
-                    </View>
-                    {plan.features?.map((feature: string, index: number) => (
-                      <View key={index} className="flex-row items-center gap-3">
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={20}
-                          color={colors.success}
-                        />
-                        <Text style={{ color: colors.text }}>{feature}</Text>
-                      </View>
-                    ))}
                   </View>
                 </TouchableOpacity>
               );
