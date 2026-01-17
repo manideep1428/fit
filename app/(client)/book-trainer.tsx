@@ -52,47 +52,56 @@ const convertTime = (
   toTz: string
 ): string => {
   try {
+    // Parse the time
     const [hours, minutes] = time.split(":").map(Number);
     
-    // Create date in source timezone
-    const sourceDate = new Date(`${date}T${time}:00`);
+    // Create a date string that will be interpreted in the source timezone
+    // We use toLocaleString with the source timezone to create a reference point
+    const dateStr = `${date}T${time}:00`;
     
-    // Get the time in source timezone
-    const sourceFormatter = new Intl.DateTimeFormat("en-US", {
+    // Create a date object - this interprets the string in local time
+    const localDate = new Date(dateStr);
+    
+    // Get what this date/time would be in the source timezone
+    const sourceStr = localDate.toLocaleString("en-US", {
       timeZone: fromTz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
     });
     
-    // Get the time in target timezone
-    const targetFormatter = new Intl.DateTimeFormat("en-US", {
+    // Calculate the offset between what we want and what we got
+    const [sourceDate, sourceTime] = sourceStr.split(", ");
+    const [sourceHour, sourceMin] = sourceTime.split(":").map(Number);
+    
+    // Calculate the difference in minutes
+    const wantedMinutes = hours * 60 + minutes;
+    const gotMinutes = sourceHour * 60 + sourceMin;
+    const offsetMinutes = wantedMinutes - gotMinutes;
+    
+    // Apply this offset to get the correct UTC representation
+    const correctedDate = new Date(localDate.getTime() + offsetMinutes * 60000);
+    
+    // Now format this in the target timezone
+    const targetStr = correctedDate.toLocaleString("en-US", {
       timeZone: toTz,
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
     });
-
-    // Calculate offset difference
-    const sourceOffset = getTimezoneOffset(fromTz, sourceDate);
-    const targetOffset = getTimezoneOffset(toTz, sourceDate);
-    const diffMinutes = targetOffset - sourceOffset;
-
-    const totalMinutes = hours * 60 + minutes + diffMinutes;
-    const newHours = Math.floor(((totalMinutes % 1440) + 1440) % 1440 / 60);
-    const newMins = ((totalMinutes % 60) + 60) % 60;
-
-    return `${newHours.toString().padStart(2, "0")}:${newMins.toString().padStart(2, "0")}`;
-  } catch {
+    
+    // Extract just the time part
+    const timePart = targetStr.split(", ")[1] || targetStr;
+    const [targetHour, targetMin] = timePart.split(":").slice(0, 2);
+    
+    return `${targetHour}:${targetMin}`;
+  } catch (error) {
+    console.error("Error converting time:", error);
     return time;
   }
-};
-
-// Get timezone offset in minutes
-const getTimezoneOffset = (tz: string, date: Date): number => {
-  const utcDate = new Date(date.toLocaleString("en-US", { timeZone: "UTC" }));
-  const tzDate = new Date(date.toLocaleString("en-US", { timeZone: tz }));
-  return (tzDate.getTime() - utcDate.getTime()) / 60000;
 };
 
 export default function BookTrainerScreen() {

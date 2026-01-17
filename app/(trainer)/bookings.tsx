@@ -512,7 +512,15 @@ export default function BookingsScreen() {
                       <View className="flex-row items-center mt-1.5">
                         <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
                         <Text className="text-sm ml-1.5" style={{ color: colors.textSecondary }}>
-                          {new Date(booking.startTime).toLocaleString()}
+                          {new Date(`${booking.date}T${booking.startTime}:00`).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          })} at {new Date(`${booking.date}T${booking.startTime}:00`).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          })}
                         </Text>
                       </View>
 

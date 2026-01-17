@@ -14,25 +14,34 @@ export const sendPushNotification = action({
     ctx,
     args
   ): Promise<{ success: boolean; result?: any; error?: string }> => {
+    console.log(`🚀 sendPushNotification called for user: ${args.userId}`);
+    
     // Get user's push token
     const user: any = await ctx.runQuery(api.users.getUserByClerkId, {
       clerkId: args.userId,
     });
 
-    if (!user?.expoPushToken) {
-      console.log(`No push token for user ${args.userId}`);
-      return { success: false, error: "No push token" };
+    console.log(`👤 User found:`, user ? 'Yes' : 'No');
+    console.log(`🎫 Push token:`, user?.expoPushToken || 'NONE');
+
+    if (!user) {
+      console.log(`❌ User not found: ${args.userId}`);
+      return { success: false, error: "User not found" };
+    }
+
+    if (!user.expoPushToken) {
+      console.log(`❌ No push token for user ${args.userId}`);
+      return { success: false, error: "No push token - user needs to restart app or grant permissions" };
     }
 
     // Validate Expo push token format
     if (!user.expoPushToken.startsWith('ExponentPushToken[') && 
         !user.expoPushToken.startsWith('ExpoPushToken[')) {
-      console.log(`Invalid push token format for user ${args.userId}: ${user.expoPushToken}`);
-      return { success: false, error: "Invalid push token format" };
+      console.log(`❌ Invalid push token format for user ${args.userId}: ${user.expoPushToken}`);
+      return { success: false, error: `Invalid push token format: ${user.expoPushToken.substring(0, 20)}...` };
     }
 
-    // Check notification settings
-    const settings = user.notificationSettings;
+    console.log(`✅ Valid push token found`);
 
     // Send push notification via Expo Push API
     try {
@@ -47,7 +56,9 @@ export const sendPushNotification = action({
         badge: 1,
       };
 
-      console.log(`Sending push notification to ${user.expoPushToken}:`, message);
+      console.log(`📤 Sending push notification to Expo API...`);
+      console.log(`   Title: ${args.title}`);
+      console.log(`   Body: ${args.body}`);
 
       const response: any = await fetch(
         "https://exp.host/--/api/v2/push/send",
@@ -62,19 +73,54 @@ export const sendPushNotification = action({
         }
       );
 
+      if (!response.ok) {
+        console.error(`❌ HTTP Error: ${response.status} ${response.statusText}`);
+        return { 
+          success: false, 
+          error: `HTTP ${response.status}: ${response.statusText}` 
+        };
+      }
+
       const result: any = await response.json();
+      console.log(`📥 Expo API response:`, JSON.stringify(result, null, 2));
       
       // Check for Expo push errors
-      if (result.data?.status === "error") {
-        console.error("Expo push error:", result.data.message, result.data.details);
-        return { success: false, error: result.data.message, result };
+      if (result.data && Array.isArray(result.data)) {
+        const firstResult = result.data[0];
+        if (firstResult?.status === "error") {
+          console.error("❌ Expo push error:", firstResult.message, firstResult.details);
+          return { 
+            success: false, 
+            error: `Expo error: ${firstResult.message}`,
+            result 
+          };
+        }
+        if (firstResult?.status === "ok") {
+          console.log("✅ Push notification sent successfully!");
+          return { success: true, result };
+        }
       }
       
-      console.log("Push notification sent successfully:", result);
+      // Fallback check
+      if (result.errors) {
+        console.error("❌ Expo API errors:", result.errors);
+        return { 
+          success: false, 
+          error: `API errors: ${JSON.stringify(result.errors)}`,
+          result 
+        };
+      }
+      
+      console.log("✅ Push notification sent (assuming success)");
       return { success: true, result };
-    } catch (error) {
-      console.error("Error sending push notification:", error);
-      return { success: false, error: String(error) };
+    } catch (error: any) {
+      console.error("❌ Error sending push notification:", error);
+      console.error("   Error message:", error?.message);
+      console.error("   Error stack:", error?.stack);
+      return { 
+        success: false, 
+        error: `Exception: ${error?.message || String(error)}` 
+      };
     }
   },
 });
