@@ -437,67 +437,44 @@ export default function ProfileScreen() {
                   thumbColor="#FFF"
                 />
               </View>
-            </View>
-          </View>
 
-          {/* INTEGRATIONS Section */}
-          {/* <View className="mb-6">
-            <Text
-              className="text-xs font-bold uppercase tracking-widest mb-3 ml-2"
-              style={{ color: colors.textTertiary }}
-            >
-              Integrations
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                if (!userData?.googleAccessToken) {
-                  router.push("/(client)/bookings" as any);
-                } else {
-                  Alert.alert(
-                    "Google Calendar Connected",
-                    "Your Google Calendar is already connected.",
-                    [{ text: "OK" }]
-                  );
-                }
-              }}
-              className="rounded-xl p-4 flex-row items-center justify-between"
-              style={{
-                backgroundColor: colors.surface,
-                ...shadows.small,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <View className="flex-row items-center gap-4">
-                <View
-                  className="w-10 h-10 rounded-full items-center justify-center"
-                  style={{ backgroundColor: "#10B98120" }}
-                >
-                  <Ionicons name="calendar-outline" size={20} color="#10B981" />
+              {/* Google Calendar */}
+              <TouchableOpacity
+                onPress={() => router.push("/google" as any)}
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: "#4285F420" }}
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={20}
+                      color="#4285F4"
+                    />
+                  </View>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
+                    Google Calendar
+                  </Text>
                 </View>
-                <Text
-                  className="font-medium text-base"
-                  style={{ color: colors.text }}
-                >
-                  Google Calendar
-                </Text>
-              </View>
-              {userData?.googleAccessToken ? (
-                <Text
-                  className="text-sm font-medium"
-                  style={{ color: colors.primary }}
-                >
-                  Connected
-                </Text>
-              ) : (
                 <Ionicons
                   name="chevron-forward"
                   size={20}
                   color={colors.textTertiary}
                 />
-              )}
-            </TouchableOpacity>
-          </View> */}
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* ACCOUNT Section */}
           <View className="mb-6">

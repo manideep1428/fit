@@ -498,6 +498,42 @@ export default function ProfileScreen() {
                   color={colors.textTertiary}
                 />
               </TouchableOpacity>
+
+              {/* Google Calendar */}
+              <TouchableOpacity
+                onPress={() => router.push("/google" as any)}
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: "#4285F420" }}
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={20}
+                      color="#4285F4"
+                    />
+                  </View>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
+                    Google Calendar
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
             </View>
           </View>
 

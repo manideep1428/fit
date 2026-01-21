@@ -1,5 +1,7 @@
 // Google Calendar API utilities
-import { useAuth } from '@clerk/clerk-expo';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useUser } from '@clerk/clerk-expo';
 
 export interface CalendarEvent {
   summary: string;
@@ -24,19 +26,43 @@ export interface CalendarEvent {
 
 export class GoogleCalendarService {
   private accessToken: string;
+  private refreshToken?: string;
+  private expiryTime?: number;
 
-  constructor(accessToken: string) {
+  constructor(accessToken: string, refreshToken?: string, expiryTime?: number) {
     this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+    this.expiryTime = expiryTime;
+  }
+
+  private async ensureValidToken(): Promise<string> {
+    // Check if token is expired or about to expire (within 5 minutes)
+    if (this.expiryTime && Date.now() >= this.expiryTime - 5 * 60 * 1000) {
+      if (this.refreshToken) {
+        // Refresh the token
+        const newToken = await this.refreshAccessToken();
+        return newToken;
+      }
+      throw new Error('Token expired and no refresh token available');
+    }
+    return this.accessToken;
+  }
+
+  private async refreshAccessToken(): Promise<string> {
+    // This would need to be implemented with your backend
+    // For now, throw an error to indicate re-authentication is needed
+    throw new Error('Token refresh not implemented - please reconnect Google Calendar');
   }
 
   async createEvent(event: CalendarEvent): Promise<any> {
     try {
+      const token = await this.ensureValidToken();
       const response = await fetch(
         'https://www.googleapis.com/calendar/v3/calendars/primary/events',
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${this.accessToken}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(event),
@@ -57,12 +83,13 @@ export class GoogleCalendarService {
 
   async deleteEvent(eventId: string): Promise<void> {
     try {
+      const token = await this.ensureValidToken();
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
         {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${this.accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -78,12 +105,13 @@ export class GoogleCalendarService {
 
   async updateEvent(eventId: string, event: CalendarEvent): Promise<any> {
     try {
+      const token = await this.ensureValidToken();
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
         {
           method: 'PUT',
           headers: {
-            Authorization: `Bearer ${this.accessToken}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(event),
@@ -102,24 +130,35 @@ export class GoogleCalendarService {
   }
 }
 
-// Hook to get Google Calendar service
+// Hook to get Google Calendar service with stored tokens
 export const useGoogleCalendar = () => {
-  const { getToken } = useAuth();
+  const { user } = useUser();
+  const tokens = useQuery(
+    api.googleAuth.getGoogleTokens,
+    user?.id ? { clerkId: user.id } : "skip"
+  );
 
   const getCalendarService = async (): Promise<GoogleCalendarService | null> => {
     try {
-      const token = await getToken({ template: 'integration_google' });
-      if (!token) {
+      if (!tokens?.accessToken) {
+        console.log('No Google Calendar tokens found');
         return null;
       }
-      return new GoogleCalendarService(token);
+      
+      return new GoogleCalendarService(
+        tokens.accessToken,
+        tokens.refreshToken,
+        tokens.expiryTime
+      );
     } catch (error) {
       console.error('Error getting calendar service:', error);
       return null;
     }
   };
 
-  return { getCalendarService };
+  const isConnected = !!tokens?.accessToken;
+
+  return { getCalendarService, isConnected };
 };
 
 // Helper to format booking data for Google Calendar
