@@ -10,9 +10,11 @@
 
 import type * as availability from "../availability.js";
 import type * as bookings from "../bookings.js";
+import type * as clerkInvitations from "../clerkInvitations.js";
 import type * as email from "../email.js";
 import type * as faqQuestions from "../faqQuestions.js";
 import type * as goals from "../goals.js";
+import type * as googleAuth from "../googleAuth.js";
 import type * as migratePackages from "../migratePackages.js";
 import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
@@ -34,9 +36,11 @@ import type {
 declare const fullApi: ApiFromModules<{
   availability: typeof availability;
   bookings: typeof bookings;
+  clerkInvitations: typeof clerkInvitations;
   email: typeof email;
   faqQuestions: typeof faqQuestions;
   goals: typeof goals;
+  googleAuth: typeof googleAuth;
   migratePackages: typeof migratePackages;
   migrations: typeof migrations;
   notifications: typeof notifications;

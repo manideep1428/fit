@@ -19,6 +19,7 @@ import { BorderRadius, getColors, Shadows } from "@/constants/colors";
 import { showToast } from "@/utils/toast";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import GoogleOAuthButton from "@/components/GoogleOAuthButton";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -454,8 +455,20 @@ export default function SignInScreen() {
             )}
           </TouchableOpacity>
 
+          {/* Divider */}
+          <View className="flex-row items-center mb-6">
+            <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
+            <Text className="mx-4 text-sm" style={{ color: colors.textSecondary }}>
+              or continue with
+            </Text>
+            <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
+          </View>
+
+          {/* Google OAuth Button */}
+          <GoogleOAuthButton mode="signin" />
+
           {/* Sign Up Link */}
-          <View className="flex-row justify-center">
+          <View className="flex-row justify-center mt-6">
             <Text className="text-base" style={{ color: colors.textSecondary }}>
               Don't have an account?{" "}
             </Text>
