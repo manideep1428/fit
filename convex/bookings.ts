@@ -192,6 +192,18 @@ export const createBooking = mutation({
       time: args.startTime,
     });
 
+    // Auto-add to trainer's Google Calendar
+    await ctx.scheduler.runAfter(0, api.calendarSync.addBookingToTrainerCalendar, {
+      bookingId,
+      trainerId: args.trainerId,
+      clientId: args.clientId,
+      date: args.date,
+      startTime: args.startTime,
+      endTime,
+      clientName: client?.fullName || "Client",
+      notes: args.notes,
+    });
+
     return bookingId;
   },
 });

@@ -8,8 +8,10 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
 import type * as availability from "../availability.js";
 import type * as bookings from "../bookings.js";
+import type * as calendarSync from "../calendarSync.js";
 import type * as clerkInvitations from "../clerkInvitations.js";
 import type * as email from "../email.js";
 import type * as faqQuestions from "../faqQuestions.js";
@@ -34,8 +36,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   availability: typeof availability;
   bookings: typeof bookings;
+  calendarSync: typeof calendarSync;
   clerkInvitations: typeof clerkInvitations;
   email: typeof email;
   faqQuestions: typeof faqQuestions;

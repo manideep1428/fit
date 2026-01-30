@@ -39,8 +39,7 @@
         "VIBRATE",
         "WAKE_LOCK",
         "POST_NOTIFICATIONS"
-      ],
-      "useNextNotificationsApi": true
+      ]
     },
     "notification": {
       "icon": "./assets/images/icon.png",
@@ -50,7 +49,7 @@
       "iosDisplayInForeground": true
     },
     "web": {
-      "output": "static",
+      "output": "server",
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [

@@ -1,27 +1,31 @@
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
-import { Redirect, Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
-import 'react-native-reanimated';
-import { ClerkProvider } from '@clerk/clerk-expo';
-import { tokenCache } from '@clerk/clerk-expo/token-cache';
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavigationThemeProvider,
+} from "@react-navigation/native";
+import { Redirect, Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { View } from "react-native";
+import "react-native-reanimated";
+import { ClerkProvider } from "@clerk/clerk-expo";
+import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { useNotifications } from '@/hooks/useNotifications';
-import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
-import { NetworkProvider } from '@/contexts/NetworkContext';
-import { OfflineBanner } from '@/components/OfflineBanner';
-import Toast from 'react-native-toast-message';
-import { toastConfig } from '@/components/ToastConfig';
-import { getColors } from '@/constants/colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useNotifications } from "@/hooks/useNotifications";
+import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
+import { NetworkProvider } from "@/contexts/NetworkContext";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import Toast from "react-native-toast-message";
+import { toastConfig } from "@/components/ToastConfig";
+import { getColors } from "@/constants/colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
-import "../global.css"
+import "../global.css";
 
 function AppContent() {
   useNotifications();
   const scheme = useColorScheme();
-  const colors = getColors(scheme === 'dark');
-  
+  const colors = getColors(scheme === "dark");
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack>
@@ -31,7 +35,11 @@ function AppContent() {
         <Stack.Screen name="(client)" options={{ headerShown: false }} />
         <Stack.Screen name="change-password" options={{ headerShown: false }} />
         <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-        <Stack.Screen name="edit-profile-form" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="edit-profile-form"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="(public)" options={{ headerShown: false }} />
         <Stack.Screen name="google" options={{ headerShown: false }} />
       </Stack>
     </View>
@@ -39,17 +47,19 @@ function AppContent() {
 }
 
 export const unstable_settings = {
-  initialRouteName: 'index',
+  initialRouteName: "index",
 };
 
-
-const convex = new ConvexReactClient("https://mellow-shepherd-472.convex.cloud", {
-  unsavedChangesWarning: false,
-});
+const convex = new ConvexReactClient(
+  "https://mellow-shepherd-472.convex.cloud",
+  {
+    unsavedChangesWarning: false,
+  },
+);
 
 function ThemedApp() {
   const { isDark } = useTheme();
-  
+
   return (
     <NetworkProvider>
       <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
@@ -66,7 +76,7 @@ export default function RootLayout() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
   if (!publishableKey) {
-    throw new Error('Missing Clerk Publishable Key');
+    throw new Error("Missing Clerk Publishable Key");
   }
 
   return (

@@ -1,33 +1,33 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { useUser, useAuth } from '@clerk/clerk-expo';
-import { View, ActivityIndicator } from 'react-native';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { getColors } from '@/constants/colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { useUser, useAuth } from "@clerk/clerk-expo";
+import { View, ActivityIndicator } from "react-native";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { getColors } from "@/constants/colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function Index() {
   const { user, isLoaded: isUserLoaded } = useUser();
   const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const scheme = useColorScheme();
-  const colors = getColors(scheme === 'dark');
+  const colors = getColors(scheme === "dark");
   const [hasNavigated, setHasNavigated] = useState(false);
 
   const convexUser = useQuery(
     api.users.getUserByClerkId,
-    user?.id ? { clerkId: user.id } : 'skip'
+    user?.id ? { clerkId: user.id } : "skip",
   );
 
   useEffect(() => {
     if (!isAuthLoaded || !isUserLoaded) return;
-    
+
     if (hasNavigated) return;
 
     if (!isSignedIn || !user) {
       setHasNavigated(true);
-      router.replace('/(auth)/welcome');
+      router.replace("/(public)/home");
       return;
     }
 
@@ -43,30 +43,39 @@ export default function Index() {
     // If user doesn't have a role yet, redirect to role selection
     if (!role) {
       setHasNavigated(true);
-      router.replace('/(auth)/role-selection');
+      router.replace("/(auth)/role-selection");
       return;
     }
 
     setHasNavigated(true);
 
     // Redirect based on role
-    if (role === 'trainer') {
+    if (role === "trainer") {
       // Check if trainer has completed profile setup
       const hasUsername = convexUser?.username || user.unsafeMetadata?.username;
-      const hasSpecialty = convexUser?.specialty || user.unsafeMetadata?.specialty;
+      const hasSpecialty =
+        convexUser?.specialty || user.unsafeMetadata?.specialty;
 
       if (!hasUsername || !hasSpecialty) {
-        router.replace('/(auth)/trainer-setup');
+        router.replace("/(auth)/trainer-setup");
       } else {
-        router.replace('/(trainer)');
+        router.replace("/(trainer)");
       }
-    } else if (role === 'client') {
-      router.replace('/(client)');
+    } else if (role === "client") {
+      router.replace("/(client)");
     } else {
       // If role is invalid, redirect to role selection
-      router.replace('/(auth)/role-selection');
+      router.replace("/(auth)/role-selection");
     }
-  }, [isAuthLoaded, isUserLoaded, isSignedIn, user, convexUser, hasNavigated, router]);
+  }, [
+    isAuthLoaded,
+    isUserLoaded,
+    isSignedIn,
+    user,
+    convexUser,
+    hasNavigated,
+    router,
+  ]);
 
   // Show loading screen while checking authentication
   return (

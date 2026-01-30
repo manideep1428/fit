@@ -15,6 +15,8 @@ import { getColors, Shadows } from "@/constants/colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AddToCalendarDialog from "@/components/AddToCalendarDialog";
+import { Id } from "@/convex/_generated/dataModel";
 
 const DURATIONS = [
   { value: 45, label: "45 min" },
@@ -125,6 +127,8 @@ export default function BookTrainerScreen() {
   const [selectedSlotTrainerTime, setSelectedSlotTrainerTime] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
   const [showLocalTime, setShowLocalTime] = useState(true); // Toggle for timezone display
+  const [showCalendarDialog, setShowCalendarDialog] = useState(false);
+  const [lastBookingId, setLastBookingId] = useState<Id<"bookings"> | null>(null);
 
   const localTimezone = useMemo(() => getLocalTimezone(), []);
 
@@ -231,7 +235,7 @@ export default function BookTrainerScreen() {
     setBooking(true);
     try {
       // Always send trainer's timezone time to backend
-      await createBooking({
+      const bookingId = await createBooking({
         trainerId,
         clientId: user.id,
         date: selectedDate.toISOString().split("T")[0],
@@ -247,7 +251,9 @@ export default function BookTrainerScreen() {
         visibilityTime: 4000,
       });
 
-      router.back();
+      // Store booking ID and show calendar dialog
+      setLastBookingId(bookingId);
+      setShowCalendarDialog(true);
     } catch (error) {
       console.error("Error creating booking:", error instanceof Error ? error.message : 'Unknown error');
       Toast.show({
@@ -260,6 +266,11 @@ export default function BookTrainerScreen() {
     } finally {
       setBooking(false);
     }
+  };
+
+  const handleCalendarDialogClose = () => {
+    setShowCalendarDialog(false);
+    router.back();
   };
 
   const monthName = calendarMonth.toLocaleString("default", {
@@ -670,6 +681,31 @@ export default function BookTrainerScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Add to Calendar Dialog */}
+      {lastBookingId && selectedDate && selectedSlotTrainerTime && (
+        <AddToCalendarDialog
+          visible={showCalendarDialog}
+          bookingId={lastBookingId}
+          clientId={user?.id || ""}
+          trainerId={trainerId}
+          date={selectedDate.toISOString().split("T")[0]}
+          startTime={selectedSlotTrainerTime}
+          endTime={addMinutesToTime(selectedSlotTrainerTime, selectedDuration)}
+          trainerName={trainerName}
+          onClose={handleCalendarDialogClose}
+          onSuccess={handleCalendarDialogClose}
+        />
+      )}
     </View>
   );
+}
+
+// Helper function to add minutes to time
+function addMinutesToTime(time: string, minutes: number): string {
+  const [hours, mins] = time.split(":").map(Number);
+  const totalMinutes = hours * 60 + mins + minutes;
+  const newHours = Math.floor(totalMinutes / 60);
+  const newMins = totalMinutes % 60;
+  return `${newHours.toString().padStart(2, "0")}:${newMins.toString().padStart(2, "0")}`;
 }
