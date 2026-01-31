@@ -42,19 +42,21 @@ export default function AddClientScreen() {
   const [questionsCount, setQuestionsCount] = useState(0);
 
   const inviteClient = useMutation(api.users.inviteClientByEmail);
-  const createClientQuestionsFromFaqs = useMutation(api.faqQuestions.createClientQuestionsFromFaqs);
+  const createClientQuestionsFromFaqs = useMutation(
+    api.faqQuestions.createClientQuestionsFromFaqs,
+  );
 
   // Get existing clients for this trainer
   const existingClients = useQuery(
     api.users.getTrainerClients,
-    user?.id ? { trainerId: user.id } : "skip"
+    user?.id ? { trainerId: user.id } : "skip",
   );
 
   // Load questions count when screen focuses
   useFocusEffect(
     useCallback(() => {
       loadQuestionsCount();
-    }, [clientEmail])
+    }, [clientEmail]),
   );
 
   const loadQuestionsCount = async () => {
@@ -123,7 +125,7 @@ export default function AddClientScreen() {
     // Check if client already exists in trainer's list
     const alreadyAdded = existingClients?.some(
       (client: any) =>
-        client?.email?.toLowerCase() === clientEmail.trim().toLowerCase()
+        client?.email?.toLowerCase() === clientEmail.trim().toLowerCase(),
     );
 
     if (alreadyAdded) {
@@ -147,7 +149,7 @@ export default function AddClientScreen() {
         await createClientQuestionsFromFaqs({
           trainerId: user.id,
           clientId: clientId,
-          questionsWithAnswers: questions.map(q => ({
+          questionsWithAnswers: questions.map((q) => ({
             question: q.question,
             answer: q.answer,
           })),
@@ -157,18 +159,41 @@ export default function AddClientScreen() {
       // Clear stored questions after successful save
       await clearStoredQuestions();
 
+      // Send invite email using the new API
+      try {
+        await fetch("/api/email/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "invite",
+            to: clientEmail.trim().toLowerCase(),
+            data: {
+              trainerName: user.fullName || "Your Trainer",
+              clientName: clientName.trim(),
+            },
+          }),
+        });
+      } catch (emailError) {
+        console.error("Error sending invite email:", emailError);
+      }
+
       if (result.status === "existing") {
         showToast.success("Client added to your list!");
       } else {
         showToast.success(
-          "Client invited! They can now sign in with this email."
+          "Client invited! They can now sign in with this email.",
         );
       }
 
       // Navigate back to clients page
       router.push("/(trainer)/clients" as any);
     } catch (error: any) {
-      console.error("Error inviting client:", error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        "Error inviting client:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
       showToast.error(error.message || "Failed to invite client");
     } finally {
       setIsAdding(false);
@@ -176,7 +201,9 @@ export default function AddClientScreen() {
   };
 
   const handleOpenQuestions = () => {
-    router.push(`/(trainer)/client-questions?clientEmail=${clientEmail || "new"}` as any);
+    router.push(
+      `/(trainer)/client-questions?clientEmail=${clientEmail || "new"}` as any,
+    );
   };
 
   return (
@@ -204,7 +231,10 @@ export default function AddClientScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
-        <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          className="flex-1 px-4"
+          showsVerticalScrollIndicator={false}
+        >
           {/* Info Card */}
           <View
             className="p-4 rounded-xl mb-6"
@@ -224,7 +254,8 @@ export default function AddClientScreen() {
               </Text>
             </View>
             <Text className="text-sm" style={{ color: colors.textSecondary }}>
-              Enter your client's details and optionally add questions to gather information during onboarding.
+              Enter your client's details and optionally add questions to gather
+              information during onboarding.
             </Text>
           </View>
 
@@ -340,13 +371,23 @@ export default function AddClientScreen() {
                 className="w-12 h-12 rounded-full items-center justify-center mr-3"
                 style={{ backgroundColor: `${colors.primary}15` }}
               >
-                <Ionicons name="chatbubbles-outline" size={24} color={colors.primary} />
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={24}
+                  color={colors.primary}
+                />
               </View>
               <View>
-                <Text className="font-semibold text-base" style={{ color: colors.text }}>
+                <Text
+                  className="font-semibold text-base"
+                  style={{ color: colors.text }}
+                >
                   Questions
                 </Text>
-                <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                <Text
+                  className="text-sm"
+                  style={{ color: colors.textSecondary }}
+                >
                   {questionsCount > 0
                     ? `${questionsCount} question${questionsCount !== 1 ? "s" : ""} added`
                     : "Add onboarding questions"}
@@ -359,10 +400,16 @@ export default function AddClientScreen() {
                   className="w-6 h-6 rounded-full items-center justify-center mr-2"
                   style={{ backgroundColor: colors.primary }}
                 >
-                  <Text className="text-xs font-bold text-white">{questionsCount}</Text>
+                  <Text className="text-xs font-bold text-white">
+                    {questionsCount}
+                  </Text>
                 </View>
               )}
-              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textSecondary}
+              />
             </View>
           </TouchableOpacity>
 

@@ -12,17 +12,17 @@ export const sendPushNotification = action({
   },
   handler: async (
     ctx,
-    args
+    args,
   ): Promise<{ success: boolean; result?: any; error?: string }> => {
     console.log(`🚀 sendPushNotification called for user: ${args.userId}`);
-    
+
     // Get user's push token
     const user: any = await ctx.runQuery(api.users.getUserByClerkId, {
       clerkId: args.userId,
     });
 
-    console.log(`👤 User found:`, user ? 'Yes' : 'No');
-    console.log(`🎫 Push token:`, user?.expoPushToken || 'NONE');
+    console.log(`👤 User found:`, user ? "Yes" : "No");
+    console.log(`🎫 Push token:`, user?.expoPushToken || "NONE");
 
     if (!user) {
       console.log(`❌ User not found: ${args.userId}`);
@@ -31,14 +31,24 @@ export const sendPushNotification = action({
 
     if (!user.expoPushToken) {
       console.log(`❌ No push token for user ${args.userId}`);
-      return { success: false, error: "No push token - user needs to restart app or grant permissions" };
+      return {
+        success: false,
+        error: "No push token - user needs to restart app or grant permissions",
+      };
     }
 
     // Validate Expo push token format
-    if (!user.expoPushToken.startsWith('ExponentPushToken[') && 
-        !user.expoPushToken.startsWith('ExpoPushToken[')) {
-      console.log(`❌ Invalid push token format for user ${args.userId}: ${user.expoPushToken}`);
-      return { success: false, error: `Invalid push token format: ${user.expoPushToken.substring(0, 20)}...` };
+    if (
+      !user.expoPushToken.startsWith("ExponentPushToken[") &&
+      !user.expoPushToken.startsWith("ExpoPushToken[")
+    ) {
+      console.log(
+        `❌ Invalid push token format for user ${args.userId}: ${user.expoPushToken}`,
+      );
+      return {
+        success: false,
+        error: `Invalid push token format: ${user.expoPushToken.substring(0, 20)}...`,
+      };
     }
 
     console.log(`✅ Valid push token found`);
@@ -47,12 +57,12 @@ export const sendPushNotification = action({
     try {
       const message: any = {
         to: user.expoPushToken,
-        sound: "default",
+        sound: "notification.wav",
         title: args.title,
         body: args.body,
         data: args.data || {},
         priority: "high",
-        channelId: "default",
+        channelId: "fit-notification",
         badge: 1,
       };
 
@@ -70,29 +80,35 @@ export const sendPushNotification = action({
             "Content-Type": "application/json",
           },
           body: JSON.stringify(message),
-        }
+        },
       );
 
       if (!response.ok) {
-        console.error(`❌ HTTP Error: ${response.status} ${response.statusText}`);
-        return { 
-          success: false, 
-          error: `HTTP ${response.status}: ${response.statusText}` 
+        console.error(
+          `❌ HTTP Error: ${response.status} ${response.statusText}`,
+        );
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${response.statusText}`,
         };
       }
 
       const result: any = await response.json();
       console.log(`📥 Expo API response:`, JSON.stringify(result, null, 2));
-      
+
       // Check for Expo push errors
       if (result.data && Array.isArray(result.data)) {
         const firstResult = result.data[0];
         if (firstResult?.status === "error") {
-          console.error("❌ Expo push error:", firstResult.message, firstResult.details);
-          return { 
-            success: false, 
+          console.error(
+            "❌ Expo push error:",
+            firstResult.message,
+            firstResult.details,
+          );
+          return {
+            success: false,
             error: `Expo error: ${firstResult.message}`,
-            result 
+            result,
           };
         }
         if (firstResult?.status === "ok") {
@@ -100,26 +116,26 @@ export const sendPushNotification = action({
           return { success: true, result };
         }
       }
-      
+
       // Fallback check
       if (result.errors) {
         console.error("❌ Expo API errors:", result.errors);
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: `API errors: ${JSON.stringify(result.errors)}`,
-          result 
+          result,
         };
       }
-      
+
       console.log("✅ Push notification sent (assuming success)");
       return { success: true, result };
     } catch (error: any) {
       console.error("❌ Error sending push notification:", error);
       console.error("   Error message:", error?.message);
       console.error("   Error stack:", error?.stack);
-      return { 
-        success: false, 
-        error: `Exception: ${error?.message || String(error)}` 
+      return {
+        success: false,
+        error: `Exception: ${error?.message || String(error)}`,
       };
     }
   },
@@ -505,7 +521,7 @@ export const notifyDiscountAdded = action({
         userId: args.clientId,
         title: "New Discount Applied! 🎉",
         body: `${args.trainerName} added a ${args.discountPercentage}% discount for you - ${args.description}`,
-        data: { 
+        data: {
           type: "discount_added",
           discountPercentage: args.discountPercentage,
         },
@@ -533,7 +549,7 @@ export const notifyDiscountUpdated = action({
         userId: args.clientId,
         title: "Discount Updated! 💰",
         body: `${args.trainerName} updated your discount from ${args.oldDiscountPercentage}% to ${args.newDiscountPercentage}% - ${args.description}`,
-        data: { 
+        data: {
           type: "discount_updated",
           oldDiscountPercentage: args.oldDiscountPercentage,
           newDiscountPercentage: args.newDiscountPercentage,
@@ -560,7 +576,7 @@ export const notifyDiscountRemoved = action({
         userId: args.clientId,
         title: "Discount Removed",
         body: `${args.trainerName} removed your ${args.discountPercentage}% discount`,
-        data: { 
+        data: {
           type: "discount_removed",
           discountPercentage: args.discountPercentage,
         },

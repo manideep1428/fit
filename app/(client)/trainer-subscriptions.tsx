@@ -32,13 +32,13 @@ export default function TrainerSubscriptionsScreen() {
   // Fetch trainer info
   const trainer = useQuery(
     api.users.getUserByClerkId,
-    trainerId ? { clerkId: trainerId as string } : "skip"
+    trainerId ? { clerkId: trainerId as string } : "skip",
   );
 
   // Fetch trainer's plans
   const plans = useQuery(
     api.trainerPlans.getTrainerPlans,
-    trainerId ? { trainerId: trainerId as string } : "skip"
+    trainerId ? { trainerId: trainerId as string } : "skip",
   );
 
   const createSubscription = useMutation(api.subscriptions.createSubscription);
@@ -67,13 +67,14 @@ export default function TrainerSubscriptionsScreen() {
       });
 
       showToast.success(
-        paymentMethod === "offline"
-          ? "Request sent!"
-          : "Subscribed!"
+        paymentMethod === "offline" ? "Request sent!" : "Subscribed!",
       );
-      router.push('/(client)/trainer-details' as any);
+      router.push("/(client)/trainer-details" as any);
     } catch (error) {
-      console.error("Subscription error:", error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        "Subscription error:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
       showToast.error("Subscribe failed");
     }
   };
@@ -123,7 +124,7 @@ export default function TrainerSubscriptionsScreen() {
         }}
       >
         <View className="flex-row items-center mb-4">
-          <TouchableOpacity onPress={() => router.push('/(client)/trainer-details' as any)} className="mr-3">
+          <TouchableOpacity onPress={() => router.back()} className="mr-3">
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text

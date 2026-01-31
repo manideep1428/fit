@@ -34,19 +34,19 @@ export default function TrainerDetailsScreen() {
   // Fetch trainer details
   const trainer = useQuery(
     api.users.getUserByClerkId,
-    trainerId ? { clerkId: trainerId } : "skip"
+    trainerId ? { clerkId: trainerId } : "skip",
   );
 
   // Fetch client's subscription with this trainer
   const subscriptions = useQuery(
     api.subscriptions.getClientSubscriptions,
-    user?.id ? { clientId: user.id } : "skip"
+    user?.id ? { clientId: user.id } : "skip",
   );
 
   // Fetch client's bookings with this trainer
   const bookings = useQuery(
     api.bookings.getClientBookings,
-    user?.id ? { clientId: user.id } : "skip"
+    user?.id ? { clientId: user.id } : "skip",
   );
 
   // Filter bookings for this trainer
@@ -58,12 +58,12 @@ export default function TrainerDetailsScreen() {
     (s: any) =>
       s.trainerId === trainerId &&
       s.status === "active" &&
-      s.paymentStatus === "paid"
+      s.paymentStatus === "paid",
   );
 
   // Calculate stats
   const completedSessions = trainerBookings.filter(
-    (b: any) => b.status === "completed"
+    (b: any) => b.status === "completed",
   ).length;
 
   const upcomingSessions = trainerBookings.filter((b: any) => {
@@ -120,7 +120,7 @@ export default function TrainerDetailsScreen() {
         style={{ paddingTop: insets.top + 8 }}
       >
         <TouchableOpacity
-          onPress={() => router.push('/(client)/index' as any)}
+          onPress={() => router.back()}
           className="w-10 h-10 rounded-full items-center justify-center"
           style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
         >
@@ -304,7 +304,7 @@ export default function TrainerDetailsScreen() {
                     >
                       {activeSubscription.currentPeriodEnd
                         ? new Date(
-                            activeSubscription.currentPeriodEnd
+                            activeSubscription.currentPeriodEnd,
                           ).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
@@ -408,7 +408,11 @@ export default function TrainerDetailsScreen() {
             </Text>
             <View className="flex-row gap-3">
               <TouchableOpacity
-                onPress={() => router.push("/(client)/session-history?from=trainer-details" as any)}
+                onPress={() =>
+                  router.push(
+                    "/(client)/session-history?from=trainer-details" as any,
+                  )
+                }
                 className="flex-1 rounded-2xl p-4 flex-row items-center"
                 style={{ backgroundColor: colors.surface, ...shadows.small }}
               >

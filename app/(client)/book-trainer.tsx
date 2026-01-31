@@ -51,19 +51,19 @@ const convertTime = (
   time: string,
   date: string,
   fromTz: string,
-  toTz: string
+  toTz: string,
 ): string => {
   try {
     // Parse the time
     const [hours, minutes] = time.split(":").map(Number);
-    
+
     // Create a date string that will be interpreted in the source timezone
     // We use toLocaleString with the source timezone to create a reference point
     const dateStr = `${date}T${time}:00`;
-    
+
     // Create a date object - this interprets the string in local time
     const localDate = new Date(dateStr);
-    
+
     // Get what this date/time would be in the source timezone
     const sourceStr = localDate.toLocaleString("en-US", {
       timeZone: fromTz,
@@ -74,19 +74,19 @@ const convertTime = (
       minute: "2-digit",
       hour12: false,
     });
-    
+
     // Calculate the offset between what we want and what we got
     const [sourceDate, sourceTime] = sourceStr.split(", ");
     const [sourceHour, sourceMin] = sourceTime.split(":").map(Number);
-    
+
     // Calculate the difference in minutes
     const wantedMinutes = hours * 60 + minutes;
     const gotMinutes = sourceHour * 60 + sourceMin;
     const offsetMinutes = wantedMinutes - gotMinutes;
-    
+
     // Apply this offset to get the correct UTC representation
     const correctedDate = new Date(localDate.getTime() + offsetMinutes * 60000);
-    
+
     // Now format this in the target timezone
     const targetStr = correctedDate.toLocaleString("en-US", {
       timeZone: toTz,
@@ -94,11 +94,11 @@ const convertTime = (
       minute: "2-digit",
       hour12: false,
     });
-    
+
     // Extract just the time part
     const timePart = targetStr.split(", ")[1] || targetStr;
     const [targetHour, targetMin] = timePart.split(":").slice(0, 2);
-    
+
     return `${targetHour}:${targetMin}`;
   } catch (error) {
     console.error("Error converting time:", error);
@@ -124,11 +124,15 @@ export default function BookTrainerScreen() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [selectedSlotTrainerTime, setSelectedSlotTrainerTime] = useState<string | null>(null);
+  const [selectedSlotTrainerTime, setSelectedSlotTrainerTime] = useState<
+    string | null
+  >(null);
   const [booking, setBooking] = useState(false);
   const [showLocalTime, setShowLocalTime] = useState(true); // Toggle for timezone display
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
-  const [lastBookingId, setLastBookingId] = useState<Id<"bookings"> | null>(null);
+  const [lastBookingId, setLastBookingId] = useState<Id<"bookings"> | null>(
+    null,
+  );
 
   const localTimezone = useMemo(() => getLocalTimezone(), []);
 
@@ -141,7 +145,7 @@ export default function BookTrainerScreen() {
           year: calendarMonth.getFullYear(),
           month: calendarMonth.getMonth(),
         }
-      : "skip"
+      : "skip",
   );
 
   const availableSlots = useQuery(
@@ -152,14 +156,14 @@ export default function BookTrainerScreen() {
           date: selectedDate.toISOString().split("T")[0],
           duration: selectedDuration,
         }
-      : "skip"
+      : "skip",
   );
 
   const createBooking = useMutation(api.bookings.createBooking);
 
   const activeSubscription = useQuery(
     api.subscriptions.getActiveClientSubscription,
-    user?.id && trainerId ? { clientId: user.id, trainerId } : "skip"
+    user?.id && trainerId ? { clientId: user.id, trainerId } : "skip",
   );
 
   const trainerTimezone = availableDatesData?.timezone || "Europe/Oslo";
@@ -168,21 +172,28 @@ export default function BookTrainerScreen() {
   // Convert slots to display timezone
   const displaySlots = useMemo(() => {
     if (!availableSlots || !selectedDate) return [];
-    
+
     const dateStr = selectedDate.toISOString().split("T")[0];
-    
+
     if (showLocalTime && !isSameTimezone) {
       return availableSlots.map((slot: string) => ({
         display: convertTime(slot, dateStr, trainerTimezone, localTimezone),
         original: slot,
       }));
     }
-    
+
     return availableSlots.map((slot: string) => ({
       display: slot,
       original: slot,
     }));
-  }, [availableSlots, selectedDate, showLocalTime, trainerTimezone, localTimezone, isSameTimezone]);
+  }, [
+    availableSlots,
+    selectedDate,
+    showLocalTime,
+    trainerTimezone,
+    localTimezone,
+    isSameTimezone,
+  ]);
 
   // Generate calendar grid
   const calendarData = useMemo(() => {
@@ -191,17 +202,17 @@ export default function BookTrainerScreen() {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startPadding = firstDay.getDay();
-    
+
     const days: (Date | null)[] = [];
-    
+
     for (let i = 0; i < startPadding; i++) {
       days.push(null);
     }
-    
+
     for (let day = 1; day <= lastDay.getDate(); day++) {
       days.push(new Date(year, month, day));
     }
-    
+
     return days;
   }, [calendarMonth]);
 
@@ -251,11 +262,38 @@ export default function BookTrainerScreen() {
         visibilityTime: 4000,
       });
 
+      // Send booking confirmation email
+      try {
+        if (user.primaryEmailAddress?.emailAddress) {
+          await fetch("/api/email/send", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              type: "booking",
+              to: user.primaryEmailAddress.emailAddress,
+              data: {
+                trainerName: trainerName,
+                clientName: user.fullName || "Valued Client",
+                date: selectedDate.toLocaleDateString(),
+                time: selectedSlot,
+              },
+            }),
+          });
+        }
+      } catch (emailError) {
+        console.error("Error sending booking email:", emailError);
+      }
+
       // Store booking ID and show calendar dialog
       setLastBookingId(bookingId);
       setShowCalendarDialog(true);
     } catch (error) {
-      console.error("Error creating booking:", error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        "Error creating booking:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
       Toast.show({
         type: "error",
         text1: "Booking Failed",
@@ -286,7 +324,9 @@ export default function BookTrainerScreen() {
       })
     : null;
 
-  const currentDisplayTimezone = showLocalTime ? localTimezone : trainerTimezone;
+  const currentDisplayTimezone = showLocalTime
+    ? localTimezone
+    : trainerTimezone;
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -302,7 +342,10 @@ export default function BookTrainerScreen() {
               <Ionicons name="arrow-back" size={20} color={colors.text} />
             </TouchableOpacity>
             <View className="flex-1">
-              <Text className="text-xl font-bold" style={{ color: colors.text }}>
+              <Text
+                className="text-xl font-bold"
+                style={{ color: colors.text }}
+              >
                 Book Session
               </Text>
             </View>
@@ -322,10 +365,16 @@ export default function BookTrainerScreen() {
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="text-base font-bold" style={{ color: colors.text }}>
+              <Text
+                className="text-base font-bold"
+                style={{ color: colors.text }}
+              >
                 {trainerName}
               </Text>
-              <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+              <Text
+                className="text-xs mt-0.5"
+                style={{ color: colors.textSecondary }}
+              >
                 {trainerSpecialty}
               </Text>
             </View>
@@ -345,8 +394,15 @@ export default function BookTrainerScreen() {
                 borderColor: colors.success,
               }}
             >
-              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-              <Text className="ml-2 text-sm font-medium" style={{ color: colors.text }}>
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={colors.success}
+              />
+              <Text
+                className="ml-2 text-sm font-medium"
+                style={{ color: colors.text }}
+              >
                 {activeSubscription.remainingSessions} sessions remaining
               </Text>
             </View>
@@ -360,20 +416,40 @@ export default function BookTrainerScreen() {
               }}
             >
               <View className="flex-row items-center mb-2">
-                <Ionicons name="alert-circle" size={20} color={colors.warning} />
-                <Text className="ml-2 font-semibold" style={{ color: colors.text }}>
+                <Ionicons
+                  name="alert-circle"
+                  size={20}
+                  color={colors.warning}
+                />
+                <Text
+                  className="ml-2 font-semibold"
+                  style={{ color: colors.text }}
+                >
                   No Active Package
                 </Text>
               </View>
-              <Text className="text-sm mb-3" style={{ color: colors.textSecondary }}>
+              <Text
+                className="text-sm mb-3"
+                style={{ color: colors.textSecondary }}
+              >
                 Purchase a package to book sessions
               </Text>
               <TouchableOpacity
                 className="rounded-xl py-2.5 items-center"
                 style={{ backgroundColor: colors.primary }}
-                onPress={() => router.push("/(client)/subscriptions")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(client)/trainer-subscriptions",
+                    params: {
+                      trainerId,
+                      trainerName,
+                    },
+                  } as any)
+                }
               >
-                <Text className="text-white font-semibold text-sm">Buy Package</Text>
+                <Text className="text-white font-semibold text-sm">
+                  Buy Package
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -383,7 +459,10 @@ export default function BookTrainerScreen() {
             <>
               {/* Duration Selection */}
               <View className="mx-5 mb-4">
-                <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+                <Text
+                  className="text-sm font-semibold mb-2"
+                  style={{ color: colors.text }}
+                >
                   Duration
                 </Text>
                 <View className="flex-row gap-2">
@@ -438,9 +517,16 @@ export default function BookTrainerScreen() {
                       className="w-8 h-8 items-center justify-center rounded-full"
                       style={{ backgroundColor: colors.surfaceSecondary }}
                     >
-                      <Ionicons name="chevron-back" size={18} color={colors.text} />
+                      <Ionicons
+                        name="chevron-back"
+                        size={18}
+                        color={colors.text}
+                      />
                     </TouchableOpacity>
-                    <Text className="text-base font-bold" style={{ color: colors.text }}>
+                    <Text
+                      className="text-base font-bold"
+                      style={{ color: colors.text }}
+                    >
                       {monthName}
                     </Text>
                     <TouchableOpacity
@@ -452,7 +538,11 @@ export default function BookTrainerScreen() {
                       className="w-8 h-8 items-center justify-center rounded-full"
                       style={{ backgroundColor: colors.surfaceSecondary }}
                     >
-                      <Ionicons name="chevron-forward" size={18} color={colors.text} />
+                      <Ionicons
+                        name="chevron-forward"
+                        size={18}
+                        color={colors.text}
+                      />
                     </TouchableOpacity>
                   </View>
 
@@ -498,8 +588,8 @@ export default function BookTrainerScreen() {
                                 backgroundColor: selected
                                   ? colors.primary
                                   : available
-                                  ? colors.primary + "20"
-                                  : "transparent",
+                                    ? colors.primary + "20"
+                                    : "transparent",
                                 borderWidth: today && !selected ? 1 : 0,
                                 borderColor: colors.primary,
                               }}
@@ -510,8 +600,8 @@ export default function BookTrainerScreen() {
                                   color: selected
                                     ? "#FFF"
                                     : available
-                                    ? colors.text
-                                    : colors.textTertiary,
+                                      ? colors.text
+                                      : colors.textTertiary,
                                   opacity: available ? 1 : 0.4,
                                 }}
                               >
@@ -534,7 +624,10 @@ export default function BookTrainerScreen() {
                     <>
                       {/* Timezone Toggle */}
                       <View className="flex-row items-center justify-between mb-3">
-                        <Text className="text-sm font-semibold" style={{ color: colors.text }}>
+                        <Text
+                          className="text-sm font-semibold"
+                          style={{ color: colors.text }}
+                        >
                           {selectedDateFormatted}
                         </Text>
                         {!isSameTimezone && (
@@ -543,20 +636,20 @@ export default function BookTrainerScreen() {
                             className="flex-row items-center px-2 py-1 rounded-lg"
                             style={{ backgroundColor: colors.surfaceSecondary }}
                           >
-                            <Ionicons 
-                              name="globe-outline" 
-                              size={14} 
-                              color={colors.primary} 
+                            <Ionicons
+                              name="globe-outline"
+                              size={14}
+                              color={colors.primary}
                             />
-                            <Text 
-                              className="text-xs ml-1 font-medium" 
+                            <Text
+                              className="text-xs ml-1 font-medium"
                               style={{ color: colors.primary }}
                             >
                               {getTimezoneLabel(currentDisplayTimezone)}
                             </Text>
-                            <Ionicons 
-                              name="swap-horizontal" 
-                              size={12} 
+                            <Ionicons
+                              name="swap-horizontal"
+                              size={12}
                               color={colors.textTertiary}
                               style={{ marginLeft: 4 }}
                             />
@@ -566,16 +659,22 @@ export default function BookTrainerScreen() {
 
                       {/* Timezone Info */}
                       {!isSameTimezone && (
-                        <View 
+                        <View
                           className="flex-row items-center mb-3 px-2 py-1.5 rounded-lg"
                           style={{ backgroundColor: colors.primary + "10" }}
                         >
-                          <Ionicons name="information-circle" size={14} color={colors.primary} />
-                          <Text className="text-xs ml-1.5" style={{ color: colors.textSecondary }}>
-                            {showLocalTime 
+                          <Ionicons
+                            name="information-circle"
+                            size={14}
+                            color={colors.primary}
+                          />
+                          <Text
+                            className="text-xs ml-1.5"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            {showLocalTime
                               ? `Showing your local time (${getTimezoneLabel(localTimezone)})`
-                              : `Showing trainer's time (${getTimezoneLabel(trainerTimezone)})`
-                            }
+                              : `Showing trainer's time (${getTimezoneLabel(trainerTimezone)})`}
                           </Text>
                         </View>
                       )}
@@ -605,34 +704,44 @@ export default function BookTrainerScreen() {
                           style={{ maxHeight: 200 }}
                         >
                           <View className="flex-row flex-wrap gap-2">
-                            {displaySlots.map((slot: { display: string; original: string }) => {
-                              const isSelected = selectedSlotTrainerTime === slot.original;
-                              return (
-                                <TouchableOpacity
-                                  key={slot.original}
-                                  onPress={() => handleSlotSelect(slot.display, slot.original)}
-                                  className="rounded-lg px-4 py-2.5"
-                                  style={{
-                                    backgroundColor: isSelected
-                                      ? colors.primary
-                                      : colors.surfaceSecondary,
-                                    borderWidth: 1,
-                                    borderColor: isSelected
-                                      ? colors.primary
-                                      : colors.border,
-                                  }}
-                                >
-                                  <Text
-                                    className="text-sm font-medium"
+                            {displaySlots.map(
+                              (slot: { display: string; original: string }) => {
+                                const isSelected =
+                                  selectedSlotTrainerTime === slot.original;
+                                return (
+                                  <TouchableOpacity
+                                    key={slot.original}
+                                    onPress={() =>
+                                      handleSlotSelect(
+                                        slot.display,
+                                        slot.original,
+                                      )
+                                    }
+                                    className="rounded-lg px-4 py-2.5"
                                     style={{
-                                      color: isSelected ? "#FFF" : colors.text,
+                                      backgroundColor: isSelected
+                                        ? colors.primary
+                                        : colors.surfaceSecondary,
+                                      borderWidth: 1,
+                                      borderColor: isSelected
+                                        ? colors.primary
+                                        : colors.border,
                                     }}
                                   >
-                                    {slot.display}
-                                  </Text>
-                                </TouchableOpacity>
-                              );
-                            })}
+                                    <Text
+                                      className="text-sm font-medium"
+                                      style={{
+                                        color: isSelected
+                                          ? "#FFF"
+                                          : colors.text,
+                                      }}
+                                    >
+                                      {slot.display}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              },
+                            )}
                           </View>
                         </ScrollView>
                       )}
@@ -662,7 +771,9 @@ export default function BookTrainerScreen() {
                   disabled={!selectedSlot || booking}
                   className="rounded-xl py-4 items-center"
                   style={{
-                    backgroundColor: selectedSlot ? colors.primary : colors.border,
+                    backgroundColor: selectedSlot
+                      ? colors.primary
+                      : colors.border,
                     ...shadows.medium,
                   }}
                 >

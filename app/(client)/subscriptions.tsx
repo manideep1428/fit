@@ -43,13 +43,13 @@ export default function ClientSubscriptionsScreen() {
   // Fetch trainer info
   const trainer = useQuery(
     api.users.getUserByClerkId,
-    trainerId ? { clerkId: trainerId as string } : "skip"
+    trainerId ? { clerkId: trainerId as string } : "skip",
   );
 
   // Fetch visible plans
   const plans = useQuery(
     api.trainerPlans.getVisibleTrainerPlans,
-    trainerId ? { trainerId: trainerId as string } : "skip"
+    trainerId ? { trainerId: trainerId as string } : "skip",
   );
 
   // Get client discount
@@ -60,7 +60,7 @@ export default function ClientSubscriptionsScreen() {
           trainerId: trainerId as string,
           clientId: user.id,
         }
-      : "skip"
+      : "skip",
   );
 
   // Calculate price for selected plan
@@ -73,7 +73,7 @@ export default function ClientSubscriptionsScreen() {
           clientId: user.id,
           billingMonths: selectedBilling,
         }
-      : "skip"
+      : "skip",
   );
 
   const createSubscription = useMutation(api.subscriptions.createSubscription);
@@ -131,16 +131,19 @@ export default function ClientSubscriptionsScreen() {
               });
 
               showToast.success("Request sent!");
-              router.push('/(client)/trainer-subscriptions' as any);
+              router.push("/(client)/trainer-subscriptions" as any);
             } catch (error) {
-              console.error("Error subscribing:", error instanceof Error ? error.message : 'Unknown error');
+              console.error(
+                "Error subscribing:",
+                error instanceof Error ? error.message : "Unknown error",
+              );
               showToast.error("Subscribe failed");
             } finally {
               setPurchasing(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -183,7 +186,7 @@ export default function ClientSubscriptionsScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity
-          onPress={() => router.push('/(client)/trainer-subscriptions' as any)}
+          onPress={() => router.back()}
           className="w-10 h-10 rounded-full items-center justify-center"
           style={{ backgroundColor: `${colors.text}10` }}
         >
@@ -385,7 +388,7 @@ export default function ClientSubscriptionsScreen() {
                       className="h-1"
                     />
                   )}
-                  
+
                   <View className="p-5">
                     {/* Header */}
                     <View className="flex-row items-start justify-between mb-4">
@@ -415,12 +418,14 @@ export default function ClientSubscriptionsScreen() {
                           {plan.description}
                         </Text>
                       </View>
-                      
+
                       {/* Selection Indicator */}
                       <View
                         className="w-7 h-7 rounded-full items-center justify-center"
-                        style={{ 
-                          backgroundColor: isSelected ? colors.primary : `${colors.text}08`,
+                        style={{
+                          backgroundColor: isSelected
+                            ? colors.primary
+                            : `${colors.text}08`,
                           borderWidth: isSelected ? 0 : 2,
                           borderColor: colors.border,
                         }}
@@ -434,7 +439,11 @@ export default function ClientSubscriptionsScreen() {
                     {/* Price Card */}
                     <View
                       className="rounded-2xl p-4 mb-4"
-                      style={{ backgroundColor: isSelected ? `${colors.primary}08` : `${colors.text}04` }}
+                      style={{
+                        backgroundColor: isSelected
+                          ? `${colors.primary}08`
+                          : `${colors.text}04`,
+                      }}
                     >
                       <View className="flex-row items-baseline">
                         {price.discount > 0 && (
@@ -448,7 +457,9 @@ export default function ClientSubscriptionsScreen() {
                         )}
                         <Text
                           className="text-4xl font-black"
-                          style={{ color: isSelected ? colors.primary : colors.text }}
+                          style={{
+                            color: isSelected ? colors.primary : colors.text,
+                          }}
                         >
                           {getCurrencySymbol(plan.currency)}
                           {price.discounted.toFixed(0)}
@@ -475,7 +486,10 @@ export default function ClientSubscriptionsScreen() {
                             color={colors.primary}
                           />
                         </View>
-                        <Text className="font-medium" style={{ color: colors.text }}>
+                        <Text
+                          className="font-medium"
+                          style={{ color: colors.text }}
+                        >
                           {plan.sessionsPerMonth} Sessions per month
                         </Text>
                       </View>
@@ -490,12 +504,18 @@ export default function ClientSubscriptionsScreen() {
                             color={colors.primary}
                           />
                         </View>
-                        <Text className="font-medium" style={{ color: colors.text }}>
+                        <Text
+                          className="font-medium"
+                          style={{ color: colors.text }}
+                        >
                           Auto-renews monthly
                         </Text>
                       </View>
                       {plan.features?.map((feature: string, index: number) => (
-                        <View key={index} className="flex-row items-center gap-3">
+                        <View
+                          key={index}
+                          className="flex-row items-center gap-3"
+                        >
                           <View
                             className="w-8 h-8 rounded-lg items-center justify-center"
                             style={{ backgroundColor: `${colors.success}12` }}
@@ -506,7 +526,10 @@ export default function ClientSubscriptionsScreen() {
                               color={colors.success}
                             />
                           </View>
-                          <Text className="font-medium" style={{ color: colors.text }}>
+                          <Text
+                            className="font-medium"
+                            style={{ color: colors.text }}
+                          >
                             {feature}
                           </Text>
                         </View>

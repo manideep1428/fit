@@ -27,20 +27,20 @@ import NotificationHistory from "@/components/NotificationHistory";
 // Format time from 24h format (HH:mm) to 12h format (h AM/PM)
 const formatTime = (time: string): string => {
   const [hours, minutes] = time.split(":").map(Number);
-  
+
   // Handle invalid times
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
     return time;
   }
-  
+
   const period = hours >= 12 ? "PM" : "AM";
   const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  
+
   // Only show minutes if they're not :00
   if (minutes === 0) {
     return `${displayHours} ${period}`;
   }
-  
+
   return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
 };
 
@@ -51,7 +51,7 @@ export default function BookingsScreen() {
   const colors = getColors(scheme === "dark");
   const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
   const [activeTab, setActiveTab] = useState<"schedule" | "bookings">(
-    "bookings"
+    "bookings",
   );
   const [showNotifications, setShowNotifications] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,28 +60,28 @@ export default function BookingsScreen() {
 
   const currentUser = useQuery(
     api.users.getUserByClerkId,
-    user?.id ? { clerkId: user.id } : "skip"
+    user?.id ? { clerkId: user.id } : "skip",
   );
 
   const bookings = useQuery(
     api.bookings.getClientBookings,
-    user?.id ? { clientId: user.id } : "skip"
+    user?.id ? { clientId: user.id } : "skip",
   );
 
   const clientTrainers = useQuery(
     api.users.getClientTrainers,
-    user?.id ? { clientId: user.id } : "skip"
+    user?.id ? { clientId: user.id } : "skip",
   );
 
   const subscriptions = useQuery(
     api.subscriptions.getClientSubscriptions,
-    user?.id ? { clientId: user.id } : "skip"
+    user?.id ? { clientId: user.id } : "skip",
   );
 
   // Fetch unread notification count
   const unreadCount = useQuery(
     api.notifications.getUnreadCount,
-    user?.id ? { userId: user.id } : "skip"
+    user?.id ? { userId: user.id } : "skip",
   );
 
   if (!user || !bookings || !clientTrainers) {
@@ -97,7 +97,7 @@ export default function BookingsScreen() {
 
   const enrichedBookings = bookings.map((booking: any) => {
     const trainer = clientTrainers.find(
-      (t: any) => t.clerkId === booking.trainerId
+      (t: any) => t.clerkId === booking.trainerId,
     );
     return {
       ...booking,
@@ -118,7 +118,7 @@ export default function BookingsScreen() {
       const dateB = new Date(`${b.date}T${b.startTime}:00`);
       return dateA.getTime() - dateB.getTime();
     });
-    
+
   const pastBookings = enrichedBookings
     .filter((b: any) => {
       const sessionDateTime = new Date(`${b.date}T${b.startTime}:00`);
@@ -145,7 +145,7 @@ export default function BookingsScreen() {
 
   const handleBookTrainer = (trainer: any) => {
     router.push({
-      pathname: "/(client)/book-trainer",
+      pathname: "/(client)/trainer-details",
       params: {
         trainerId: trainer.clerkId,
         trainerName: trainer.fullName,
@@ -158,7 +158,7 @@ export default function BookingsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       // Force refresh of queries when screen is focused
-    }, [])
+    }, []),
   );
 
   const onRefresh = React.useCallback(() => {
@@ -167,7 +167,11 @@ export default function BookingsScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  const handleCancelRequest = (bookingId: Id<"bookings">, bookingDate: string, bookingTime: string) => {
+  const handleCancelRequest = (
+    bookingId: Id<"bookings">,
+    bookingDate: string,
+    bookingTime: string,
+  ) => {
     Alert.alert(
       "Request Cancellation",
       "Your trainer will need to approve this cancellation. If approved, 1 session will be returned to your package.",
@@ -200,7 +204,7 @@ export default function BookingsScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -282,12 +286,12 @@ export default function BookingsScreen() {
                 >
                   {
                     subscriptions.filter(
-                      (s: any) => s.paymentStatus === "pending"
+                      (s: any) => s.paymentStatus === "pending",
                     ).length
                   }{" "}
                   Subscription
                   {subscriptions.filter(
-                    (s: any) => s.paymentStatus === "pending"
+                    (s: any) => s.paymentStatus === "pending",
                   ).length > 1
                     ? "s"
                     : ""}{" "}
@@ -567,7 +571,7 @@ export default function BookingsScreen() {
                               ? "Today"
                               : new Date(booking.date).toLocaleDateString(
                                   "en-US",
-                                  { month: "short", day: "numeric" }
+                                  { month: "short", day: "numeric" },
                                 )}
                         </Text>
                       </View>
@@ -584,7 +588,8 @@ export default function BookingsScreen() {
                           className="text-sm"
                           style={{ color: colors.text }}
                         >
-                          {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
+                          {formatTime(booking.startTime)} -{" "}
+                          {formatTime(booking.endTime)}
                         </Text>
                       </View>
                       <View className="flex-row items-center gap-2">
@@ -636,7 +641,7 @@ export default function BookingsScreen() {
                           handleCancelRequest(
                             booking._id,
                             booking.date,
-                            booking.startTime
+                            booking.startTime,
                           )
                         }
                       >
@@ -665,7 +670,11 @@ export default function BookingsScreen() {
                   Past Sessions
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push("/(client)/session-history?from=bookings" as any)}
+                  onPress={() =>
+                    router.push(
+                      "/(client)/session-history?from=bookings" as any,
+                    )
+                  }
                 >
                   <Text
                     className="text-sm font-semibold"
@@ -716,10 +725,9 @@ export default function BookingsScreen() {
                               {
                                 month: "short",
                                 day: "numeric",
-                              }
+                              },
                             )}{" "}
-                            •{" "}
-                            {formatTime(booking.startTime)}
+                            • {formatTime(booking.startTime)}
                           </Text>
                         </View>
                       </View>
