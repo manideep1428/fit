@@ -79,7 +79,7 @@ export default function SignUpScreen() {
         setPendingVerification(true);
       } catch (verifyErr: any) {
         showToast.error(
-          verifyErr.errors?.[0]?.message || "Failed to send verification email"
+          verifyErr.errors?.[0]?.message || "Failed to send verification email",
         );
       }
     } catch (err: any) {
@@ -98,7 +98,7 @@ export default function SignUpScreen() {
     if (resendCooldown > 0) {
       const timer = setTimeout(
         () => setResendCooldown(resendCooldown - 1),
-        1000
+        1000,
       );
       return () => clearTimeout(timer);
     }
@@ -497,7 +497,7 @@ export default function SignUpScreen() {
           <TouchableOpacity
             onPress={handleSignUp}
             disabled={loading}
-            className="py-4 rounded-xl mb-6"
+            className="py-4 rounded-xl mb-4"
             style={{
               backgroundColor: !loading ? colors.primary : colors.border,
               ...shadows.medium,
@@ -512,13 +512,48 @@ export default function SignUpScreen() {
             )}
           </TouchableOpacity>
 
+          {/* Terms and Privacy Agreement */}
+          <View className="mb-6 px-2">
+            <Text
+              className="text-xs text-center leading-5"
+              style={{ color: colors.textTertiary }}
+            >
+              By signing up, you agree to our{" "}
+              <Text
+                className="font-semibold underline"
+                style={{ color: colors.primary }}
+                onPress={() => router.push("/(public)/terms" as any)}
+              >
+                Terms of Service
+              </Text>{" "}
+              and{" "}
+              <Text
+                className="font-semibold underline"
+                style={{ color: colors.primary }}
+                onPress={() => router.push("/(public)/privacy" as any)}
+              >
+                Privacy Policy
+              </Text>
+              .
+            </Text>
+          </View>
+
           {/* Divider */}
           <View className="flex-row items-center mb-6">
-            <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
-            <Text className="mx-4 text-sm" style={{ color: colors.textSecondary }}>
+            <View
+              className="flex-1 h-px"
+              style={{ backgroundColor: colors.border }}
+            />
+            <Text
+              className="mx-4 text-sm"
+              style={{ color: colors.textSecondary }}
+            >
               or continue with
             </Text>
-            <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
+            <View
+              className="flex-1 h-px"
+              style={{ backgroundColor: colors.border }}
+            />
           </View>
 
           {/* Google OAuth Button */}

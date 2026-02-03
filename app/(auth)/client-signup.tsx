@@ -48,7 +48,7 @@ export default function ClientSignUpScreen() {
 
   const checkInvitedEmail = useQuery(
     api.users.checkInvitedEmail,
-    email && checkingEmail ? { email: email.toLowerCase() } : "skip"
+    email && checkingEmail ? { email: email.toLowerCase() } : "skip",
   );
   const activatePendingClient = useMutation(api.users.activatePendingClient);
 
@@ -64,7 +64,7 @@ export default function ClientSignUpScreen() {
 
       if (checkInvitedEmail.isTrainer) {
         showToast.error(
-          "This email is registered as a trainer. Please use sign in."
+          "This email is registered as a trainer. Please use sign in.",
         );
         return;
       }
@@ -78,7 +78,7 @@ export default function ClientSignUpScreen() {
       setInvitationData(checkInvitedEmail);
       setEmailChecked(true);
       showToast.success(
-        `Welcome ${checkInvitedEmail.fullName}! Create your password.`
+        `Welcome ${checkInvitedEmail.fullName}! Create your password.`,
       );
     }
   }, [checkInvitedEmail, checkingEmail]);
@@ -140,7 +140,7 @@ export default function ClientSignUpScreen() {
         setPendingVerification(true);
       } catch (verifyErr: any) {
         showToast.error(
-          verifyErr.errors?.[0]?.message || "Failed to send verification email"
+          verifyErr.errors?.[0]?.message || "Failed to send verification email",
         );
       }
     } catch (err: any) {
@@ -451,7 +451,7 @@ export default function ClientSignUpScreen() {
             <TouchableOpacity
               onPress={handleCreateAccount}
               disabled={creatingAccount}
-              className="py-4 rounded-xl mb-6"
+              className="py-4 rounded-xl mb-4"
               style={{ backgroundColor: colors.primary, ...shadows.medium }}
             >
               {creatingAccount ? (
@@ -462,6 +462,32 @@ export default function ClientSignUpScreen() {
                 </Text>
               )}
             </TouchableOpacity>
+
+            {/* Terms and Privacy Agreement */}
+            <View className="mb-6 px-2">
+              <Text
+                className="text-xs text-center leading-5"
+                style={{ color: colors.textTertiary }}
+              >
+                By signing up, you agree to our{" "}
+                <Text
+                  className="font-semibold underline"
+                  style={{ color: colors.primary }}
+                  onPress={() => router.push("/(public)/terms" as any)}
+                >
+                  Terms of Service
+                </Text>{" "}
+                and{" "}
+                <Text
+                  className="font-semibold underline"
+                  style={{ color: colors.primary }}
+                  onPress={() => router.push("/(public)/privacy" as any)}
+                >
+                  Privacy Policy
+                </Text>
+                .
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

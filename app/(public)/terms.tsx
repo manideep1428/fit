@@ -1,81 +1,178 @@
-import { View, Text, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  useWindowDimensions,
+  Platform,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getColors } from "@/constants/colors";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 export default function TermsOfService() {
   const scheme = useColorScheme();
   const colors = getColors(scheme === "dark");
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === "web";
+  const isDesktop = width > 1024;
 
   return (
-    <ScrollView
-      className="flex-1"
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
-    >
+    <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
 
-      <Text className="text-3xl font-bold mb-6" style={{ color: colors.text }}>
-        Terms of Service
-      </Text>
+      {/* Header */}
+      <View
+        className="px-6 pb-8 border-b"
+        style={{
+          paddingTop: isWeb ? 40 : 60,
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        }}
+      >
+        <View className="max-w-[1000px] w-full mx-auto">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="mb-8 w-12 h-12 items-center justify-center rounded-2xl shadow-sm"
+            style={{ backgroundColor: colors.surfaceSecondary }}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text
+            className={`${isDesktop ? "text-5xl" : "text-3xl"} font-black italic tracking-tighter`}
+            style={{ color: colors.text }}
+          >
+            Terms of <Text style={{ color: colors.primary }}>Service</Text>
+          </Text>
+          <Text
+            className="text-sm mt-3 font-medium uppercase tracking-widest opacity-60"
+            style={{ color: colors.textTertiary }}
+          >
+            Last Updated: February 3, 2026
+          </Text>
+        </View>
+      </View>
 
-      <Text className="text-sm mb-8" style={{ color: colors.textTertiary }}>
-        Last Updated: January 30, 2026
-      </Text>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingVertical: 48, paddingHorizontal: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="max-w-[1000px] w-full mx-auto">
+          <Text
+            className="text-xl leading-8 mb-12 font-medium"
+            style={{ color: colors.textSecondary }}
+          >
+            Please read these Terms of Service carefully before using the FitApp
+            mobile application. Your access to and use of the service is
+            conditioned on your acceptance of and compliance with these Terms.
+          </Text>
 
-      <Section
-        title="1. Acceptance of Terms"
-        content="By accessing or using the FitApp application, you agree to be bound by these Terms of Service and all applicable laws and regulations."
-        colors={colors}
-      />
+          <Section
+            title="1. Acceptance of Terms"
+            content="By accessing or using FitApp, you agree to be bound by these Terms. If you disagree with any part of the terms, then you may not access the service."
+            colors={colors}
+          />
 
-      <Section
-        title="2. User Accounts"
-        content="You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must be at least 18 years old to use this service."
-        colors={colors}
-      />
+          <Section
+            title="2. User Eligibility"
+            content="You must be at least 18 years of age to use this service. By using FitApp, you represent and warrant that you have the right, authority, and capacity to enter into this agreement."
+            colors={colors}
+          />
 
-      <Section
-        title="3. Trainer-Client Relationships"
-        content="FitApp provides a platform for trainers and clients to connect. We are not responsible for the quality of training services provided or any disputes that may arise between users."
-        colors={colors}
-      />
+          <Section
+            title="3. User Accounts"
+            content="When you create an account with us, you must provide accurate, complete, and current information. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account on our service."
+            colors={colors}
+          />
 
-      <Section
-        title="4. Prohibited Conduct"
-        content="Users agree not to use the service for any unlawful purpose or in any way that could damage, disable, or impair the application's functionality."
-        colors={colors}
-      />
+          <Section
+            title="4. Trainer-Client Interactions"
+            content="FitApp facilitates connections between fitness trainers and clients. 
+  • Trainers are independent service providers and not employees of FitApp.
+  • FitApp is not responsible for the quality, safety, or legality of the training services provided.
+  • Any disputes arising from training sessions must be resolved directly between the trainer and the client."
+            colors={colors}
+          />
 
-      <Section
-        title="5. Intellectual Property"
-        content="All content and materials available on FitApp, including but not limited to text, graphics, logos, and software, are the property of FitApp or its licensors."
-        colors={colors}
-      />
+          <Section
+            title="5. Fees and Payments"
+            content="Certain aspects of the service may be provided for a fee:
+  • All payments are processed through third-party payment processors.
+  • You agree to provide current, complete, and accurate purchase and account information for all purchases.
+  • Refund policies are determined by the individual trainer unless otherwise specified."
+            colors={colors}
+          />
 
-      <Section
-        title="6. Limitation of Liability"
-        content="FitApp shall not be liable for any indirect, incidental, special, or consequential damages resulting from the use or inability to use the service."
-        colors={colors}
-      />
+          <Section
+            title="6. Prohibited Conduct"
+            content="You agree not to:
+  • Use the service for any illegal purpose.
+  • Post or transmit any content that is offensive, harmful, or violates the rights of others.
+  • Attempt to interfere with the proper functioning of the service.
+  • Use any automated means to access the service."
+            colors={colors}
+          />
 
-      <Section
-        title="7. Governing Law"
-        content="These terms shall be governed by and construed in accordance with the laws of the jurisdiction in which FitApp is registered."
-        colors={colors}
-      />
-    </ScrollView>
+          <Section
+            title="7. Intellectual Property"
+            content="The service and its original content, features, and functionality are and will remain the exclusive property of FitApp and its licensors."
+            colors={colors}
+          />
+
+          <Section
+            title="8. Limitation of Liability"
+            content="In no event shall FitApp, nor its directors, employees, or partners, be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of the service."
+            colors={colors}
+          />
+
+          <Section
+            title="9. Changes"
+            content="We reserve the right, at our sole discretion, to modify or replace these Terms at any time. We will provide notice of any significant changes."
+            colors={colors}
+          />
+
+          <Section
+            title="10. Contact Us"
+            content="If you have any questions about these Terms, please contact us at:
+  Email: legal@fitapp.com"
+            colors={colors}
+          />
+
+          <View
+            className="mt-12 pt-8 border-t"
+            style={{ borderColor: colors.border }}
+          >
+            <Text
+              className="text-center text-sm opacity-40"
+              style={{ color: colors.textTertiary }}
+            >
+              © 2026 FitApp Global Inc.
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 function Section({ title, content, colors }: any) {
   return (
-    <View className="mb-8">
-      <Text className="text-xl font-bold mb-3" style={{ color: colors.text }}>
+    <View
+      className="mb-10 p-8 rounded-3xl border"
+      style={{ backgroundColor: colors.surface, borderColor: colors.border }}
+    >
+      <Text
+        className="text-2xl font-black mb-4 italic"
+        style={{ color: colors.text }}
+      >
         {title}
       </Text>
       <Text
-        className="text-base leading-6"
+        className="text-lg leading-7"
         style={{ color: colors.textSecondary }}
       >
         {content}

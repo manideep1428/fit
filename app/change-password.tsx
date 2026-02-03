@@ -6,26 +6,26 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { useUser } from '@clerk/clerk-expo';
-import { useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows } from '@/constants/colors';
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { showToast } from '@/utils/toast';
+} from "react-native";
+import { useUser } from "@clerk/clerk-expo";
+import { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getColors, Shadows } from "@/constants/colors";
+import { useRouter, Redirect } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { showToast } from "@/utils/toast";
 
 export default function ChangePasswordScreen() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const scheme = useColorScheme();
-  const colors = getColors(scheme === 'dark');
-  const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const colors = getColors(scheme === "dark");
+  const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -35,17 +35,17 @@ export default function ChangePasswordScreen() {
     if (!user) return;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      showToast.error('Fill all fields');
+      showToast.error("Fill all fields");
       return;
     }
 
     if (newPassword.length < 8) {
-      showToast.error('Min 8 characters required');
+      showToast.error("Min 8 characters required");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showToast.error('Passwords don\'t match');
+      showToast.error("Passwords don't match");
       return;
     }
 
@@ -56,19 +56,29 @@ export default function ChangePasswordScreen() {
         newPassword,
       });
 
-      showToast.success('Password changed');
-      router.push('/edit-profile' as any);
+      showToast.success("Password changed");
+      router.push("/edit-profile" as any);
     } catch (error: any) {
-      console.error('Error changing password:', error instanceof Error ? error.message : 'Unknown error');
-      showToast.error(error.errors?.[0]?.message || 'Wrong current password');
+      console.error(
+        "Error changing password:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
+      showToast.error(error.errors?.[0]?.message || "Wrong current password");
     } finally {
       setChangingPassword(false);
     }
   };
 
-  if (!user) {
+  if (isLoaded && !user) {
+    return <Redirect href="/(public)/home" />;
+  }
+
+  if (!isLoaded || !user) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: colors.background }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -76,31 +86,47 @@ export default function ChangePasswordScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={scheme === "dark" ? "light" : "dark"} />
 
       {/* Header */}
-      <View className="px-4 pt-16 pb-4 flex-row items-center justify-between border-b" style={{ borderBottomColor: colors.border }}>
+      <View
+        className="px-4 pt-16 pb-4 flex-row items-center justify-between border-b"
+        style={{ borderBottomColor: colors.border }}
+      >
         <TouchableOpacity
-          onPress={() => router.push('/edit-profile' as any)}
+          onPress={() => router.push("/edit-profile" as any)}
           className="w-10 h-10 items-center justify-center"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text className="text-xl font-semibold flex-1 text-center" style={{ color: colors.text }}>
+        <Text
+          className="text-xl font-semibold flex-1 text-center"
+          style={{ color: colors.text }}
+        >
           Change Password
         </Text>
         <View className="w-10" />
       </View>
 
-      <ScrollView className="flex-1 px-4 py-6" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1 px-4 py-6"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Info Card */}
         <View
           className="p-4 rounded-xl mb-6"
           style={{ backgroundColor: `${colors.primary}15` }}
         >
           <View className="flex-row items-center mb-2">
-            <Ionicons name="information-circle" size={20} color={colors.primary} />
-            <Text className="text-sm font-semibold ml-2" style={{ color: colors.text }}>
+            <Ionicons
+              name="information-circle"
+              size={20}
+              color={colors.primary}
+            />
+            <Text
+              className="text-sm font-semibold ml-2"
+              style={{ color: colors.text }}
+            >
               Password Requirements
             </Text>
           </View>
@@ -111,7 +137,10 @@ export default function ChangePasswordScreen() {
 
         {/* Current Password */}
         <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             Current Password
           </Text>
           <View
@@ -122,7 +151,11 @@ export default function ChangePasswordScreen() {
               borderColor: colors.border,
             }}
           >
-            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               className="flex-1 ml-3 text-base"
               style={{ color: colors.text }}
@@ -133,9 +166,11 @@ export default function ChangePasswordScreen() {
               secureTextEntry={!showCurrentPassword}
               autoCapitalize="none"
             />
-            <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+            >
               <Ionicons
-                name={showCurrentPassword ? 'eye-off-outline' : 'eye-outline'}
+                name={showCurrentPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
                 color={colors.textSecondary}
               />
@@ -145,7 +180,10 @@ export default function ChangePasswordScreen() {
 
         {/* New Password */}
         <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             New Password
           </Text>
           <View
@@ -156,7 +194,11 @@ export default function ChangePasswordScreen() {
               borderColor: colors.border,
             }}
           >
-            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               className="flex-1 ml-3 text-base"
               style={{ color: colors.text }}
@@ -167,9 +209,11 @@ export default function ChangePasswordScreen() {
               secureTextEntry={!showNewPassword}
               autoCapitalize="none"
             />
-            <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowNewPassword(!showNewPassword)}
+            >
               <Ionicons
-                name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
+                name={showNewPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
                 color={colors.textSecondary}
               />
@@ -179,7 +223,10 @@ export default function ChangePasswordScreen() {
 
         {/* Confirm New Password */}
         <View className="mb-6">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             Confirm New Password
           </Text>
           <View
@@ -190,7 +237,11 @@ export default function ChangePasswordScreen() {
               borderColor: colors.border,
             }}
           >
-            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               className="flex-1 ml-3 text-base"
               style={{ color: colors.text }}
@@ -201,9 +252,11 @@ export default function ChangePasswordScreen() {
               secureTextEntry={!showConfirmPassword}
               autoCapitalize="none"
             />
-            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+            <TouchableOpacity
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
               <Ionicons
-                name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
                 color={colors.textSecondary}
               />
@@ -214,17 +267,27 @@ export default function ChangePasswordScreen() {
         {/* Update Button */}
         <TouchableOpacity
           onPress={handleChangePassword}
-          disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+          disabled={
+            changingPassword ||
+            !currentPassword ||
+            !newPassword ||
+            !confirmPassword
+          }
           className="rounded-xl py-4 items-center mb-6"
           style={{
-            backgroundColor: currentPassword && newPassword && confirmPassword ? colors.primary : colors.border,
+            backgroundColor:
+              currentPassword && newPassword && confirmPassword
+                ? colors.primary
+                : colors.border,
             ...shadows.medium,
           }}
         >
           {changingPassword ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text className="text-white font-bold text-base">Update Password</Text>
+            <Text className="text-white font-bold text-base">
+              Update Password
+            </Text>
           )}
         </TouchableOpacity>
       </ScrollView>

@@ -33,19 +33,19 @@ export default function ProfileScreen() {
 
   const userData = useQuery(
     api.users.getUserByClerkId,
-    user?.id ? { clerkId: user.id } : "skip"
+    user?.id ? { clerkId: user.id } : "skip",
   );
   const updateProfile = useMutation(api.users.updateUserProfile);
   const generateUploadUrl = useMutation(api.users.generateUploadUrl);
   const profileImageUrl = useQuery(
     api.users.getProfileImageUrl,
-    userData?.profileImageId ? { storageId: userData.profileImageId } : "skip"
+    userData?.profileImageId ? { storageId: userData.profileImageId } : "skip",
   );
 
   // Fetch unread notification count
   const unreadCount = useQuery(
     api.notifications.getUnreadCount,
-    user?.id ? { userId: user.id } : "skip"
+    user?.id ? { userId: user.id } : "skip",
   );
 
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -74,7 +74,7 @@ export default function ProfileScreen() {
       if (status !== "granted") {
         Alert.alert(
           "Permission needed",
-          "Please grant camera roll permissions to change your profile picture."
+          "Please grant camera roll permissions to change your profile picture.",
         );
         return;
       }
@@ -109,7 +109,10 @@ export default function ProfileScreen() {
 
       Alert.alert("Success", "Profile picture updated!");
     } catch (error) {
-      console.error("Error uploading image:", error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        "Error uploading image:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
       Alert.alert("Error", "Failed to upload image. Please try again.");
     } finally {
       setUploadingImage(false);
@@ -298,7 +301,9 @@ export default function ProfileScreen() {
             </Text>
             <View className="gap-2">
               <TouchableOpacity
-                onPress={() => router.push("/(client)/session-history?from=profile")}
+                onPress={() =>
+                  router.push("/(client)/session-history?from=profile")
+                }
                 className="rounded-xl p-4 flex-row items-center justify-between"
                 style={{
                   backgroundColor: colors.surface,
@@ -550,6 +555,87 @@ export default function ProfileScreen() {
                     Logout
                   </Text>
                 </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* LEGAL Section */}
+          <View className="mb-6">
+            <Text
+              className="text-xs font-bold uppercase tracking-widest mb-3 ml-2"
+              style={{ color: colors.textTertiary }}
+            >
+              Legal
+            </Text>
+            <View className="gap-2">
+              <TouchableOpacity
+                onPress={() => router.push("/(public)/privacy" as any)}
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: `${colors.info}20` }}
+                  >
+                    <Ionicons
+                      name="shield-checkmark-outline"
+                      size={20}
+                      color={colors.info}
+                    />
+                  </View>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
+                    Privacy Policy
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.push("/(public)/terms" as any)}
+                className="rounded-xl p-4 flex-row items-center justify-between"
+                style={{
+                  backgroundColor: colors.surface,
+                  ...shadows.small,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <View className="flex-row items-center gap-4">
+                  <View
+                    className="w-10 h-10 rounded-full items-center justify-center"
+                    style={{ backgroundColor: `${colors.warning}20` }}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={20}
+                      color={colors.warning}
+                    />
+                  </View>
+                  <Text
+                    className="font-medium text-base"
+                    style={{ color: colors.text }}
+                  >
+                    Terms of Service
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.textTertiary}
+                />
               </TouchableOpacity>
             </View>
           </View>

@@ -1,6 +1,24 @@
-import { Stack } from 'expo-router';
+import { Stack, Redirect } from "expo-router";
+import { useUser } from "@clerk/clerk-expo";
 
 export default function AuthLayout() {
+  const { user, isLoaded } = useUser();
+
+  // If user is already logged in, redirect them to index (which will handle role-based routing)
+  // EXCEPT for role-selection and trainer-setup which are part of the onboarding flow
+  if (
+    isLoaded &&
+    user &&
+    user.unsafeMetadata?.role === "trainer" &&
+    user.unsafeMetadata?.profileCompleted
+  ) {
+    return <Redirect href="/(trainer)" />;
+  }
+
+  if (isLoaded && user && user.unsafeMetadata?.role === "client") {
+    return <Redirect href="/(client)" />;
+  }
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />

@@ -1,4 +1,4 @@
-import { Tabs } from "expo-router";
+import { Tabs, Redirect } from "expo-router";
 import { View, Text, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,12 +20,17 @@ export default function TabLayout() {
   // Fetch unread notification count
   const unreadCount = useQuery(
     api.notifications.getUnreadCount,
-    user?.id ? { userId: user.id } : "skip"
+    user?.id ? { userId: user.id } : "skip",
   );
 
   // Don't render tabs if user is signing out
   if (isLoaded && !user) {
-    return null;
+    return <Redirect href="/(public)/home" />;
+  }
+
+  // Redirect if user is not a client
+  if (isLoaded && user && user.unsafeMetadata?.role !== "client") {
+    return <Redirect href="/" />;
   }
 
   return (
@@ -88,26 +93,34 @@ export default function TabLayout() {
                   size={24}
                   color={color}
                 />
-                {unreadCount && typeof unreadCount === "number" && unreadCount > 0 && (
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: -4,
-                      right: -8,
-                      backgroundColor: colors.error,
-                      borderRadius: 10,
-                      minWidth: 18,
-                      height: 18,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      paddingHorizontal: 4,
-                    }}
-                  >
-                    <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "bold" }}>
-                      {unreadCount > 9 ? "9+" : `${unreadCount}`}
-                    </Text>
-                  </View>
-                )}
+                {unreadCount &&
+                  typeof unreadCount === "number" &&
+                  unreadCount > 0 && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: -4,
+                        right: -8,
+                        backgroundColor: colors.error,
+                        borderRadius: 10,
+                        minWidth: 18,
+                        height: 18,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingHorizontal: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#FFFFFF",
+                          fontSize: 10,
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {unreadCount > 9 ? "9+" : `${unreadCount}`}
+                      </Text>
+                    </View>
+                  )}
               </View>
             ),
           }}
@@ -192,7 +205,7 @@ export default function TabLayout() {
             href: null,
           }}
         />
-          <Tabs.Screen
+        <Tabs.Screen
           name="pricing"
           options={{
             href: null,

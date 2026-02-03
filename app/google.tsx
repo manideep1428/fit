@@ -1,37 +1,44 @@
 import { useEffect, useState } from "react";
-import { View, Text, Alert, ScrollView, TouchableOpacity, Platform } from "react-native";
+import {
+  View,
+  Text,
+  Alert,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+} from "react-native";
 import { useUser } from "@clerk/clerk-expo";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AnimatedButton } from "@/components/AnimatedButton";
-import { useRouter } from "expo-router";
+import { useRouter, Redirect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getColors, Shadows } from "@/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { showToast } from "@/utils/toast";
-import * as WebBrowser from 'expo-web-browser';
+import * as WebBrowser from "expo-web-browser";
 import {
   AuthRequestConfig,
   DiscoveryDocument,
   makeRedirectUri,
   useAuthRequest,
-} from 'expo-auth-session';
+} from "expo-auth-session";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL || 'http://localhost:8081';
+const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL || "http://localhost:8081";
 
 // OAuth configuration for Google Calendar
 const config: AuthRequestConfig = {
-  clientId: 'google-calendar',
+  clientId: "google-calendar",
   scopes: [
-    'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/calendar.events',
-    'https://www.googleapis.com/auth/calendar.readonly',
-    'openid',
-    'profile',
-    'email',
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "openid",
+    "profile",
+    "email",
   ],
   redirectUri: makeRedirectUri(),
 };
@@ -42,25 +49,44 @@ const discovery: DiscoveryDocument = {
 };
 
 export default function GoogleCalendarAuth() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const scheme = useColorScheme();
   const colors = getColors(scheme === "dark");
   const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>("");
   const [request, response, promptAsync] = useAuthRequest(config, discovery);
-  
+
   const storeTokens = useMutation(api.googleAuth.storeGoogleTokens);
   const clearTokens = useMutation(api.googleAuth.clearGoogleTokens);
-  
+
   const tokenStatus = useQuery(
     api.googleAuth.getGoogleTokens,
-    user?.id ? { clerkId: user.id } : "skip"
+    user?.id ? { clerkId: user.id } : "skip",
   );
+
+  if (isLoaded && !user) {
+    return <Redirect href="/(public)/home" />;
+  }
+
+  if (!isLoaded || !user) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ color: colors.text }}>Loading...</Text>
+      </View>
+    );
+  }
 
   useEffect(() => {
     const configInfo = `Platform: ${Platform.OS}\nUsing: Expo OAuth Server`;
@@ -83,53 +109,59 @@ export default function GoogleCalendarAuth() {
   }, [response]);
 
   const handleResponse = async () => {
-    if (response?.type === 'success') {
+    if (response?.type === "success") {
       setIsLoading(true);
       setConnectionError(null);
-      console.log('🟢 [GOOGLE] OAuth success response received');
-      console.log('🟢 [GOOGLE] Response params:', response.params);
-      
+      console.log("🟢 [GOOGLE] OAuth success response received");
+      console.log("🟢 [GOOGLE] Response params:", response.params);
+
       try {
         const { code } = response.params;
-        console.log('🟢 [GOOGLE] Authorization code:', code ? `${code.substring(0, 20)}...` : 'null');
+        console.log(
+          "🟢 [GOOGLE] Authorization code:",
+          code ? `${code.substring(0, 20)}...` : "null",
+        );
 
         if (!user?.id) {
-          const errorMsg = 'User not authenticated';
-          console.error('❌ [GOOGLE] No user ID found');
+          const errorMsg = "User not authenticated";
+          console.error("❌ [GOOGLE] No user ID found");
           setConnectionError(errorMsg);
           showToast.error(errorMsg);
           Alert.alert(
-            'Authentication Error',
-            'Please sign in again to connect Google Calendar.',
-            [{ text: 'OK' }]
+            "Authentication Error",
+            "Please sign in again to connect Google Calendar.",
+            [{ text: "OK" }],
           );
           return;
         }
 
-        console.log('🟢 [GOOGLE] User ID:', user.id);
+        console.log("🟢 [GOOGLE] User ID:", user.id);
 
         // Exchange code for tokens
         const formData = new FormData();
-        formData.append('code', code);
-        formData.append('clerkId', user.id);
+        formData.append("code", code);
+        formData.append("clerkId", user.id);
 
-        console.log('🟢 [GOOGLE] Sending token exchange request to:', `${BASE_URL}/api/auth/google-calendar/token`);
+        console.log(
+          "🟢 [GOOGLE] Sending token exchange request to:",
+          `${BASE_URL}/api/auth/google-calendar/token`,
+        );
 
         const tokenResponse = await fetch(
           `${BASE_URL}/api/auth/google-calendar/token`,
           {
-            method: 'POST',
+            method: "POST",
             body: formData,
-          }
+          },
         );
 
-        console.log('🟢 [GOOGLE] Token response status:', tokenResponse.status);
-        console.log('🟢 [GOOGLE] Token response ok:', tokenResponse.ok);
+        console.log("🟢 [GOOGLE] Token response status:", tokenResponse.status);
+        console.log("🟢 [GOOGLE] Token response ok:", tokenResponse.ok);
 
         if (!tokenResponse.ok) {
           const errorText = await tokenResponse.text();
-          console.error('❌ [GOOGLE] Server error response:', errorText);
-          
+          console.error("❌ [GOOGLE] Server error response:", errorText);
+
           // Try to parse as JSON for better error display
           let errorData;
           try {
@@ -137,22 +169,32 @@ export default function GoogleCalendarAuth() {
           } catch {
             errorData = { error: errorText };
           }
-          
+
           // Show specific help for invalid_client error
-          if (errorData.error === 'invalid_client') {
-            console.error('❌ [GOOGLE] INVALID_CLIENT ERROR - This means:');
-            console.error('   1. Redirect URI mismatch in Google Cloud Console');
-            console.error('   2. Expected redirect URI: http://localhost:8081/api/auth/google-calendar/callback');
-            console.error('   3. Go to: https://console.cloud.google.com/apis/credentials');
-            console.error('   4. Add the redirect URI to your OAuth 2.0 Client');
-            console.error('   5. Wait 1-2 minutes and try again');
+          if (errorData.error === "invalid_client") {
+            console.error("❌ [GOOGLE] INVALID_CLIENT ERROR - This means:");
+            console.error(
+              "   1. Redirect URI mismatch in Google Cloud Console",
+            );
+            console.error(
+              "   2. Expected redirect URI: http://localhost:8081/api/auth/google-calendar/callback",
+            );
+            console.error(
+              "   3. Go to: https://console.cloud.google.com/apis/credentials",
+            );
+            console.error(
+              "   4. Add the redirect URI to your OAuth 2.0 Client",
+            );
+            console.error("   5. Wait 1-2 minutes and try again");
           }
-          
-          throw new Error(`Server error: ${tokenResponse.status} - ${errorData.error_description || errorData.error}`);
+
+          throw new Error(
+            `Server error: ${tokenResponse.status} - ${errorData.error_description || errorData.error}`,
+          );
         }
 
         const tokens = await tokenResponse.json();
-        console.log('🟢 [GOOGLE] Tokens received:', {
+        console.log("🟢 [GOOGLE] Tokens received:", {
           hasAccessToken: !!tokens.accessToken,
           hasRefreshToken: !!tokens.refreshToken,
           expiresIn: tokens.expiresIn,
@@ -161,27 +203,27 @@ export default function GoogleCalendarAuth() {
 
         if (tokens.error) {
           const errorMsg = tokens.error_description || tokens.error;
-          console.error('❌ [GOOGLE] Token error:', errorMsg);
+          console.error("❌ [GOOGLE] Token error:", errorMsg);
           setConnectionError(errorMsg);
           showToast.error(errorMsg);
           Alert.alert(
-            'Connection Failed',
+            "Connection Failed",
             `Failed to connect Google Calendar: ${errorMsg}\n\nPlease try again.`,
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Retry', onPress: handleCalendarSignIn }
-            ]
+              { text: "Cancel", style: "cancel" },
+              { text: "Retry", onPress: handleCalendarSignIn },
+            ],
           );
           return;
         }
 
         // Validate tokens before storing
         if (!tokens.accessToken) {
-          console.error('❌ [GOOGLE] No access token in response');
-          throw new Error('No access token received from server');
+          console.error("❌ [GOOGLE] No access token in response");
+          throw new Error("No access token received from server");
         }
 
-        console.log('🟢 [GOOGLE] Storing tokens in Convex...');
+        console.log("🟢 [GOOGLE] Storing tokens in Convex...");
 
         // Store tokens in Convex user table
         await storeTokens({
@@ -191,51 +233,54 @@ export default function GoogleCalendarAuth() {
           expiresIn: tokens.expiresIn,
         });
 
-        console.log('✅ [GOOGLE] Tokens stored successfully');
+        console.log("✅ [GOOGLE] Tokens stored successfully");
 
         setIsConnected(true);
         setConnectionError(null);
-        showToast.success('Google Calendar connected successfully!');
-        setDebugInfo(prev => `${prev}\nConnected: ${new Date().toLocaleTimeString()}`);
-        
+        showToast.success("Google Calendar connected successfully!");
+        setDebugInfo(
+          (prev) => `${prev}\nConnected: ${new Date().toLocaleTimeString()}`,
+        );
+
         Alert.alert(
-          'Success!',
-          'Your Google Calendar is now connected. Your bookings will be automatically synced.',
-          [{ text: 'OK' }]
+          "Success!",
+          "Your Google Calendar is now connected. Your bookings will be automatically synced.",
+          [{ text: "OK" }],
         );
       } catch (error: any) {
-        console.error('❌ [GOOGLE] Calendar auth error:', error);
-        const errorMessage = error.message || 'Failed to connect Google Calendar';
+        console.error("❌ [GOOGLE] Calendar auth error:", error);
+        const errorMessage =
+          error.message || "Failed to connect Google Calendar";
         setConnectionError(errorMessage);
         showToast.error(errorMessage);
-        
+
         Alert.alert(
-          'Connection Error',
+          "Connection Error",
           `${errorMessage}\n\nPlease check your internet connection and try again.`,
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Retry', onPress: handleCalendarSignIn }
-          ]
+            { text: "Cancel", style: "cancel" },
+            { text: "Retry", onPress: handleCalendarSignIn },
+          ],
         );
       } finally {
         setIsLoading(false);
       }
-    } else if (response?.type === 'cancel') {
-      console.log('⚠️ [GOOGLE] OAuth cancelled by user');
-      showToast.info('Calendar connection cancelled');
-    } else if (response?.type === 'error') {
-      console.error('❌ [GOOGLE] OAuth error:', response.error);
-      const errorMsg = response.error?.message || 'OAuth authentication failed';
+    } else if (response?.type === "cancel") {
+      console.log("⚠️ [GOOGLE] OAuth cancelled by user");
+      showToast.info("Calendar connection cancelled");
+    } else if (response?.type === "error") {
+      console.error("❌ [GOOGLE] OAuth error:", response.error);
+      const errorMsg = response.error?.message || "OAuth authentication failed";
       setConnectionError(errorMsg);
       showToast.error(errorMsg);
-      
+
       Alert.alert(
-        'Authentication Error',
+        "Authentication Error",
         `${errorMsg}\n\nWould you like to try again?`,
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: handleCalendarSignIn }
-        ]
+          { text: "Cancel", style: "cancel" },
+          { text: "Retry", onPress: handleCalendarSignIn },
+        ],
       );
     }
   };
@@ -247,7 +292,7 @@ export default function GoogleCalendarAuth() {
     }
 
     if (!request) {
-      showToast.error('OAuth request not ready');
+      showToast.error("OAuth request not ready");
       return;
     }
 
@@ -255,8 +300,8 @@ export default function GoogleCalendarAuth() {
     try {
       await promptAsync();
     } catch (error) {
-      console.error('Error starting OAuth:', error);
-      showToast.error('Failed to start OAuth flow');
+      console.error("Error starting OAuth:", error);
+      showToast.error("Failed to start OAuth flow");
     } finally {
       setIsLoading(false);
     }
@@ -284,7 +329,7 @@ export default function GoogleCalendarAuth() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -325,28 +370,28 @@ export default function GoogleCalendarAuth() {
           <View className="flex-row items-center mb-4">
             <View
               className="w-12 h-12 rounded-full items-center justify-center mr-4"
-              style={{ 
-                backgroundColor: connectionError 
-                  ? "#EF444420" 
-                  : isConnected 
-                    ? "#10B98120" 
-                    : "#F59E0B20" 
+              style={{
+                backgroundColor: connectionError
+                  ? "#EF444420"
+                  : isConnected
+                    ? "#10B98120"
+                    : "#F59E0B20",
               }}
             >
               <Ionicons
                 name={
-                  connectionError 
-                    ? "alert-circle" 
-                    : isConnected 
-                      ? "checkmark-circle" 
+                  connectionError
+                    ? "alert-circle"
+                    : isConnected
+                      ? "checkmark-circle"
                       : "calendar-outline"
                 }
                 size={28}
                 color={
-                  connectionError 
-                    ? "#EF4444" 
-                    : isConnected 
-                      ? "#10B981" 
+                  connectionError
+                    ? "#EF4444"
+                    : isConnected
+                      ? "#10B981"
                       : "#F59E0B"
                 }
               />
@@ -356,16 +401,13 @@ export default function GoogleCalendarAuth() {
                 className="text-lg font-bold mb-1"
                 style={{ color: colors.text }}
               >
-                {connectionError 
-                  ? "Connection Error" 
-                  : isConnected 
-                    ? "Connected" 
+                {connectionError
+                  ? "Connection Error"
+                  : isConnected
+                    ? "Connected"
                     : "Not Connected"}
               </Text>
-              <Text
-                className="text-sm"
-                style={{ color: colors.textSecondary }}
-              >
+              <Text className="text-sm" style={{ color: colors.textSecondary }}>
                 {connectionError
                   ? "Failed to connect calendar"
                   : isConnected
@@ -381,16 +423,13 @@ export default function GoogleCalendarAuth() {
               className="rounded-xl p-3 mb-4 flex-row items-start"
               style={{ backgroundColor: `${colors.error}15` }}
             >
-              <Ionicons 
-                name="information-circle" 
-                size={20} 
-                color={colors.error} 
-                style={{ marginTop: 1, marginRight: 8 }} 
+              <Ionicons
+                name="information-circle"
+                size={20}
+                color={colors.error}
+                style={{ marginTop: 1, marginRight: 8 }}
               />
-              <Text 
-                className="text-sm flex-1" 
-                style={{ color: colors.error }}
-              >
+              <Text className="text-sm flex-1" style={{ color: colors.error }}>
                 {connectionError}
               </Text>
             </View>
@@ -406,7 +445,7 @@ export default function GoogleCalendarAuth() {
               disabled={isLoading || !request}
               loading={isLoading}
             >
-              {connectionError ? 'Retry Connection' : 'Connect Google Calendar'}
+              {connectionError ? "Retry Connection" : "Connect Google Calendar"}
             </AnimatedButton>
           )}
         </View>
@@ -425,7 +464,7 @@ export default function GoogleCalendarAuth() {
           >
             Benefits
           </Text>
-          
+
           <View className="space-y-3">
             <View className="flex-row items-start">
               <Ionicons
@@ -441,7 +480,7 @@ export default function GoogleCalendarAuth() {
                 Automatically sync all your bookings to Google Calendar
               </Text>
             </View>
-            
+
             <View className="flex-row items-start mt-3">
               <Ionicons
                 name="checkmark-circle"
@@ -456,7 +495,7 @@ export default function GoogleCalendarAuth() {
                 Get reminders on all your devices
               </Text>
             </View>
-            
+
             <View className="flex-row items-start mt-3">
               <Ionicons
                 name="checkmark-circle"
@@ -517,7 +556,11 @@ export default function GoogleCalendarAuth() {
           }}
         >
           <View className="flex-row items-center mb-3">
-            <Ionicons name="information-circle" size={24} color={colors.warning} />
+            <Ionicons
+              name="information-circle"
+              size={24}
+              color={colors.warning}
+            />
             <Text
               className="text-base font-bold ml-2"
               style={{ color: colors.text }}

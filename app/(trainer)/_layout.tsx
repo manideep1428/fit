@@ -1,4 +1,4 @@
-import { Tabs } from "expo-router";
+import { Tabs, Redirect } from "expo-router";
 import { View, Text, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,12 +24,17 @@ export default function TabLayout() {
   // Fetch unread notification count
   const unreadCount = useQuery(
     api.notifications.getUnreadCount,
-    user?.id ? { userId: user.id } : "skip"
+    user?.id ? { userId: user.id } : "skip",
   );
 
   // Don't render tabs if user is signing out
   if (isLoaded && !user) {
-    return null;
+    return <Redirect href="/(public)/home" />;
+  }
+
+  // Redirect if user is not a trainer
+  if (isLoaded && user && user.unsafeMetadata?.role !== "trainer") {
+    return <Redirect href="/" />;
   }
 
   return (
@@ -107,7 +112,13 @@ export default function TabLayout() {
                       paddingHorizontal: 4,
                     }}
                   >
-                    <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "bold" }}>
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 10,
+                        fontWeight: "bold",
+                      }}
+                    >
                       {unreadCount > 9 ? "9+" : `${unreadCount}`}
                     </Text>
                   </View>
@@ -243,7 +254,7 @@ export default function TabLayout() {
             href: null,
           }}
         />
-         <Tabs.Screen
+        <Tabs.Screen
           name="faq-questions"
           options={{
             href: null,

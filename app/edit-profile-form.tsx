@@ -6,47 +6,47 @@ import {
   TextInput,
   ActivityIndicator,
   Image,
-} from 'react-native';
-import { useUser } from '@clerk/clerk-expo';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { useState, useEffect } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getColors, Shadows } from '@/constants/colors';
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { showToast } from '@/utils/toast';
+} from "react-native";
+import { useUser } from "@clerk/clerk-expo";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useState, useEffect } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getColors, Shadows } from "@/constants/colors";
+import { useRouter, Redirect } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { showToast } from "@/utils/toast";
 
 export default function EditProfileFormScreen() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const scheme = useColorScheme();
-  const colors = getColors(scheme === 'dark');
-  const shadows = scheme === 'dark' ? Shadows.dark : Shadows.light;
+  const colors = getColors(scheme === "dark");
+  const shadows = scheme === "dark" ? Shadows.dark : Shadows.light;
 
   const userData = useQuery(
     api.users.getUserByClerkId,
-    user?.id ? { clerkId: user.id } : 'skip'
+    user?.id ? { clerkId: user.id } : "skip",
   );
   const updateProfile = useMutation(api.users.updateUserProfile);
   const profileImageUrl = useQuery(
     api.users.getProfileImageUrl,
-    userData?.profileImageId ? { storageId: userData.profileImageId } : 'skip'
+    userData?.profileImageId ? { storageId: userData.profileImageId } : "skip",
   );
 
   const [saving, setSaving] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [bio, setBio] = useState('');
-  const [specialty, setSpecialty] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [bio, setBio] = useState("");
+  const [specialty, setSpecialty] = useState("");
 
   useEffect(() => {
     if (userData) {
-      setFullName(userData.fullName || '');
-      setPhoneNumber(userData.phoneNumber || '');
-      setBio(userData.bio || '');
-      setSpecialty(userData.specialty || '');
+      setFullName(userData.fullName || "");
+      setPhoneNumber(userData.phoneNumber || "");
+      setBio(userData.bio || "");
+      setSpecialty(userData.specialty || "");
     }
   }, [userData]);
 
@@ -61,19 +61,29 @@ export default function EditProfileFormScreen() {
         bio,
         specialty,
       });
-      showToast.success('Profile updated');
-      router.push('/edit-profile' as any);
+      showToast.success("Profile updated");
+      router.push("/edit-profile" as any);
     } catch (error) {
-      console.error('Error updating profile:', error instanceof Error ? error.message : 'Unknown error');
-      showToast.error('Update failed');
+      console.error(
+        "Error updating profile:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
+      showToast.error("Update failed");
     } finally {
       setSaving(false);
     }
   };
 
-  if (!user) {
+  if (isLoaded && !user) {
+    return <Redirect href="/(public)/home" />;
+  }
+
+  if (!isLoaded || !user) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: colors.background }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -81,17 +91,23 @@ export default function EditProfileFormScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={scheme === "dark" ? "light" : "dark"} />
 
       {/* Header */}
-      <View className="px-4 pt-16 pb-4 flex-row items-center justify-between border-b" style={{ borderBottomColor: colors.border }}>
+      <View
+        className="px-4 pt-16 pb-4 flex-row items-center justify-between border-b"
+        style={{ borderBottomColor: colors.border }}
+      >
         <TouchableOpacity
-          onPress={() => router.push('/edit-profile' as any)}
+          onPress={() => router.push("/edit-profile" as any)}
           className="w-10 h-10 items-center justify-center"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text className="text-xl font-semibold flex-1 text-center" style={{ color: colors.text }}>
+        <Text
+          className="text-xl font-semibold flex-1 text-center"
+          style={{ color: colors.text }}
+        >
           Edit Profile
         </Text>
         <TouchableOpacity
@@ -107,7 +123,10 @@ export default function EditProfileFormScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1 px-4 py-6" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1 px-4 py-6"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Profile Image */}
         <View className="items-center mb-8">
           <View className="relative">
@@ -116,12 +135,19 @@ export default function EditProfileFormScreen() {
               style={{ backgroundColor: colors.primary, ...shadows.large }}
             >
               {profileImageUrl ? (
-                <Image source={{ uri: profileImageUrl }} className="w-full h-full" />
+                <Image
+                  source={{ uri: profileImageUrl }}
+                  className="w-full h-full"
+                />
               ) : user.imageUrl ? (
-                <Image source={{ uri: user.imageUrl }} className="w-full h-full" />
+                <Image
+                  source={{ uri: user.imageUrl }}
+                  className="w-full h-full"
+                />
               ) : (
                 <Text className="text-white text-4xl font-bold">
-                  {user.firstName?.[0] || user.emailAddresses[0]?.emailAddress[0].toUpperCase()}
+                  {user.firstName?.[0] ||
+                    user.emailAddresses[0]?.emailAddress[0].toUpperCase()}
                 </Text>
               )}
             </View>
@@ -136,7 +162,10 @@ export default function EditProfileFormScreen() {
 
         {/* Full Name */}
         <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             Full Name
           </Text>
           <View
@@ -147,7 +176,11 @@ export default function EditProfileFormScreen() {
               borderColor: colors.border,
             }}
           >
-            <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="person-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               className="flex-1 ml-3 text-base"
               style={{ color: colors.text }}
@@ -161,7 +194,10 @@ export default function EditProfileFormScreen() {
 
         {/* Specialty */}
         <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             Specialty
           </Text>
           <View
@@ -172,7 +208,11 @@ export default function EditProfileFormScreen() {
               borderColor: colors.border,
             }}
           >
-            <Ionicons name="barbell-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="barbell-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               className="flex-1 ml-3 text-base"
               style={{ color: colors.text }}
@@ -186,7 +226,10 @@ export default function EditProfileFormScreen() {
 
         {/* Phone Number */}
         <View className="mb-4">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             Phone Number
           </Text>
           <View
@@ -197,7 +240,11 @@ export default function EditProfileFormScreen() {
               borderColor: colors.border,
             }}
           >
-            <Ionicons name="call-outline" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="call-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
             <TextInput
               className="flex-1 ml-3 text-base"
               style={{ color: colors.text }}
@@ -212,7 +259,10 @@ export default function EditProfileFormScreen() {
 
         {/* Bio */}
         <View className="mb-6">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.text }}>
+          <Text
+            className="text-sm font-semibold mb-2"
+            style={{ color: colors.text }}
+          >
             Bio
           </Text>
           <View
@@ -225,7 +275,7 @@ export default function EditProfileFormScreen() {
           >
             <TextInput
               className="text-base min-h-[100px]"
-              style={{ color: colors.text, textAlignVertical: 'top' }}
+              style={{ color: colors.text, textAlignVertical: "top" }}
               value={bio}
               onChangeText={setBio}
               placeholder="Tell clients about your experience and approach"
